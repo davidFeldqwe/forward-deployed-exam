@@ -17,7 +17,9 @@ export { candidateLamp, scoreUniverse } from "./score.ts";
 export {
   DEFAULT_LIMIT,
   MAX_LIMIT,
+  placeVocabulary,
   queryAirports,
+  type PlaceVocabulary,
   type QueryAirportsArgs,
   type QueryResult,
   type UnknownPlace,

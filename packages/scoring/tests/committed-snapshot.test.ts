@@ -3,7 +3,15 @@ import { test } from "node:test";
 
 import { loadSnapshot } from "@repo/snapshot";
 
-import { COMPONENTS, MAX_LIMIT, WEIGHTS, queryAirports, scoreUniverse } from "../src/index.ts";
+import {
+  COMPONENTS,
+  MAX_LIMIT,
+  PLACE_FIELDS,
+  WEIGHTS,
+  placeVocabulary,
+  queryAirports,
+  scoreUniverse,
+} from "../src/index.ts";
 import { rowLookup } from "./rows.ts";
 
 // The committed snapshot, scored: the numbers a reviewer curls and an analyst
@@ -179,6 +187,27 @@ test("a compare against an airport outside the top 100 names the code", () => {
     false,
     "ITH really is outside the committed snapshot",
   );
+});
+
+// Story 32: an unresolved phrase is refused *with* the accepted ones, so the
+// vocabulary has to be the committed universe's own, not a hand-kept list.
+test("the accepted place phrases are the committed universe's own", () => {
+  const vocabulary = placeVocabulary(scored);
+  assert.deepEqual(vocabulary.peerGroup, ["large", "medium", "small"]);
+  // Nine Census divisions, minus any the top 100 does not reach; SJU's blank is
+  // not offered as a phrase, because a region ranking never returns it.
+  assert.ok(vocabulary.region.length <= 9, `${vocabulary.region.length} divisions`);
+  assert.ok(vocabulary.region.includes("New England"));
+  assert.equal(vocabulary.region.includes(""), false);
+  assert.equal(vocabulary.state.length, new Set(vocabulary.state).size);
+  for (const state of vocabulary.state) assert.match(state, /^[A-Z]{2}$/);
+  assert.ok(vocabulary.municipality.includes("Chicago"));
+  // The vocabulary and the filter agree on every value the universe carries.
+  for (const field of PLACE_FIELDS) {
+    for (const value of vocabulary[field]) {
+      assert.ok(queryAirports(scored, { [field]: value }).matched > 0, `${field} ${value}`);
+    }
+  }
 });
 
 test("a query result is exactly the locked payload, no more and no less", () => {

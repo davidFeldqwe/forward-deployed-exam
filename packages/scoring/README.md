@@ -102,7 +102,11 @@ itself.
   the place filters excluded is not listed either. Neither refuses the query the
   way an off-list `sortBy` does: an unresolved place legitimately has no
   airports, so zero rows is the honest answer, it just has to be
-  distinguishable. Both key sets, the row's and the result's, are pinned
+  distinguishable. `placeVocabulary(scored)` is the other half of that refusal:
+  the values each place filter accepts, sorted, derived from the universe rather
+  than kept by hand in the app, so "accepted phrases" cannot disagree with what
+  is filtered on. A blank is not offered — SJU has no Census division, and a
+  region ranking never returns it. Both key sets, the row's and the result's, are pinned
   by tests, and so is the fact that the result survives `JSON.parse(JSON.stringify(...))`
   unchanged, so the rank HTTP can assert its body equals the module output.
 

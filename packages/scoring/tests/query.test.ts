@@ -6,6 +6,7 @@ import {
   MAX_LIMIT,
   PLACE_FIELDS,
   SORT_KEYS,
+  placeVocabulary,
   queryAirports,
   scoreUniverse,
   type QueryAirportsArgs,
@@ -333,4 +334,45 @@ test("an empty place string is an unresolved phrase, not an omitted one", () => 
   assert.deepEqual(queryAirports(scored, { region: "" }).unknownPlace, [
     { field: "region", value: "" },
   ]);
+});
+
+// Story 32 refuses an unresolved place *with the accepted phrases*, so naming a
+// failed phrase is only half an answer: the caller needs the values the universe
+// actually carries. Deriving them in the app would put universe knowledge back
+// outside the pure module, where it can disagree with the filter.
+test("the place vocabulary is what the filters accept, sorted and de-duplicated", () => {
+  const vocabulary = placeVocabulary(scored);
+  assert.deepEqual(Object.keys(vocabulary), [...PLACE_FIELDS]);
+  assert.deepEqual(vocabulary.peerGroup, ["large", "medium", "small"]);
+  assert.deepEqual(vocabulary.region, ["East North Central", "New England", "Pacific", "South Atlantic"]);
+  assert.deepEqual(vocabulary.state, ["CA", "CT", "GA", "IL", "MA", "RI"]);
+  // Chicago is two airports and one place phrase.
+  assert.equal(vocabulary.municipality.filter((name) => name === "Chicago").length, 1);
+});
+
+// The two halves have to agree: a value in the vocabulary filters to at least one
+// row, and a value outside it is what `unknownPlace` reports.
+test("every accepted place matches rows, and nothing else does", () => {
+  const vocabulary = placeVocabulary(scored);
+  for (const field of PLACE_FIELDS) {
+    for (const value of vocabulary[field]) {
+      const result = queryAirports(scored, { [field]: value });
+      assert.ok(result.matched > 0, `${field} ${value} matches rows`);
+      assert.deepEqual(result.unknownPlace, [], `${field} ${value} resolves`);
+    }
+    assert.deepEqual(queryAirports(scored, { [field]: "Freedonia" }).unknownPlace, [
+      { field, value: "Freedonia" },
+    ]);
+  }
+});
+
+// SJU has no Census division, and a region ranking never returns it, so listing
+// a blank as an accepted phrase would offer a filter that matches nothing.
+test("a place the snapshot leaves blank is not an accepted phrase", () => {
+  const withoutRegion = scoreUniverse({
+    ...FIXTURE,
+    airports: FIXTURE.airports.map((airport) => ({ ...airport, region: null })),
+  });
+  assert.deepEqual(placeVocabulary(withoutRegion).region, []);
+  assert.equal(placeVocabulary(withoutRegion).state.length > 0, true);
 });

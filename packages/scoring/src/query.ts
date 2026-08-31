@@ -62,6 +62,29 @@ export type QueryResult = {
   unknownPlace: UnknownPlace[];
 };
 
+/** The values each place filter accepts, sorted, for one scored universe. */
+export type PlaceVocabulary = Record<PlaceField, string[]>;
+
+/**
+ * The place phrases this universe answers to. Story 32 refuses an unresolved
+ * place *with* the accepted phrases, and `unknownPlace` only says which one
+ * failed; deriving the rest in the app would put universe knowledge outside the
+ * module that filters on it, where the two can disagree.
+ *
+ * A blank is not an accepted phrase: SJU has no Census division, so offering one
+ * would hand back a filter that matches nothing. Codes are absent for the same
+ * reason they are absent from `PLACE_FIELDS` -- an airport is not a place.
+ */
+export function placeVocabulary(scored: readonly ScoredAirport[]): PlaceVocabulary {
+  const vocabulary = {} as PlaceVocabulary;
+  for (const field of PLACE_FIELDS) {
+    const values = new Set<string>();
+    for (const row of scored) if (row[field] !== null) values.add(row[field]);
+    vocabulary[field] = [...values].sort();
+  }
+  return vocabulary;
+}
+
 /**
  * Filters and sorts already-scored rows. It never recomputes a percentile: a
  * New England question returns the national peer-group composite for those
