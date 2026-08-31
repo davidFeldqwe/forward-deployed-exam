@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { landingCopy } from "./landing-copy.ts";
@@ -17,8 +18,13 @@ function visibleText(value: unknown): string {
   return "";
 }
 
-test("login wears the same chrome and wordmark as Landing and chat", () => {
-  assert.equal(loginCopy.wordmark, landingCopy.header.wordmark);
+test("login wears the same wordmark as Landing and chat, from one place", () => {
+  // Login keeps its own centred chrome, but not its own product name: the
+  // string is the shared header's, so all three surfaces move together.
+  const login = readFileSync(new URL("../components/Login.tsx", import.meta.url), "utf8");
+
+  assert.equal("wordmark" in loginCopy, false);
+  assert.match(login, /<Wordmark name=\{siteHeaderCopy\.wordmark\}/);
 });
 
 test("one page serves sign-in and sign-up, with a switch either way", () => {

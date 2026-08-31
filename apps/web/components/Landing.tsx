@@ -4,7 +4,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { chatPathWithPrompt } from "@/app/auth-gate";
 import { landingCopy } from "@/app/landing-copy";
 import { PromptChips } from "@/components/PromptChips";
-import { Wordmark } from "@/components/Wordmark";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,27 +24,12 @@ import {
 } from "@/components/ui/table";
 
 export function Landing() {
-  const { header, hero, demo, builtOn, suggestedQuestions, howItWorks, privacy, footer } =
+  const { hero, demo, builtOn, suggestedQuestions, howItWorks, privacy, footer } =
     landingCopy;
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="h-12 shrink-0 border-b bg-header">
-        <div className="mx-auto flex h-full max-w-[720px] items-center justify-between gap-4 px-6">
-          <Wordmark name={header.wordmark} />
-          {header.actions.map((action) => (
-            <Button
-              key={action.href}
-              variant="link"
-              size="sm"
-              nativeButton={false}
-              render={<Link href={action.href} />}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </div>
-      </header>
+      <SiteHeader signedIn={false} />
 
       <main className="flex flex-1 flex-col">
         <section

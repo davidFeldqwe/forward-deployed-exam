@@ -1,10 +1,11 @@
+/** Chat content. The header it sits under is `app/site-header.ts`. */
 export const chatCopy = {
-  wordmark: "Airport Investment Intelligence Agent",
   comparisonWindow: "Comparison window 2023–2024",
+  /** The same window on a phone-width bar, where the phrase does not fit. */
+  comparisonWindowYears: "2023–2024",
   composerPlaceholder: "Ask about an airport…",
   sendLabel: "Send",
   sendingLabel: "Sending…",
-  signOutLabel: "Sign out",
   recentsLabel: "Recents",
   newThreadLabel: "New thread",
   noRecentsLabel: "No threads yet — ask a question to start one.",

@@ -20,13 +20,13 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 ## User Stories
 
 1. As a visitor, I want a landing that states the capacity-pressure screen in one sentence, so that I know this is not a consumer chatbot.
-2. As a visitor, I want Sign in and Start asking in the header and hero, so that I can reach an account without hunting.
+2. As a visitor, I want a shared site header that stays on screen — identity on the left, chat, GitHub and a profile control that reaches Sign in on the right — plus Start asking in the hero, so that I can reach an account without hunting.
 3. As a visitor, I want suggested-question cards that use glossary language (renovation-investment candidate, New England, compare two airports), so that I see what the agent actually answers.
 4. As a visitor, I want a How it works strip (ingest → snapshot → tools → answer objects), so that I understand numbers come from code.
 5. As a visitor, I want a Built on row for Next.js, Convex, and Vercel AI SDK, so that the stack on the page matches the repo.
 6. As a visitor, I do not want a 3D map, Chat-as-public-demo, or logos for FastAPI / LangGraph / Neon / Clerk, so that the landing does not advertise surfaces we will not ship.
 7. As a visitor, I want the landing in the dark zip palette, so that it matches the signed-in agent.
-8. As a visitor, I want GitHub only as a footer link to this repo, so that a reviewer can open the source.
+8. As a visitor, I want GitHub in the site header on both surfaces, and still in the Landing footer, pointing at this repo, so that a reviewer can open the source.
 9. As a visitor, I want /chat to send me to /login, so that the agent is not a guest toy.
 10. As a visitor, I want question cards to remember the prompt across login, so that after I sign up the composer is prefilled (or the question is sent) in a new thread.
 11. As a new user, I want email + password signup on /login, so that I can get in without provisioning OAuth apps.
@@ -34,7 +34,7 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 13. As a user, I want open signup, so that a reviewer is not blocked on an invite list.
 14. As a user, I want Google or GitHub sign-in if the build still has time, so that I can skip a password — this is stretch, not a blocker.
 15. As a signed-in analyst, I want `/` to take me to chat (last thread, or empty if none), so that I am not shown the brochure again.
-16. As a signed-in analyst, I want Sign out in the chat header, so that I can leave the session on a shared machine.
+16. As a signed-in analyst, I want Sign out from the header's profile control, so that I can leave the session on a shared machine.
 17. As a signed-in analyst, I want a left thread rail listing my threads by first user question, so that I can reopen work without leaving the transcript.
 18. As a signed-in analyst, I want New thread at the top of that rail, so that a new question does not append to an old ranking.
 19. As a signed-in analyst, I want threads to survive refresh, so that Convex ownership is real.
@@ -79,14 +79,15 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 
 - `/` — **Landing** when signed out. When signed in, redirect to chat (last thread, else empty).
 - `/login` — password sign-up and sign-in, dark zip chrome, no second visual system.
-- Chat — header, a left thread rail, and the transcript/composer column beside it. No Methodology popover, no Rankings / dossier / 3D map routes.
-- Thread rail on chat: thread title = first user question; New thread at the top; the open thread marked current; empty recents explains that a question starts one. Dense and near-black, no search, folders, Settled, "show more", or footer tray. On a narrow viewport it is a drawer a header control opens. Sign out and the comparison window stay in the header.
+- Shared site header on Landing and chat: sticky at the top of the viewport, full-bleed (the bar spans the width; its content is padded off the edges, not squeezed into the page column), still — no enter/exit motion. Left is identity: a compact mark plus the wordmark **Airport Investment Intelligence Agent**, not truncated at desktop width. Right is chat, GitHub, and the profile control — one icon that reaches `/login` signed out and signs out signed in. Chat adds the comparison window and the recents drawer control; the drawer control leads the bar, so keyboard order is identity, then header actions, then page content. On a phone-width viewport nothing overflows: action labels are read but not drawn, the comparison window shortens to its years, and the wordmark is what gives way. No Methodology control in the left cluster.
+- Chat — that header, a left thread rail, and the transcript/composer column beside it. The transcript scrolls under the bar and the composer stays at the bottom of the viewport. No Methodology popover, no Rankings / dossier / 3D map routes.
+- Thread rail on chat: thread title = first user question; New thread at the top; the open thread marked current; empty recents explains that a question starts one. Dense and near-black, no search, folders, Settled, "show more", or footer tray. On a narrow viewport it is a drawer a header control opens. The comparison window stays in the header, beside the shared actions.
 - Gate: unauthenticated `/chat` (or equivalent) → `/login`. Start asking and landing cards go through login, then a new thread. Cards may prefill or send the prompt after sign-in.
 - Empty chat: blank transcript + chips (same prompts as landing cards). No thesis paragraph.
 
 ### Landing content (screenshot composition, zip palette)
 
-Keep: wordmark, Sign in, hero, demo card, suggested questions, How it works, Start asking, privacy line if threads store questions (email + questions logged in Convex; never sold).
+Keep: the shared header (wordmark, chat, GitHub, profile control into Sign in), hero, demo card, suggested questions, How it works, Start asking, privacy line if threads store questions (email + questions logged in Convex; never sold), GitHub footer credit.
 Drop: 3D map nav and CTA, Clerk/FastAPI/LangGraph/Neon/Cloud Run/Langfuse as “Built on”.
 Demo card on the landing is fixture UI in zip chrome, not a second scoring path.
 

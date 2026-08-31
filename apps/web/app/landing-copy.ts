@@ -1,8 +1,7 @@
+import { siteHeaderCopy } from "./site-header.ts";
+
+/** Landing content. The header it sits under is `app/site-header.ts`. */
 export const landingCopy = {
-  header: {
-    wordmark: "Airport Investment Intelligence Agent",
-    actions: [{ label: "Sign in", href: "/login" }],
-  },
   hero: {
     title: "Airport Investment Intelligence Agent.",
     subtitle:
@@ -41,7 +40,8 @@ export const landingCopy = {
   privacy:
     "We log account email and the questions you ask. We never sell data.",
   footer: {
-    githubLabel: "GitHub",
-    githubHref: "https://github.com/davidFeldqwe/forward-deployed-exam",
+    githubLabel: siteHeaderCopy.githubLabel,
+    // The footer credit and the header action are the one repository.
+    githubHref: siteHeaderCopy.githubHref,
   },
 } as const;

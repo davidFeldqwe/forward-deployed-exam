@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { chatCopy } from "./chat-copy.ts";
 import { landingCopy } from "./landing-copy.ts";
+import { siteHeaderCopy } from "./site-header.ts";
 
 function visibleText(value: unknown): string {
   if (typeof value === "string") {
@@ -17,11 +18,18 @@ function visibleText(value: unknown): string {
   return "";
 }
 
-test("header wordmark matches landing and names the comparison window", () => {
-  assert.equal(chatCopy.wordmark, landingCopy.header.wordmark);
+test("chrome names the comparison window, and shortens to its years", () => {
   assert.match(chatCopy.comparisonWindow, /Comparison window/);
   assert.match(chatCopy.comparisonWindow, /2023/);
   assert.match(chatCopy.comparisonWindow, /2024/);
+  // A phone-width bar drops the phrase, never the years.
+  assert.ok(chatCopy.comparisonWindow.includes(chatCopy.comparisonWindowYears));
+  assert.match(chatCopy.comparisonWindowYears, /^2023.2024$/);
+});
+
+test("the wordmark is the shared header's, not a second copy of the name", () => {
+  assert.equal("wordmark" in chatCopy, false);
+  assert.equal(siteHeaderCopy.wordmark, "Airport Investment Intelligence Agent");
 });
 
 test("empty-state chips are the same prompts as the Landing suggested questions", () => {
@@ -59,8 +67,9 @@ test("chat chrome does not advertise dropped surfaces or a live scoring path", (
   }
 });
 
-test("sign out lives in the chat header", () => {
-  assert.equal(chatCopy.signOutLabel, "Sign out");
+test("sign out is the shared header's profile control, not chat copy", () => {
+  assert.equal("signOutLabel" in chatCopy, false);
+  assert.equal(siteHeaderCopy.signOutLabel, "Sign out");
 });
 
 test("the thread rail is Recents and New thread, in the glossary's words", () => {

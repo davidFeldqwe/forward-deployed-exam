@@ -16,14 +16,10 @@ function visibleText(value: unknown): string {
   return "";
 }
 
-test("header wordmark is the only product name and Sign in is the only header action", () => {
-  assert.equal(
-    landingCopy.header.wordmark,
-    "Airport Investment Intelligence Agent",
-  );
-  assert.deepEqual(landingCopy.header.actions, [
-    { label: "Sign in", href: "/login" },
-  ]);
+test("the header is not Landing copy: identity and actions are shared chrome", () => {
+  // `app/site-header.ts` owns the wordmark and the bar's actions, so Landing
+  // and chat cannot drift apart. `site-header.test.ts` pins that contract.
+  assert.equal("header" in landingCopy, false);
 });
 
 test("hero names the capacity-pressure screen and offers Start asking only", () => {
