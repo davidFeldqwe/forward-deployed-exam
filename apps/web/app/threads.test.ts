@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import type { ScoredAirport } from "@repo/scoring";
+
+import {
+  THREAD_TITLE_MAX_LENGTH,
+  type ToolCall,
+  assistantMessage,
+  parseThreadMessage,
+  rankingRows,
+  threadTitle,
+  userMessage,
+} from "./threads.ts";
+
+test("a thread is titled with its first user question", () => {
+  assert.equal(
+    threadTitle("  Which airports in New England are renovation-investment candidates?  "),
+    "Which airports in New England are renovation-investment candidates?",
+  );
+});
+
+test("a title collapses whitespace and is bounded, so the recents list stays one line", () => {
+  assert.equal(threadTitle("Compare congestion at\n  Los Angeles\tand Santa Ana."),
+    "Compare congestion at Los Angeles and Santa Ana.");
+
+  const long = threadTitle(`Which airports ${"x".repeat(200)} are candidates?`);
+  assert.equal(long.length, THREAD_TITLE_MAX_LENGTH);
+  assert.equal(long.endsWith("…"), true);
+});
+
+const bosRow: ScoredAirport = {
+  iata: "BOS",
+  name: "Boston Logan Intl",
+  municipality: "Boston",
+  state: "MA",
+  region: "New England",
+  peerGroup: "large",
+  scoreVector: {
+    congestion: { percentile: 88, raw: 12_400_000, coverage: "present" },
+    unmetFlightDemand: { percentile: 81, raw: 6.2, coverage: "present" },
+    delay: { percentile: 62, raw: 14.8, coverage: "present" },
+    growth: { percentile: 71, raw: 8.4, coverage: "present" },
+  },
+  composite: 79,
+  candidateLamp: "Strong candidate",
+  slotLimit: null,
+  longHaulShare: 0.241,
+  assumptions: ["Weather delays excluded from the delay component."],
+  gaps: [],
+};
+
+const rankingCall: ToolCall = {
+  tool: "queryAirports",
+  args: { region: "New England", sortBy: "composite", limit: 10 },
+  result: { rows: [bosRow] },
+  durationMs: 318,
+};
+
+test("an assistant message carries the tool payload a ranking, score vector and lamp re-render from", () => {
+  const message = assistantMessage("One airport clears the threshold: BOS at 79.", [rankingCall]);
+
+  // The store boundary is a JSON round trip, whether it is Convex or this process.
+  const restored = parseThreadMessage(JSON.parse(JSON.stringify(message)));
+
+  assert.deepEqual(restored, message);
+  assert.deepEqual(rankingRows(restored?.toolCalls[0]), [bosRow]);
+});
+
+test("a user message is text with no tool payload", () => {
+  const message = userMessage("  Which airports in New England are candidates?  ");
+  assert.deepEqual(message, {
+    role: "user",
+    text: "Which airports in New England are candidates?",
+    toolCalls: [],
+  });
+});
+
+test("a stored ranking payload that lost its lamp or score vector is refused", () => {
+  const withoutLamp = structuredClone(rankingCall) as ToolCall;
+  delete (withoutLamp.result as { rows: Record<string, unknown>[] }).rows[0]!.candidateLamp;
+
+  const withoutVector = structuredClone(rankingCall) as ToolCall;
+  delete (withoutVector.result as { rows: Record<string, unknown>[] }).rows[0]!.scoreVector;
+
+  for (const broken of [withoutLamp, withoutVector]) {
+    assert.equal(parseThreadMessage(assistantMessage("prose", [broken])), null);
+  }
+});
+
+test("a stored message from an unknown role or tool is refused", () => {
+  assert.equal(parseThreadMessage({ role: "system", text: "be nice", toolCalls: [] }), null);
+  assert.equal(
+    parseThreadMessage({
+      role: "assistant",
+      text: "prose",
+      toolCalls: [{ tool: "rank_airports", args: {}, result: {}, durationMs: 1 }],
+    }),
+    null,
+  );
+  assert.equal(parseThreadMessage({ role: "user", text: 42, toolCalls: [] }), null);
+  assert.equal(parseThreadMessage(null), null);
+});

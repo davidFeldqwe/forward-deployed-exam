@@ -1,18 +1,27 @@
 export type Coverage = "present" | "missing";
 
-export type CandidateLamp =
-  | "Strong candidate"
-  | "Mixed vector"
-  | "Weak candidate"
-  | "Partial inputs"
-  | "No data";
+/** The candidate lamp, in ranking order. Hue never appears without this text. */
+export const CANDIDATE_LAMPS = [
+  "Strong candidate",
+  "Mixed vector",
+  "Weak candidate",
+  "Partial inputs",
+  "No data",
+] as const;
 
-export type SortBy =
-  | "composite"
-  | "congestion"
-  | "unmetFlightDemand"
-  | "delay"
-  | "growth";
+export type CandidateLamp = (typeof CANDIDATE_LAMPS)[number];
+
+/** The four score-vector components. Long-haul share is a lookup, not one of them. */
+export const SCORE_COMPONENTS = [
+  "congestion",
+  "unmetFlightDemand",
+  "delay",
+  "growth",
+] as const;
+
+export type ScoreComponentName = (typeof SCORE_COMPONENTS)[number];
+
+export type SortBy = "composite" | ScoreComponentName;
 
 export type ScoreComponent = {
   percentile: number | null;
@@ -20,12 +29,7 @@ export type ScoreComponent = {
   coverage: Coverage;
 };
 
-export type ScoreVector = {
-  congestion: ScoreComponent;
-  unmetFlightDemand: ScoreComponent;
-  delay: ScoreComponent;
-  growth: ScoreComponent;
-};
+export type ScoreVector = Record<ScoreComponentName, ScoreComponent>;
 
 export type ScoredAirport = {
   iata: string;
