@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { normalizeEmail } from "./auth-accounts.ts";
 import {
   type ThreadMessage,
+  assistantMessage,
   parseThreadMessage,
   threadTitle,
   userMessage,
@@ -175,6 +176,19 @@ export function latestThreadId(ownerEmail: string): string | null {
 }
 
 /**
+ * What the thread shows when the agent answered but the store would not take
+ * that answer: today a `queryAirports` payload that does not read back as a
+ * ranking (#64), later any parse mismatch. The refused message is stored in no
+ * form at all — its prose described rows the transcript would not draw — so the
+ * analyst is told the reply was dropped rather than left with their own
+ * question and silence under it.
+ */
+export const UNSTORABLE_ANSWER =
+  "The agent answered, but this thread could not store the reply: part of it did not match what " +
+  "the screen re-renders, and a ranking is not drawn from a payload that would not read back. " +
+  "The question is saved — ask again.";
+
+/**
  * How an ask gets its answer: the agent, handed the thread as the question left
  * it. A parameter, so the store keeps its distance from the model the way
  * `answerQuestion` does — and so the SSE route can pass a streaming runner that
@@ -208,9 +222,14 @@ export async function askOnThread(
     if (!thread) {
       return null;
     }
-    // A refused answer — a payload the store will not take — leaves the thread
-    // as the question left it, rather than nothing at all.
-    return appendMessage(ownerEmail, thread.id, await answer(thread)) ?? thread;
+    // A refused answer is told, not swallowed: `UNSTORABLE_ANSWER` is prose the
+    // store cannot refuse in turn, so the only way back from here with no reply
+    // under the question is a thread that stopped existing mid-ask.
+    return (
+      appendMessage(ownerEmail, thread.id, await answer(thread)) ??
+      appendMessage(ownerEmail, thread.id, assistantMessage(UNSTORABLE_ANSWER)) ??
+      thread
+    );
   };
 
   // An ask naming no thread opens one nobody can be holding yet, so it takes no

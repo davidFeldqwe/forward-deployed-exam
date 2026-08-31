@@ -22,7 +22,8 @@ import { askOnThread } from "@/app/thread-store";
  *
  * The question is stored before the agent runs, so a model that fails or times
  * out loses the answer and not the question. `answerQuestion` returns a message
- * either way, so the thread never comes back with a user turn and no reply.
+ * for every path it has, and the store writes its own line when it refuses one,
+ * so the thread never comes back with a user turn and no reply.
  *
  * One ask at a time per Thread is the store's rule, not this action's: a second
  * tab posting the same form does not pass through the composer's held Send, and

@@ -11,6 +11,7 @@ import {
 } from "./thread-messages.ts";
 import {
   type Thread,
+  UNSTORABLE_ANSWER,
   appendMessage,
   askOnThread,
   latestThreadId,
@@ -350,6 +351,31 @@ test("an ask that fails hands the thread on rather than wedging it shut", async 
     "The one after it?",
     "an answer",
   ]);
+});
+
+// #64: a payload the store will not take — today a queryAirports result that
+// does not read back as a ranking — used to leave the thread as the question
+// left it, so the analyst saw their own question and silence under it.
+test("an answer the store refuses still leaves a reply under the question", async () => {
+  const analyst = "refusedanswer@example.com";
+  const opened = startThread(analyst, NEW_ENGLAND)!;
+
+  const thread = await askOnThread(analyst, opened.id, "Which are candidates?", async () =>
+    assistantMessage("BOS leads at composite 79.", [
+      { tool: "queryAirports", args: {}, result: { rows: [{ iata: "BOS" }] }, durationMs: 9 },
+    ]),
+  );
+
+  assert.deepEqual(textsOf(thread), [NEW_ENGLAND, "Which are candidates?", UNSTORABLE_ANSWER]);
+  const reply = thread?.messages.at(-1);
+  assert.equal(reply?.role, "assistant");
+  // The refused payload is not stored in any form, so the transcript draws no
+  // ranking: the prose that claimed one is gone with the rows it claimed.
+  assert.deepEqual(reply?.toolCalls, []);
+  // Nor does the line that replaces it quote a number, so there is nothing in
+  // the transcript to read as a score the screen returned.
+  assert.doesNotMatch(UNSTORABLE_ANSWER, /\d/);
+  assert.deepEqual(textsOf(readThread(analyst, opened.id)), textsOf(thread));
 });
 
 test("a blank ask is refused before the agent is run at all", async () => {
