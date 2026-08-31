@@ -87,3 +87,11 @@ test("a chat path with no question carries none", () => {
   assert.equal(promptFromPath("/chat?other=x"), null);
   assert.equal(promptFromPath("/chat/k57bqp2c"), null);
 });
+
+test("a carried question is cut between characters, so none of it lands half-encoded", () => {
+  // Whatever the bound cuts is the text a Thread is titled with and stores.
+  const carried = carriedPrompt(`${"x".repeat(399)}🛫 out of Anchorage?`);
+
+  assert.equal(carried, `${"x".repeat(399)}🛫`);
+  assert.equal(Buffer.from(carried ?? "", "utf8").toString("utf8"), carried);
+});

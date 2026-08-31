@@ -18,6 +18,9 @@
       ]
     },
     "allowJs": true,
+    // Local imports carry their extension: `app/*.ts` modules are unit-tested by
+    // `node --experimental-strip-types`, which resolves a specifier literally.
+    "allowImportingTsExtensions": true,
     "incremental": true,
     "jsx": "preserve",
     "target": "ES2017",

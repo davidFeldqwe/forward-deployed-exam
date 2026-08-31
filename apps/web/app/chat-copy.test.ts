@@ -36,9 +36,13 @@ test("empty state has no thesis paragraph", () => {
   assert.doesNotMatch(text, /A capacity-pressure screen/i);
 });
 
-test("composer is a single send field", () => {
+test("composer is a single send field that says when a question is in flight", () => {
   assert.equal(chatCopy.composerPlaceholder, "Ask about an airport…");
   assert.equal(chatCopy.sendLabel, "Send");
+  // Send is held while the question is being persisted, so the label has to
+  // say why it cannot be clicked again.
+  assert.match(chatCopy.sendingLabel, /^Sending/);
+  assert.notEqual(chatCopy.sendingLabel, chatCopy.sendLabel);
 });
 
 test("chat chrome does not advertise dropped surfaces or a live scoring path", () => {
@@ -57,4 +61,15 @@ test("chat chrome does not advertise dropped surfaces or a live scoring path", (
 
 test("sign out lives in the chat header", () => {
   assert.equal(chatCopy.signOutLabel, "Sign out");
+});
+
+test("the header carries recents and New thread, so there is no left thread rail", () => {
+  assert.equal(chatCopy.recentsLabel, "Recents");
+  assert.equal(chatCopy.newThreadLabel, "New thread");
+  assert.match(chatCopy.noRecentsLabel, /No threads yet/);
+
+  const text = visibleText(chatCopy);
+  for (const forbidden of ["rail", "sidebar", "Chat history", "History"]) {
+    assert.equal(text.includes(forbidden), false, `should not mention ${forbidden}`);
+  }
 });

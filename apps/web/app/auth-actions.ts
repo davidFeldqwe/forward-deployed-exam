@@ -9,16 +9,12 @@ import {
 } from "@/app/auth-accounts";
 import { LOGIN_PATH, postLoginPath } from "@/app/auth-gate";
 import { endSession, startSession } from "@/app/auth-session";
+import { textField } from "@/app/form-fields";
 
 export type LoginState = {
   email: string;
   errors: CredentialErrors;
 };
-
-function textField(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
-}
 
 export async function submitLogin(
   _previous: LoginState,
