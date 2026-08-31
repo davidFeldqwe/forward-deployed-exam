@@ -1,0 +1,69 @@
+/**
+ * Which LLM answers, and how far it may go. Separate from `agent-model.ts` so
+ * the choice is testable without loading a vendor SDK, and so the one module
+ * that does import one stays as small as the boundary it guards.
+ */
+
+/**
+ * PRD "Stack": cap tool steps, eight is enough. A ranking is two calls —
+ * `describeMethodology` then `queryAirports` — so eight leaves room for a
+ * correction without letting a confused model loop on the screen.
+ */
+export const AGENT_MAX_STEPS = 8;
+
+/** PRD story 40: these two names, in this order, and never an OAuth token. */
+export const ANTHROPIC_KEY = "ANTHROPIC_API_KEY";
+export const OPENAI_KEY = "OPENAI_API_KEY";
+
+export const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5";
+export const DEFAULT_OPENAI_MODEL = "gpt-4o";
+/** PRD "Stack": `gpt-4o` first, `gpt-4o-mini` if that model is not available. */
+export const OPENAI_FALLBACK_MODEL = "gpt-4o-mini";
+
+export type ProviderChoice = {
+  vendor: "anthropic" | "openai";
+  model: string;
+  /** Tried once if `model` is refused; Anthropic has no second name to try. */
+  fallbackModel: string | null;
+  apiKey: string;
+};
+
+/** What a thread says when the deployment has no key: no answer, and no numbers. */
+export const NO_PROVIDER_ANSWER =
+  `This deployment has no LLM key, so the question is stored but unanswered. Set ${ANTHROPIC_KEY}, ` +
+  `or ${OPENAI_KEY}, and ask again. The capacity-pressure screen itself needs no key: it is a ` +
+  "committed snapshot scored in this repo.";
+
+/**
+ * The vendor to call, or null when the deployment holds no key. Anthropic wins
+ * when both are set. A key that is present but blank is not a key: a deploy
+ * config that defines the variable empty would otherwise pick a vendor that
+ * answers every question with a 401.
+ */
+export function chooseProvider(env: Record<string, string | undefined>): ProviderChoice | null {
+  const anthropicKey = trimmed(env[ANTHROPIC_KEY]);
+  if (anthropicKey) {
+    return {
+      vendor: "anthropic",
+      model: trimmed(env.ANTHROPIC_MODEL) ?? DEFAULT_ANTHROPIC_MODEL,
+      fallbackModel: null,
+      apiKey: anthropicKey,
+    };
+  }
+  const openaiKey = trimmed(env[OPENAI_KEY]);
+  if (openaiKey) {
+    const model = trimmed(env.OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL;
+    return {
+      vendor: "openai",
+      model,
+      fallbackModel: model === OPENAI_FALLBACK_MODEL ? null : OPENAI_FALLBACK_MODEL,
+      apiKey: openaiKey,
+    };
+  }
+  return null;
+}
+
+function trimmed(value: string | undefined): string | null {
+  const text = value?.trim() ?? "";
+  return text.length === 0 ? null : text;
+}

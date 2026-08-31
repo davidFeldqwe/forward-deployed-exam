@@ -15,6 +15,9 @@ export {
 } from "./types.ts";
 export { MIXED_VECTOR_AT, STRONG_CANDIDATE_AT, WEIGHTS } from "./weights.ts";
 export { candidateLamp, scoreUniverse } from "./score.ts";
+// Exported so the agent's `describeMethodology` states the snapshot-wide caveats
+// in the same words the rows carry, rather than a second copy of them.
+export { sharedAssumptions } from "./caveats.ts";
 export {
   DEFAULT_LIMIT,
   MAX_LIMIT,
