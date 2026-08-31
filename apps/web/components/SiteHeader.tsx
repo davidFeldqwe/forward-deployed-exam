@@ -1,0 +1,122 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { GitBranchIcon, LogOutIcon, MessageSquareIcon, UserIcon } from "lucide-react";
+
+import { signOut } from "@/app/auth-actions";
+import { type HeaderLink, type ProfileControl, siteHeader } from "@/app/site-header";
+import { Wordmark } from "@/components/Wordmark";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Site chrome: pinned to the top of the viewport, edge to edge, with the bar's
+ * content padded off the sides rather than squeezed into the page column. It
+ * never enters or leaves — it is always there. `z-30` puts it over the recents
+ * drawer (`z-20`) and the scrim under it (`z-10`); the drawer opens below the
+ * bar, at `top-12`, which is this height.
+ */
+const barClass =
+  "sticky top-0 z-30 flex h-12 w-full shrink-0 items-center gap-1.5 border-b bg-header px-4 md:gap-3 md:px-6";
+
+/** The glyph for each action, so the pure module holds no components. */
+const LINK_ICONS = {
+  chat: MessageSquareIcon,
+  github: GitBranchIcon,
+} as const;
+
+/**
+ * The header Landing and chat share (issue #53): identity on the left, chat,
+ * GitHub and the profile control on the right. A surface with chrome of its own
+ * hands it in — chat's recents drawer control leads the bar, beside the rail it
+ * opens, and the comparison window sits with the actions.
+ */
+export function SiteHeader({
+  signedIn,
+  leading,
+  status,
+}: {
+  signedIn: boolean;
+  /** A control at the leading edge: chat's recents drawer button. */
+  leading?: ReactNode;
+  /** What this surface says about itself, ahead of the actions: the window. */
+  status?: ReactNode;
+}) {
+  const { wordmark, links, profile } = siteHeader(signedIn);
+
+  return (
+    <header className={barClass}>
+      {leading}
+
+      {/* Identity takes the room the actions do not: on a phone the product
+          name is clipped rather than pushing a control off the bar. */}
+      <div className="min-w-0 flex-1">
+        <Wordmark name={wordmark} />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+        {status}
+        {links.map((link) => (
+          <HeaderAction key={link.key} link={link} />
+        ))}
+        <Profile control={profile} />
+      </div>
+    </header>
+  );
+}
+
+/**
+ * One action: a glyph, and a label a phone reads but does not draw. Grey until
+ * hovered — indigo in this product is send, focus and prose links.
+ */
+function HeaderAction({ link }: { link: HeaderLink }) {
+  const Icon = LINK_ICONS[link.key];
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      nativeButton={false}
+      className="px-2 text-muted-foreground md:px-3"
+      render={
+        link.external ? (
+          <a href={link.href} target="_blank" rel="noreferrer" />
+        ) : (
+          <Link href={link.href} />
+        )
+      }
+    >
+      <Icon aria-hidden="true" />
+      <span className="max-sm:sr-only">{link.label}</span>
+    </Button>
+  );
+}
+
+/**
+ * The profile control. Icon-only on both surfaces, because the name of what it
+ * does is the whole of what it does: reach login, or end the session. The two
+ * glyphs differ so a press is never a surprise.
+ */
+function Profile({ control }: { control: ProfileControl }) {
+  if (control.kind === "signIn") {
+    return (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        nativeButton={false}
+        className="text-muted-foreground"
+        render={<Link href={control.href} />}
+      >
+        <UserIcon aria-hidden="true" />
+        <span className="sr-only">{control.label}</span>
+      </Button>
+    );
+  }
+
+  return (
+    <form action={signOut}>
+      <Button type="submit" variant="ghost" size="icon-sm" className="text-muted-foreground">
+        <LogOutIcon aria-hidden="true" />
+        <span className="sr-only">{control.label}</span>
+      </Button>
+    </form>
+  );
+}

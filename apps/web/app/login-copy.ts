@@ -1,5 +1,4 @@
 export const loginCopy = {
-  wordmark: "Airport Investment Intelligence Agent",
   subtitle:
     "An account keeps your threads. The capacity-pressure screen itself is public data.",
   carriedPromptLabel: "Your question is waiting",

@@ -112,14 +112,13 @@ test("switching threads is instant; only the narrow-viewport drawer slides", () 
   assert.match(rail, /motion-reduce:max-md:transition-\[opacity,visibility\]/);
 });
 
-test("the header carries the drawer control and keeps sign-out and the window", () => {
+test("the shared header leads with the drawer control and keeps the window", () => {
   const chat = source("components/Chat.tsx");
 
   // `\b` after `ThreadRail`: the rail itself, not the header control for it.
   assert.match(chat, /<ThreadRail\b/);
-  assert.match(chat, /<ThreadRailToggle/);
-  assert.match(chat, /chatCopy\.signOutLabel/);
-  assert.match(chat, /chatCopy\.comparisonWindow/);
+  assert.match(chat, /leading=\{<ThreadRailToggle/);
+  assert.match(chat, /chatCopy\.comparisonWindow\b/);
 });
 
 test("the drawer control names the list it opens, and points at that same list", () => {

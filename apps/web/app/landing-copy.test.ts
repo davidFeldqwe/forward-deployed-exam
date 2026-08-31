@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { landingCopy } from "./landing-copy.ts";
+import { siteHeaderCopy } from "./site-header.ts";
 
 function visibleText(value: unknown): string {
   if (typeof value === "string") {
@@ -16,14 +17,10 @@ function visibleText(value: unknown): string {
   return "";
 }
 
-test("header wordmark is the only product name and Sign in is the only header action", () => {
-  assert.equal(
-    landingCopy.header.wordmark,
-    "Airport Investment Intelligence Agent",
-  );
-  assert.deepEqual(landingCopy.header.actions, [
-    { label: "Sign in", href: "/login" },
-  ]);
+test("the header is not Landing copy: identity and actions are shared chrome", () => {
+  // `app/site-header.ts` owns the wordmark and the bar's actions, so Landing
+  // and chat cannot drift apart. `site-header.test.ts` pins that contract.
+  assert.equal("header" in landingCopy, false);
 });
 
 test("hero names the capacity-pressure screen and offers Start asking only", () => {
@@ -96,12 +93,16 @@ test("privacy strip logs email and questions and does not sell data", () => {
   assert.match(landingCopy.privacy, /never sell/i);
 });
 
-test("GitHub appears only as a footer link to this repo", () => {
+test("the footer credits this repo with the same link the header carries", () => {
   assert.equal(
     landingCopy.footer.githubHref,
     "https://github.com/davidFeldqwe/forward-deployed-exam",
   );
   assert.equal(landingCopy.footer.githubLabel, "GitHub");
+  // GitHub is header chrome on both surfaces now; the footer credit is the
+  // same repository, taken from `app/site-header.ts` so it cannot drift.
+  assert.equal(landingCopy.footer.githubHref, siteHeaderCopy.githubHref);
+  assert.equal(landingCopy.footer.githubLabel, siteHeaderCopy.githubLabel);
 });
 
 test("landing copy does not advertise dropped stack or surfaces", () => {

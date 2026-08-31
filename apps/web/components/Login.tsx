@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { type LoginState, submitLogin } from "@/app/auth-actions";
 import { loginCopy } from "@/app/login-copy";
+import { siteHeaderCopy } from "@/app/site-header";
 import { Wordmark } from "@/components/Wordmark";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +53,7 @@ export function Login({
     <div className="flex min-h-svh flex-col">
       <header className="h-12 shrink-0 border-b bg-header">
         <div className="mx-auto flex h-full max-w-[720px] items-center px-6">
-          <Wordmark name={loginCopy.wordmark} />
+          <Wordmark name={siteHeaderCopy.wordmark} />
         </div>
       </header>
 

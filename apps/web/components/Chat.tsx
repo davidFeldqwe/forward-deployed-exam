@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { signOut } from "@/app/auth-actions";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { chatCopy } from "@/app/chat-copy";
 import { askQuestion } from "@/app/thread-actions";
@@ -11,11 +10,10 @@ import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { PromptChips } from "@/components/PromptChips";
 import { PendingAnswer } from "@/components/answers/PendingAnswer";
+import { SiteHeader } from "@/components/SiteHeader";
 import { ThreadRail, ThreadRailToggle } from "@/components/ThreadRail";
 import { Transcript } from "@/components/Transcript";
-import { Wordmark } from "@/components/Wordmark";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   InputGroup,
   InputGroupAddon,
@@ -66,24 +64,11 @@ export function Chat({
     // Exactly the viewport, so a long transcript scrolls inside `main` instead
     // of growing the page and carrying the composer off the bottom of it.
     <div className="flex h-svh flex-col bg-background">
-      <header className="h-12 shrink-0 border-b bg-header">
-        <div className="flex h-full items-center justify-between gap-4 px-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />
-            <Wordmark name={chatCopy.wordmark} />
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
-              {chatCopy.comparisonWindow}
-            </Badge>
-            <form action={signOut}>
-              <Button type="submit" variant="link" size="sm">
-                {chatCopy.signOutLabel}
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <SiteHeader
+        signedIn
+        leading={<ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />}
+        status={<ComparisonWindow />}
+      />
 
       {/* The rail is a column of its own from `md` up, and a drawer over the
           transcript below it. */}
@@ -145,6 +130,20 @@ export function Chat({
         </form>
       </div>
     </div>
+  );
+}
+
+/**
+ * The two years every airport in an answer is compared over, in the header
+ * beside the shared actions. The phrase says what the years are; a phone-width
+ * bar keeps the years and drops the phrase rather than the whole pill.
+ */
+function ComparisonWindow() {
+  return (
+    <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
+      <span className="max-md:hidden">{chatCopy.comparisonWindow}</span>
+      <span className="md:hidden">{chatCopy.comparisonWindowYears}</span>
+    </Badge>
   );
 }
 
