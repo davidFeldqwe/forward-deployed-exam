@@ -10,6 +10,7 @@ import { askQuestion } from "@/app/thread-actions";
 import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { PromptChips } from "@/components/PromptChips";
+import { PendingAnswer } from "@/components/answers/PendingAnswer";
 import { ThreadMenu } from "@/components/ThreadMenu";
 import { Transcript } from "@/components/Transcript";
 import { Wordmark } from "@/components/Wordmark";
@@ -79,26 +80,31 @@ export function Chat({
         </div>
       </header>
 
-      <main
-        ref={transcriptPane}
-        // `min-h-0`: a flex item's automatic minimum size is its content, so
-        // without this the pane grows to fit the transcript and never scrolls.
-        className="flex min-h-0 flex-1 justify-center overflow-y-auto"
-        aria-label="Transcript"
-      >
-        <div className="w-full max-w-[820px] px-6 pt-7 pb-6">
-          {messages.length === 0 ? (
-            <PromptChips questions={chatCopy.chips} onSelect={setDraft} />
-          ) : (
-            <Transcript messages={messages} />
-          )}
-        </div>
-      </main>
+      {/* Transcript and composer are one form, so the pending answer above the
+          composer can read the same submission `useFormStatus` reports on. */}
+      <form action={askQuestion} className="flex min-h-0 flex-1 flex-col">
+        {threadId ? <input type="hidden" name="threadId" value={threadId} /> : null}
+        <main
+          ref={transcriptPane}
+          // `min-h-0`: a flex item's automatic minimum size is its content, so
+          // without this the pane grows to fit the transcript and never scrolls.
+          className="flex min-h-0 flex-1 justify-center overflow-y-auto"
+          aria-label="Transcript"
+        >
+          <div className="w-full max-w-[820px] px-6 pt-7 pb-6">
+            {messages.length === 0 ? (
+              <PromptChips questions={chatCopy.chips} onSelect={setDraft} />
+            ) : (
+              <Transcript messages={messages} />
+            )}
+            {/* A question in flight: the pending row shows no scores, so a
+                half-composite is never on screen. */}
+            <PendingAnswer question={draft} />
+          </div>
+        </main>
 
-      <div className="shrink-0 border-t bg-header">
-        <div className="mx-auto max-w-[820px] px-6 pt-3 pb-4">
-          <form action={askQuestion}>
-            {threadId ? <input type="hidden" name="threadId" value={threadId} /> : null}
+        <div className="shrink-0 border-t bg-header">
+          <div className="mx-auto max-w-[820px] px-6 pt-3 pb-4">
             <InputGroup className="h-auto min-h-11 py-1 pe-1 ps-1">
               <label className="sr-only" htmlFor="chat-draft">
                 {chatCopy.composerPlaceholder}
@@ -119,9 +125,9 @@ export function Chat({
                 <SendButton ready={ready} />
               </InputGroupAddon>
             </InputGroup>
-          </form>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
