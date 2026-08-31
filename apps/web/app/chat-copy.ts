@@ -9,5 +9,4 @@ export const chatCopy = {
     "What is long-haul share out of Anchorage?",
     "How much unmet flight demand is there at SFO?",
   ],
-  fixtures: [] as const,
 } as const;

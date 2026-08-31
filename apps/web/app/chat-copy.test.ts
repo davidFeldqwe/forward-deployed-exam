@@ -53,5 +53,4 @@ test("chat chrome does not advertise dropped surfaces or a live scoring path", (
   ]) {
     assert.equal(text.includes(forbidden), false, `should not mention ${forbidden}`);
   }
-  assert.equal(chatCopy.fixtures.length, 0);
 });

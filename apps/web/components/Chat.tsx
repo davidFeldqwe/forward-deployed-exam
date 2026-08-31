@@ -6,7 +6,6 @@ import { chatCopy } from "@/app/chat-copy";
 
 export function Chat() {
   const [draft, setDraft] = useState("");
-  const [focused, setFocused] = useState(false);
   const ready = draft.trim().length > 0;
 
   return (
@@ -17,11 +16,11 @@ export function Chat() {
             <span className="wordmark-mark" aria-hidden="true" />
             <span className="wordmark-name">{chatCopy.wordmark}</span>
           </div>
-          <span className="chat-window">{chatCopy.comparisonWindow}</span>
+          <span className="chat-comparison-window">{chatCopy.comparisonWindow}</span>
         </div>
       </header>
 
-      <div className="chat-transcript" aria-label="Transcript">
+      <main className="chat-transcript" aria-label="Transcript">
         <div className="chat-column">
           <ul className="chat-chips">
             {chatCopy.chips.map((question) => (
@@ -40,12 +39,12 @@ export function Chat() {
             ))}
           </ul>
         </div>
-      </div>
+      </main>
 
       <div className="chat-composer">
         <div className="chat-column chat-composer-inner">
           <form
-            className={focused ? "chat-send-field chat-send-field-focus" : "chat-send-field"}
+            className="chat-send-field"
             onSubmit={(event) => event.preventDefault()}
           >
             <label className="visually-hidden" htmlFor="chat-draft">
@@ -55,8 +54,6 @@ export function Chat() {
               id="chat-draft"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
               placeholder={chatCopy.composerPlaceholder}
             />
             <button
