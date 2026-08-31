@@ -6,11 +6,7 @@ import { Caveats } from "@/components/answers/Caveats";
 import { Ranking } from "@/components/answers/Ranking";
 import { ResolvedSet } from "@/components/answers/ResolvedSet";
 import { ToolRow } from "@/components/answers/ToolRow";
-
-const roleLabel: Record<ThreadMessage["role"], string> = {
-  user: "You",
-  assistant: "Agent",
-};
+import { Prose, RoleLabel } from "@/components/Turn";
 
 /**
  * The persisted message list. An answer is drawn in the locked order: the
@@ -25,9 +21,7 @@ export function Transcript({ messages }: { messages: readonly ThreadMessage[] })
     <ol className="flex list-none flex-col gap-6 p-0">
       {messages.map((message, index) => (
         <li key={index} className="flex flex-col gap-3">
-          <span className="font-mono text-[11.5px] tracking-wide text-muted-foreground uppercase">
-            {roleLabel[message.role]}
-          </span>
+          <RoleLabel role={message.role} />
           {message.role === "assistant" ? (
             <Answer message={message} carried={carriedContext(messages, index)} />
           ) : (
@@ -83,10 +77,6 @@ function Answer({
       />
     </>
   );
-}
-
-function Prose({ text }: { text: string }) {
-  return <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">{text}</p>;
 }
 
 // One caveats block per answer, even when the answer ran two queries.

@@ -3,6 +3,8 @@
 import { useFormStatus } from "react-dom";
 
 import { pendingAnswer } from "@/app/pending-answer";
+import { HeadCell } from "@/components/answers/HeadCell";
+import { Prose, RoleLabel } from "@/components/Turn";
 
 /**
  * The question on its way, and the pending row under it (PRD story 35). It is
@@ -21,12 +23,12 @@ export function PendingAnswer({ question }: { question: string }) {
     <div className="flex flex-col gap-6 pt-6">
       {asked.length > 0 ? (
         <div className="flex flex-col gap-3">
-          <RoleLabel>You</RoleLabel>
-          <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">{asked}</p>
+          <RoleLabel role="user" />
+          <Prose text={asked} />
         </div>
       ) : null}
       <div className="flex flex-col gap-3">
-        <RoleLabel>Agent</RoleLabel>
+        <RoleLabel role="assistant" />
         <section className="overflow-hidden rounded-lg border bg-card">
           <div className={`${GRID} border-b bg-row-head px-3.5 py-2.5`}>
             <HeadCell>#</HeadCell>
@@ -58,21 +60,3 @@ export function PendingAnswer({ question }: { question: string }) {
 }
 
 const GRID = "grid grid-cols-[26px_1fr_74px_150px] items-center gap-3";
-
-function RoleLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="font-mono text-[11.5px] tracking-wide text-muted-foreground uppercase">
-      {children}
-    </span>
-  );
-}
-
-function HeadCell({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <span
-      className={`text-[10px] font-medium tracking-[0.07em] text-muted-foreground uppercase ${className}`}
-    >
-      {children}
-    </span>
-  );
-}

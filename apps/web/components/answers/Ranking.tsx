@@ -5,6 +5,7 @@ import {
   type RankingView,
   type VectorCell,
 } from "@/app/ranking-view";
+import { HeadCell } from "@/components/answers/HeadCell";
 import { LampLegend } from "@/components/answers/LampLegend";
 
 /**
@@ -203,15 +204,5 @@ function VectorRow({ cell }: { cell: VectorCell }) {
       <span className="text-right font-mono text-[12.5px] text-foreground">{cell.raw}</span>
       <span className="text-right font-mono text-xs text-muted-foreground">{cell.weight}</span>
     </div>
-  );
-}
-
-function HeadCell({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <span
-      className={`text-[10px] font-medium tracking-[0.07em] text-muted-foreground uppercase ${className}`}
-    >
-      {children}
-    </span>
   );
 }

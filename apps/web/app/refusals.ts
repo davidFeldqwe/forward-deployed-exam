@@ -15,6 +15,7 @@
  * measuring. Naming them here is the opposite: it is how the screen says it does
  * not measure them.
  */
+
 /** What the capacity-pressure screen answers, in the glossary's own words. */
 export const SCREEN_ANSWERS = [
   "which airports are renovation-investment candidates, ranked by capacity pressure",

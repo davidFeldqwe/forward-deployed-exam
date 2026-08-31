@@ -62,10 +62,13 @@ export function carriedContext(
   }
 
   const question = previousQuestion(messages, index);
-  const phrase = question === null ? null : referencePhrase(question);
+  if (question === null) {
+    return null;
+  }
   // A question that spells out the airport resolved itself: there is no carry to
   // report, whatever the model chose to call the tool with.
-  if (question === null || phrase === null || namesAnAirport(question, rows)) {
+  const phrase = referencePhrase(question);
+  if (phrase === null || namesAnAirport(question, rows)) {
     return null;
   }
 
@@ -94,11 +97,12 @@ export function carriedContext(
  * explains on its own.
  */
 function filtersByCodeAlone(args: JsonObject): boolean {
-  const named = typeof args.iata === "string" || Array.isArray(args.iata);
-  const place = PLACE_FIELDS.some(
-    (field) => typeof args[field] === "string" && args[field] !== "",
-  );
-  return named && !place;
+  const namesCodes = typeof args.iata === "string" || Array.isArray(args.iata);
+  const filtersByPlace = PLACE_FIELDS.some((field) => {
+    const value = args[field];
+    return typeof value === "string" && value !== "";
+  });
+  return namesCodes && !filtersByPlace;
 }
 
 /** The question this answer replies to: the nearest user turn above it. */
@@ -167,8 +171,6 @@ function carriedFrom(
 }
 
 function summaryOf(airports: readonly CarriedAirport[], from: string): string {
-  const rows = airports
-    .map((airport) => `${airport.iata} · row ${airport.rank}`)
-    .join(", ");
+  const rows = airports.map((airport) => `${airport.iata} · row ${airport.rank}`).join(", ");
   return `${rows} of the ${from} answer earlier in this thread`;
 }

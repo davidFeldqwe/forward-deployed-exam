@@ -143,9 +143,7 @@ function rowView(row: ScoredAirport, rank: number, metric: LookupMetric | null):
     rank,
     iata: row.iata,
     name: row.name,
-    composite: metric === null ? compositeOf(row) : null,
-    lamp: metric === null ? row.candidateLamp : null,
-    lookupValue: metric === null ? null : lookupValue(row, metric),
+    ...answerCells(row, metric),
     whyLabels: whyLabels(row),
     peerLabel: `${row.peerGroup} FAA hubs`,
     coverage: `${present} of ${COMPONENTS.length}`,
@@ -153,9 +151,24 @@ function rowView(row: ScoredAirport, rank: number, metric: LookupMetric | null):
   };
 }
 
-/** The screen's number, or the mark that says it withheld one. */
-function compositeOf(row: ScoredAirport): string {
-  return row.composite === null ? WITHHELD_COMPOSITE : String(row.composite);
+/**
+ * The three cells the answer shape decides between, filled in one place so they
+ * cannot half-agree: a ranking draws the screen's composite and candidate lamp,
+ * a lookup draws the one number it was asked for and neither of those.
+ */
+function answerCells(
+  row: ScoredAirport,
+  metric: LookupMetric | null,
+): Pick<RankingRowView, "composite" | "lamp" | "lookupValue"> {
+  if (metric !== null) {
+    return { composite: null, lamp: null, lookupValue: lookupValue(row, metric) };
+  }
+  return {
+    // The screen's number, or the mark that says it withheld one.
+    composite: row.composite === null ? WITHHELD_COMPOSITE : String(row.composite),
+    lamp: row.candidateLamp,
+    lookupValue: null,
+  };
 }
 
 /**

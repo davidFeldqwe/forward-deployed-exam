@@ -14,7 +14,6 @@ import {
   scoreUniverse,
   type LookupMetric,
   type QueryAirportsArgs,
-  type ScoredAirport,
   type SortBy,
 } from "../src/index.ts";
 import { FIXTURE } from "./fixture.ts";
@@ -444,7 +443,9 @@ test("long-haul share is a lookup metric, though it is still not a sort key", ()
     "ORH",
     "HYA",
   ]);
-  assert.equal(metricValue(result.rows[0] as ScoredAirport, "longHaulShare"), 0.2823);
+  const top = result.rows[0];
+  assert.ok(top, "the lookup returned no rows");
+  assert.equal(metricValue(top, "longHaulShare"), 0.2823);
   assert.throws(() => queryAirports(scored, { sortBy: "longHaulShare" as SortBy }), RangeError);
 });
 

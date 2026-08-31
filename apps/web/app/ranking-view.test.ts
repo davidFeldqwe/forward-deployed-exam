@@ -6,7 +6,7 @@ import type { ScoredAirport } from "@repo/scoring";
 import { runAgentTool } from "./agent-tools.ts";
 import { lampPill } from "./lamp-hue.ts";
 import { rankingView } from "./ranking-view.ts";
-import type { JsonValue, ToolCall } from "./thread-messages.ts";
+import type { JsonObject, JsonValue, ToolCall } from "./thread-messages.ts";
 
 const bos: ScoredAirport = {
   iata: "BOS",
@@ -50,8 +50,8 @@ const hya: ScoredAirport = {
   gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for HYA."],
 };
 
-function call(result: JsonValue): ToolCall {
-  return { tool: "queryAirports", args: { region: "New England" }, result, durationMs: 12 };
+function call(result: JsonValue, args: JsonObject = { region: "New England" }): ToolCall {
+  return { tool: "queryAirports", args, result, durationMs: 12 };
 }
 
 const twoRows = call({
@@ -268,12 +268,7 @@ test("a real ranking off the committed screen renders every row it was handed", 
 // universe, with the peer-group caveat visible on each of them.
 test("a compare keeps LAX and SNA as two rows, in two peer groups", () => {
   const result = runAgentTool("queryAirports", { iata: ["LAX", "SNA"] });
-  const view = rankingView({
-    tool: "queryAirports",
-    args: { iata: ["LAX", "SNA"] },
-    result: JSON.parse(JSON.stringify(result)),
-    durationMs: 5,
-  });
+  const view = rankingView(call(result, { iata: ["LAX", "SNA"] }));
 
   assert.deepEqual(view?.resolved.codes, result.resolvedIata);
   assert.equal(view?.rows.length, 2);
