@@ -67,7 +67,8 @@ export function assistantMessage(
 /**
  * The rows a persisted `queryAirports` call re-renders from, or null when the
  * call is not a ranking. `parseThreadMessage` has already checked that every
- * row carries the composite, lamp and score vector the transcript draws.
+ * row carries the composite, lamp and score vector the transcript draws; the
+ * rest of the row is whatever `@repo/scoring` put there, carried verbatim.
  */
 export function rankingRows(call: ToolCall | undefined): ScoredAirport[] | null {
   if (!call || call.tool !== "queryAirports") {
@@ -222,7 +223,7 @@ function threadsById(): Map<string, Thread> {
   return host.__aiiThreadStore;
 }
 
-/** Sign-in normalizes the email; a thread owner is keyed the same way. */
+/** The same key sign-in stores an account under (`normalizeEmail`). */
 function ownerKey(email: string): string {
   return email.trim().toLowerCase();
 }

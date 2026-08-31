@@ -25,7 +25,6 @@ export default async function ThreadPage({
 
   return (
     <Chat
-      initialPrompt={null}
       threadId={thread.id}
       messages={thread.messages}
       recents={listThreads(session.email)}

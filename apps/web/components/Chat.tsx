@@ -20,12 +20,12 @@ import {
 } from "@/components/ui/input-group";
 
 export function Chat({
-  initialPrompt,
+  initialPrompt = null,
   threadId = null,
   messages = [],
   recents = [],
 }: {
-  initialPrompt: string | null;
+  initialPrompt?: string | null;
   threadId?: string | null;
   messages?: readonly ThreadMessage[];
   recents?: readonly ThreadSummary[];
