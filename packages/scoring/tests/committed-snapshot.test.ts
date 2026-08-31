@@ -215,6 +215,7 @@ test("a query result is exactly the locked payload, no more and no less", () => 
   assert.deepEqual(Object.keys(queryAirports(scored, { region: "New England" })), [
     "rows",
     "matched",
+    "resolvedIata",
     "sortBy",
     "limit",
     "unknownIata",

@@ -38,8 +38,17 @@ export type UnknownPlace = {
 
 export type QueryResult = {
   rows: ScoredAirport[];
-  /** Rows that passed the filters, before the limit. */
+  /** Rows that passed the filters, before the limit; `resolvedIata.length`. */
   matched: number;
+  /**
+   * Every airport the filters resolved to, by code, in the sorted order `rows`
+   * pages: story 22's resolved airport set, which the agent names *before* it
+   * ranks. `rows` is only that page — twelve airports are in CA against a
+   * default limit of ten — so a resolved set read off `rows` names ten of
+   * twelve, and lifting the limit to see the rest both floods the answer with
+   * score vectors nobody asked for and still stops at 25.
+   */
+  resolvedIata: string[];
   sortBy: SortBy;
   /** The limit actually applied, after the default and the hard cap. */
   limit: number;
@@ -124,9 +133,14 @@ export function queryAirports(
   // snapshot's order, which is enplanements descending.
   matchedRows.sort((left, right) => byDescending(left, right, sortBy));
 
+  // The resolved set and its count are one answer, derived from one array, so a
+  // caller cannot be told twelve airports matched and handed eleven codes.
+  const resolvedIata = matchedRows.map((row) => row.iata);
+
   return {
     rows: matchedRows.slice(0, limit),
-    matched: matchedRows.length,
+    matched: resolvedIata.length,
+    resolvedIata,
     sortBy,
     limit,
     unknownIata: codes === null ? [] : unknownCodes(codes, scored),

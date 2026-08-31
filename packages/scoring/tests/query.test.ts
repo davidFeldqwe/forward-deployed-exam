@@ -382,3 +382,16 @@ test("a place the snapshot leaves blank is not an accepted phrase", () => {
   assert.deepEqual(placeVocabulary(withoutRegion).region, []);
   assert.equal(placeVocabulary(withoutRegion).state.length > 0, true);
 });
+
+// Story 22: the agent names the resolved airport set *before* it ranks, so it has
+// to know which airports the place phrase became. `rows` is only the page the
+// limit returned — twelve airports in the committed file are in CA against a
+// default limit of ten — so a resolved-set block built from `rows` names ten of
+// twelve, and `matched` says the other two exist without saying which.
+test("the resolved airport set is named in full, even when the limit cuts the rows", () => {
+  const result = queryAirports(scored, { region: "New England", limit: 2 });
+  assert.deepEqual(result.rows.map((row) => row.iata), ["BDL", "BOS"]);
+  assert.deepEqual(result.resolvedIata, ["BDL", "BOS", "ORH", "PVD", "HYA"]);
+  // The count and the set are the same answer, so they cannot disagree.
+  assert.equal(result.matched, result.resolvedIata.length);
+});
