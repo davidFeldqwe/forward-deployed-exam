@@ -103,7 +103,10 @@ test("a follow-up naming no state or region draws no map, whatever it filtered o
 test("an IATA compare is two codes, not a place", () => {
   const map = resolvedMap(
     "Compare congestion at LAX and SNA",
-    call({ iata: ["LAX", "SNA"] }, [airport("LAX", 33.9425, -118.408), airport("SNA", 33.6757, -117.868)]),
+    call({ iata: ["LAX", "SNA"] }, [
+      airport("LAX", 33.9425, -118.408),
+      airport("SNA", 33.6757, -117.868),
+    ]),
   );
 
   assert.equal(map, null);
@@ -143,11 +146,13 @@ test("a single-metric lookup gets no map: it withheld the lamp the markers light
 });
 
 test("an answer that is not a ranking has nothing to place", () => {
+  const methodology = {
+    ...call({ region: "New England" }, [BOS, PVD]),
+    tool: "describeMethodology" as const,
+  };
+
   assert.equal(resolvedMap(NEW_ENGLAND, undefined), null);
-  assert.equal(
-    resolvedMap(NEW_ENGLAND, { ...call({ region: "New England" }, [BOS, PVD]), tool: "describeMethodology" }),
-    null,
-  );
+  assert.equal(resolvedMap(NEW_ENGLAND, methodology), null);
   assert.equal(resolvedMap(null, call({ region: "New England" }, [BOS, PVD])), null);
 });
 

@@ -77,10 +77,12 @@ export function resolvedMap(
     return null;
   }
   const place = placeNamed(question);
+  if (place === null || !filtersByStateOrRegion(call.args)) {
+    return null;
+  }
   // A lookup withholds the candidate lamp, and a marker is that lamp as a dot,
   // so a picture of one would put back the recommendation the table refused.
-  const isLookup = lookupMetric(call) !== null;
-  if (place === null || !filtersByStateOrRegion(call.args) || isLookup) {
+  if (lookupMetric(call) !== null) {
     return null;
   }
   const located = rows.filter(isLocated);
@@ -166,32 +168,29 @@ function isLocated(row: ScoredAirport): row is Located {
  * coastline the snapshot did not ship.
  */
 function project(rows: readonly Located[]): MapMarker[] {
+  const latitudes = extent(rows.map((row) => row.latitude));
   // Degrees of longitude are shorter than degrees of latitude away from the
   // equator, and this set's own mid-latitude is the honest amount to narrow
   // them by: it is the only latitude the drawing has to be true at.
-  const midLatitude = extent(rows.map((row) => row.latitude)).middle;
-  const narrowing = Math.cos((midLatitude * Math.PI) / 180);
-  // North is up, so latitude runs the other way from the SVG's y axis.
-  const points = rows.map((row) => ({ row, x: row.longitude * narrowing, y: -row.latitude }));
-
-  const across = extent(points.map((point) => point.x));
-  const down = extent(points.map((point) => point.y));
+  const narrowing = Math.cos((latitudes.middle * Math.PI) / 180);
+  const longitudes = extent(rows.map((row) => row.longitude * narrowing));
   // One scale for both axes: a ninety-mile hop reads as a ninety-mile hop, and
   // the shape of New England is not stretched to fill the card.
   const scale = Math.min(
-    (MAP_WIDTH - 2 * MAP_PADDING) / across.span,
-    (MAP_HEIGHT - 2 * MAP_PADDING) / down.span,
+    (MAP_WIDTH - 2 * MAP_PADDING) / longitudes.span,
+    (MAP_HEIGHT - 2 * MAP_PADDING) / latitudes.span,
   );
 
-  return points.map(({ row, x, y }) => {
-    const placed = round((x - across.middle) * scale + MAP_WIDTH / 2);
+  return rows.map((row) => {
+    const x = round((row.longitude * narrowing - longitudes.middle) * scale + MAP_WIDTH / 2);
     return {
       iata: row.iata,
       name: row.name,
       lamp: row.candidateLamp,
-      x: placed,
-      y: round((y - down.middle) * scale + MAP_HEIGHT / 2),
-      label: labelFor(placed),
+      x,
+      // North is up, so latitude runs the other way from the SVG's y axis.
+      y: round((latitudes.middle - row.latitude) * scale + MAP_HEIGHT / 2),
+      label: labelFor(x),
     };
   });
 }

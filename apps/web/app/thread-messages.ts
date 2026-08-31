@@ -198,7 +198,7 @@ const RANKING_ROW_CHECKS: {
   name: isNonEmptyString,
   municipality: isString,
   state: isNonEmptyString,
-  region: isDivisionOrNone,
+  region: isRegionOrNone,
   latitude: isDegrees(90),
   longitude: isDegrees(180),
   peerGroup: isNonEmptyString,
@@ -266,7 +266,7 @@ function isSlotLimit(value: unknown): boolean {
  * check that demanded a division here would refuse the whole message on
  * read-back, so a national ranking that reached Puerto Rico would vanish.
  */
-function isDivisionOrNone(value: unknown): boolean {
+function isRegionOrNone(value: unknown): boolean {
   return value === null || isNonEmptyString(value);
 }
 

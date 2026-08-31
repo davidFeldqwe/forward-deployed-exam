@@ -14,6 +14,13 @@ import { LampLegend } from "@/components/answers/LampLegend";
  * disagree, the row is the answer: the map is a picture of it.
  */
 export function ResolvedMap({ map }: { map: ResolvedMapView }) {
+  // What a screen reader is told the drawing holds: the same codes the dots are
+  // labelled with, and where a reader has to go for the numbers.
+  const description =
+    `The ${map.markers.length} placed airports of this ranking: ` +
+    `${map.markers.map((marker) => marker.iata).join(", ")}. Positions come from the ` +
+    "snapshot's coordinates; the ranking table carries the numbers.";
+
   return (
     <section className="flex flex-col gap-3 overflow-hidden rounded-lg border bg-card">
       <div className="flex flex-wrap items-baseline gap-2.5 px-4 pt-3.5">
@@ -27,9 +34,7 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
           viewBox={map.viewBox}
           className="h-auto w-full rounded-md border border-grid bg-raised"
           role="img"
-          aria-label={`The ${map.markers.length} placed airports of this ranking: ${map.markers
-            .map((marker) => marker.iata)
-            .join(", ")}. Positions come from the snapshot's coordinates; the ranking table carries the numbers.`}
+          aria-label={description}
         >
           {map.markers.map((marker) => (
             <Marker key={marker.iata} marker={marker} />
