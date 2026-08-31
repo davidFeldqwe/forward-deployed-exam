@@ -1,11 +1,13 @@
-import type { AirportSnapshot } from "@repo/snapshot";
+import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
 
-import { assumptionsFor, gapsFor, missingComponents, sharedAssumptions } from "./caveats.ts";
-import { peerDistributions, percentileRank } from "./percentile.ts";
+import { assumptionsFor, gapsFor, sharedAssumptions } from "./caveats.ts";
+import { peerDistributions, percentileRank, type PeerDistribution } from "./percentile.ts";
 import { MIXED_VECTOR_AT, STRONG_CANDIDATE_AT, WEIGHTS } from "./weights.ts";
 import {
   COMPONENTS,
   type CandidateLamp,
+  type Component,
+  type ScoreComponent,
   type ScoreVector,
   type ScoredAirport,
 } from "./types.ts";
@@ -24,21 +26,13 @@ export function scoreUniverse(snapshot: AirportSnapshot): ScoredAirport[] {
   const shared = sharedAssumptions(snapshot);
 
   return snapshot.airports.map((airport) => {
-    const distribution = distributions.get(airport.peerGroup);
-    const scoreVector = Object.fromEntries(
-      COMPONENTS.map((component) => {
-        const { raw, coverage } = airport.inputs[component];
-        const peers = distribution?.[component] ?? [];
-        return [
-          component,
-          {
-            percentile: raw === null ? null : percentileRank(raw, peers),
-            raw,
-            coverage,
-          },
-        ];
-      }),
-    ) as ScoreVector;
+    const peers = distributions.get(airport.peerGroup);
+    const scoreVector: ScoreVector = {
+      congestion: rank(airport, "congestion", peers),
+      unmetFlightDemand: rank(airport, "unmetFlightDemand", peers),
+      delay: rank(airport, "delay", peers),
+      growth: rank(airport, "growth", peers),
+    };
 
     const composite = compositeOf(scoreVector);
     return {
@@ -53,10 +47,23 @@ export function scoreUniverse(snapshot: AirportSnapshot): ScoredAirport[] {
       candidateLamp: candidateLamp({ composite, scoreVector }),
       slotLimit: airport.slotLimit,
       longHaulShare: airport.longHaulShare.share,
-      assumptions: assumptionsFor(shared, airport, missingComponents(airport)),
+      assumptions: assumptionsFor(shared, airport),
       gaps: gapsFor(snapshot, airport),
     };
   });
+}
+
+function rank(
+  airport: SnapshotAirport,
+  component: Component,
+  peers: PeerDistribution | undefined,
+): ScoreComponent {
+  const { raw, coverage } = airport.inputs[component];
+  return {
+    percentile: raw === null ? null : percentileRank(raw, peers?.[component] ?? []),
+    raw,
+    coverage,
+  };
 }
 
 /**

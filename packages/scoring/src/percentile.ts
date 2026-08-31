@@ -1,3 +1,5 @@
+import type { SnapshotAirport } from "@repo/snapshot";
+
 import { COMPONENTS, type Component } from "./types.ts";
 
 /**
@@ -6,7 +8,8 @@ import { COMPONENTS, type Component } from "./types.ts";
  * peer group is the median of itself (50), not the top of the country.
  *
  * Rounded to an integer so the score vector an analyst reads is the score
- * vector the composite is computed from.
+ * vector the composite is computed from. `values` always holds `value`, because
+ * both come from the same peer group, so it is never empty here.
  */
 export function percentileRank(value: number, values: readonly number[]): number {
   let below = 0;
@@ -26,7 +29,7 @@ export type PeerDistribution = Record<Component, number[]>;
  * airport's blank never moves its peers' percentiles.
  */
 export function peerDistributions(
-  airports: readonly { peerGroup: string; inputs: Record<Component, { raw: number | null }> }[],
+  airports: readonly SnapshotAirport[],
 ): Map<string, PeerDistribution> {
   const distributions = new Map<string, PeerDistribution>();
   for (const airport of airports) {

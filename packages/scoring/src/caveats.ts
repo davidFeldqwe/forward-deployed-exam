@@ -1,7 +1,7 @@
 import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
 
 import { WEIGHTS } from "./weights.ts";
-import { COMPONENTS, COMPONENT_LABELS, type Component } from "./types.ts";
+import { COMPONENTS, COMPONENT_LABELS } from "./types.ts";
 
 // Caveats ride on the row, not in a global footer: the answer that shows a
 // number shows the assumptions behind that number.
@@ -22,11 +22,10 @@ export function sharedAssumptions(snapshot: AirportSnapshot): string[] {
   ];
 }
 
-export function assumptionsFor(
-  shared: readonly string[],
-  airport: SnapshotAirport,
-  missing: readonly Component[],
-): string[] {
+export function assumptionsFor(shared: readonly string[], airport: SnapshotAirport): string[] {
+  const missing = COMPONENTS.filter(
+    (component) => airport.inputs[component].coverage === "missing",
+  );
   if (missing.length === 0) return [...shared];
   const labels = missing.map((component) => COMPONENT_LABELS[component]);
   const named = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
@@ -48,8 +47,4 @@ export function gapsFor(snapshot: AirportSnapshot, airport: SnapshotAirport): st
     gaps.push(`Long-haul share is not available for ${airport.iata}.`);
   }
   return gaps;
-}
-
-export function missingComponents(airport: SnapshotAirport): Component[] {
-  return COMPONENTS.filter((component) => airport.inputs[component].coverage === "missing");
 }
