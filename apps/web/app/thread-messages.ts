@@ -67,16 +67,30 @@ export function assistantMessage(
 
 /**
  * The rows a persisted `queryAirports` call re-renders from, or null when the
- * call is not a ranking. Scoring's own `isScoredAirport` decides what a row is,
- * here and at the write, so nothing downstream is handed a half-written payload
- * and no cast stands in for the check. Anything the result carries beside
- * `rows` — the matched count, the sort key — is stored verbatim.
+ * call is not a ranking. Anything the result carries beside `rows` — the
+ * matched count, the sort key — is stored verbatim and read from there.
  */
 export function rankingRows(call: ToolCall | undefined): ScoredAirport[] | null {
-  if (!call || call.tool !== "queryAirports" || !isRecord(call.result)) {
+  return call?.tool === "queryAirports" ? scoredRows(call.result) : null;
+}
+
+/**
+ * The scored rows a `queryAirports` payload carries, or null when it does not
+ * carry a full set of them. One function, so the check a message passes on the
+ * way into the store is the check the answer objects read it back through: a
+ * payload stored under a looser rule than the re-render runs draws the answer's
+ * prose over an empty table.
+ *
+ * What a row is, is `@repo/scoring`'s call, not a field map kept here: a second
+ * copy of `ScoredAirport` drifts — this one used to demand a Census division,
+ * which refused the whole answer for a territory airport the snapshot allows to
+ * have none.
+ */
+function scoredRows(result: unknown): ScoredAirport[] | null {
+  if (!isRecord(result)) {
     return null;
   }
-  const rows: unknown = call.result.rows;
+  const rows: unknown = result.rows;
   return Array.isArray(rows) && rows.every(isScoredAirport) ? rows : null;
 }
 
@@ -131,7 +145,7 @@ function parseToolCall(value: unknown): ToolCall | null {
   ) {
     return null;
   }
-  if (value.tool === "queryAirports" && !hasRenderableRows(value.result)) {
+  if (value.tool === "queryAirports" && !scoredRows(value.result)) {
     return null;
   }
   return {
@@ -140,16 +154,6 @@ function parseToolCall(value: unknown): ToolCall | null {
     result: value.result,
     durationMs: value.durationMs,
   };
-}
-
-/**
- * A stored ranking is rows the screen scored. The check is `@repo/scoring`'s,
- * not a field map kept here: the row shape is that module's, and a second copy
- * of it drifts — this one used to demand a Census division, which refused the
- * whole answer for a territory airport the snapshot allows to have none.
- */
-function hasRenderableRows(result: JsonValue): boolean {
-  return isRecord(result) && Array.isArray(result.rows) && result.rows.every(isScoredAirport);
 }
 
 function isAgentTool(value: unknown): value is AgentTool {

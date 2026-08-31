@@ -161,6 +161,25 @@ test("a territory airport with no Census division is stored, not refused", () =>
   assert.equal(parseThreadMessage(assistantMessage("prose", [territory])), null);
 });
 
+// #34: one check, read by the write and by the re-render. A payload the store
+// accepted but `rankingRows` then called "not a ranking" would draw the answer's
+// prose over an empty table; a payload it refused and `rankingRows` would have
+// drawn is an answer lost to a check nobody else runs.
+test("the check that stores a ranking is the check that reads it back", () => {
+  const brokenResults = [null, "rows", { matched: 1 }, { rows: {} }, { rows: [bosRow, {}] }];
+
+  for (const result of brokenResults) {
+    const broken: ToolCall = { ...rankingCall, result: result as ToolCall["result"] };
+    const where = JSON.stringify(result);
+    assert.equal(parseThreadMessage(assistantMessage("prose", [broken])), null, where);
+    assert.equal(rankingRows(broken), null, where);
+  }
+
+  // The payload both accept is the same one: the rows scoring says are rows.
+  assert.notEqual(parseThreadMessage(assistantMessage("prose", [rankingCall])), null);
+  assert.deepEqual(rankingRows(rankingCall), [bosRow]);
+});
+
 test("a stored message from an unknown role or tool is refused", () => {
   assert.equal(parseThreadMessage({ role: "system", text: "be nice", toolCalls: [] }), null);
   assert.equal(
