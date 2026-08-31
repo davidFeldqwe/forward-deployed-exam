@@ -191,6 +191,38 @@ test("the pending Thread answer is one pending row and nothing else", () => {
   assert.doesNotMatch(JSON.stringify(row), new RegExp(WITHHELD_COMPOSITE));
 });
 
+// `THREAD_ANSWER_TAGS` is the locked order itself, not a bag of names: every
+// answer this module composes reads down it. The example tests above each pin
+// one turn's sequence; this pins the rule they are examples of, including for
+// the turns nobody wrote an example for.
+test("every Thread answer reads down the locked tag order", () => {
+  const follow = [
+    userMessage("Which airports in New England are renovation-investment candidates?"),
+    assistantMessage("PVD leads the set.", [newEngland]),
+    userMessage("Tell me more about the second one."),
+    assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
+  ];
+  const turns: ThreadAnswerPart[][] = [
+    ...follow.map((_, at) => threadAnswer(follow, at)),
+    threadAnswer(
+      [userMessage("Both?"), assistantMessage("Two sets.", [newEngland, matchedNothing])],
+      1,
+    ),
+    threadAnswer([userMessage("Weights?"), assistantMessage("Congestion is 35.", [methodology])], 1),
+    threadAnswer([userMessage("Nunavut?"), assistantMessage("Nothing matched.", [matchedNothing])], 1),
+    threadAnswer([userMessage("Hello."), assistantMessage("Ask about an airport.")], 1),
+    [...PENDING_THREAD_ANSWER],
+  ];
+
+  for (const parts of turns) {
+    const named = tags(parts);
+    const places = named.map((tag) => THREAD_ANSWER_TAGS.indexOf(tag));
+    // A tag the locked order does not name has no place to be drawn in.
+    assert.ok(!places.includes(-1), named.join(", "));
+    assert.deepEqual(places, [...places].sort((a, b) => a - b), named.join(", "));
+  }
+});
+
 // The transcript draws tags. It cannot draw one it has no case for, and the
 // list is free to hand it any of them, so the two are pinned to each other.
 test("every tag a Thread answer may hold is drawn by the component", () => {

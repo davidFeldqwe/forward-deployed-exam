@@ -46,9 +46,10 @@ export type ThreadAnswerPart =
 export type ThreadAnswerTag = ThreadAnswerPart["tag"];
 
 /**
- * The same tags as a list, so the test that every one of them is drawn has
- * something to walk. `satisfies` keeps the two from drifting: a name no part
- * carries is not a tag.
+ * The locked order as a list: the sequence every answer below is composed to
+ * read down, and what the order test walks. `satisfies` keeps it from naming a
+ * tag no part carries; a tag it forgets to name has nowhere to be drawn, which
+ * is what that test reports.
  */
 export const THREAD_ANSWER_TAGS = [
   "tool",
