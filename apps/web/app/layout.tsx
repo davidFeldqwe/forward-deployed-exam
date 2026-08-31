@@ -1,17 +1,19 @@
 import type { ReactNode } from "react";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
 
+import { cn } from "@/lib/utils";
+
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans-face",
+  variable: "--font-sans",
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
-  variable: "--font-mono-face",
+  variable: "--font-mono",
 });
 
 export const metadata = {
@@ -22,7 +24,11 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable}`}>
+    <html
+      lang="en"
+      dir="ltr"
+      className={cn("dark", inter.variable, ibmPlexMono.variable, "font-sans")}
+    >
       <body>{children}</body>
     </html>
   );
