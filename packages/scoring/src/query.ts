@@ -1,4 +1,10 @@
-import { SORT_KEYS, type ScoredAirport, type SortBy } from "./types.ts";
+import {
+  PLACE_FIELDS,
+  SORT_KEYS,
+  type PlaceField,
+  type ScoredAirport,
+  type SortBy,
+} from "./types.ts";
 
 /** Locked in the PRD: ten rows unless asked otherwise, never more than 25. */
 export const DEFAULT_LIMIT = 10;
@@ -23,6 +29,13 @@ export type QueryAirportsArgs = {
   limit?: number | null;
 };
 
+/** A supplied place filter with no airport in the scored universe behind it. */
+export type UnknownPlace = {
+  field: PlaceField;
+  /** As the caller wrote it, minus padding, so a refusal can quote the phrase. */
+  value: string;
+};
+
 export type QueryResult = {
   rows: ScoredAirport[];
   /** Rows that passed the filters, before the limit. */
@@ -37,6 +50,16 @@ export type QueryResult = {
    * merely filtered out: a code the place filters excluded is not listed here.
    */
   unknownIata: string[];
+  /**
+   * Supplied place filters no airport in the scored universe carries, in
+   * `PLACE_FIELDS` order. `state: "California"` matches nothing because the
+   * snapshot spells a state as two letters, and without this the caller cannot
+   * tell that from a filter combination that is legitimately empty -- so the
+   * agent would answer "no airports in California" with LAX in the screen.
+   * Unknown means outside the universe, not excluded by another filter: New
+   * England and CA are both real places even though no airport is in both.
+   */
+  unknownPlace: UnknownPlace[];
 };
 
 /**
@@ -60,10 +83,7 @@ export function queryAirports(
   const matchedRows = scored.filter(
     (row) =>
       (requested === null || requested.has(row.iata)) &&
-      matches(row.region, args.region) &&
-      matches(row.state, args.state) &&
-      matches(row.municipality, args.municipality) &&
-      matches(row.peerGroup, args.peerGroup),
+      PLACE_FIELDS.every((field) => matches(row[field], args[field])),
   );
   // `filter` already copied, so sorting in place leaves the scored universe
   // untouched. The sort is stable, so airports tied on the sort key keep the
@@ -76,6 +96,7 @@ export function queryAirports(
     sortBy,
     limit,
     unknownIata: codes === null ? [] : unknownCodes(codes, scored),
+    unknownPlace: unknownPlaces(args, scored),
   };
 }
 
@@ -112,6 +133,26 @@ function requestedCodes(iata: QueryAirportsArgs["iata"]): string[] | null {
 function unknownCodes(codes: readonly string[], scored: readonly ScoredAirport[]): string[] {
   const universe = new Set(scored.map((row) => row.iata));
   return codes.filter((code) => !universe.has(code));
+}
+
+// A place phrase the screen cannot resolve, reported rather than refused: an
+// unknown place legitimately has no airports, so zero rows is the honest answer
+// -- it just has to be distinguishable from a real place with no rows. Asked of
+// the whole universe, not the matched rows, so one filter never makes another
+// look unresolved.
+function unknownPlaces(
+  args: QueryAirportsArgs,
+  scored: readonly ScoredAirport[],
+): UnknownPlace[] {
+  const unknown: UnknownPlace[] = [];
+  for (const field of PLACE_FIELDS) {
+    const wanted = args[field];
+    if (unspecified(wanted)) continue;
+    if (!scored.some((row) => matches(row[field], wanted))) {
+      unknown.push({ field, value: wanted.trim() });
+    }
+  }
+  return unknown;
 }
 
 // Place phrases are resolved to snapshot values before the query, so matching is

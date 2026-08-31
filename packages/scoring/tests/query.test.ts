@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   DEFAULT_LIMIT,
   MAX_LIMIT,
+  PLACE_FIELDS,
   SORT_KEYS,
   queryAirports,
   scoreUniverse,
@@ -276,4 +277,60 @@ test("a null argument means the same as omitting it", () => {
 test("an empty string is a value the caller supplied, not an omitted one", () => {
   assert.equal(queryAirports(scored, { region: "" }).matched, 0);
   assert.throws(() => queryAirports(scored, { sortBy: "" as SortBy }), RangeError);
+});
+
+// A place filter half-succeeds the same way a compare does. "California" is a
+// phrase an analyst says and a model sends, and it matches nothing because the
+// snapshot spells a state as two letters — yet the answer is indistinguishable
+// from a filter combination that is legitimately empty, so the agent reports "no
+// airports in California" while LAX and SNA sit in the screen.
+test("a place value the universe does not use is named, not answered as an empty ranking", () => {
+  const result = queryAirports(scored, { state: "California" });
+  assert.deepEqual(result.rows, []);
+  assert.equal(result.matched, 0);
+  assert.deepEqual(result.unknownPlace, [{ field: "state", value: "California" }]);
+});
+
+// Unknown means "no airport in the screened universe carries this value", not
+// "no row survived": CA and New England are both real, and calling either one
+// unresolved would tell the analyst a place is uncovered when it is not.
+test("place values the other filters exclude are still known places", () => {
+  const result = queryAirports(scored, { region: "New England", state: "CA" });
+  assert.equal(result.matched, 0);
+  assert.deepEqual(result.unknownPlace, []);
+  // The same holds for a value a code filter excluded.
+  assert.deepEqual(queryAirports(scored, { iata: "LAX", region: "New England" }).unknownPlace, []);
+});
+
+test("every unresolved place filter is reported, in a fixed field order", () => {
+  const result = queryAirports(scored, {
+    region: " Pacific Northwest ",
+    state: "CA",
+    municipality: "Nowhere",
+    peerGroup: "hub",
+  });
+  // Padding is not part of the phrase, but case is: the value reads back as the
+  // caller wrote it, so a refusal can quote the phrase it could not resolve.
+  assert.deepEqual(result.unknownPlace, [
+    { field: "region", value: "Pacific Northwest" },
+    { field: "municipality", value: "Nowhere" },
+    { field: "peerGroup", value: "hub" },
+  ]);
+  assert.deepEqual(PLACE_FIELDS, ["region", "state", "municipality", "peerGroup"]);
+});
+
+test("nothing is unknown when no place was asked for, or every phrase resolved", () => {
+  assert.deepEqual(queryAirports(scored).unknownPlace, []);
+  assert.deepEqual(queryAirports(scored, { region: null, state: null }).unknownPlace, []);
+  // Matching ignores case and padding, so neither spelling is unresolved.
+  assert.deepEqual(queryAirports(scored, { region: " new england " }).unknownPlace, []);
+  assert.deepEqual(queryAirports(scored, { municipality: "chicago" }).unknownPlace, []);
+});
+
+// `null` is a place nobody asked about; "" is a phrase that was supplied and
+// resolves to nothing, which is the thing this field exists to report.
+test("an empty place string is an unresolved phrase, not an omitted one", () => {
+  assert.deepEqual(queryAirports(scored, { region: "" }).unknownPlace, [
+    { field: "region", value: "" },
+  ]);
 });

@@ -1,10 +1,12 @@
 export {
   COMPONENTS,
   COMPONENT_LABELS,
+  PLACE_FIELDS,
   SORT_KEYS,
   type CandidateLamp,
   type Component,
   type Coverage,
+  type PlaceField,
   type ScoreComponent,
   type ScoreVector,
   type ScoredAirport,
@@ -18,4 +20,5 @@ export {
   queryAirports,
   type QueryAirportsArgs,
   type QueryResult,
+  type UnknownPlace,
 } from "./query.ts";

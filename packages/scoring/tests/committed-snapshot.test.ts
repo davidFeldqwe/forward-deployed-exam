@@ -189,7 +189,23 @@ test("a query result is exactly the locked payload, no more and no less", () => 
     "sortBy",
     "limit",
     "unknownIata",
+    "unknownPlace",
   ]);
+});
+
+// The committed file is the one where getting this wrong is expensive: twelve
+// airports really are in California, so answering `state: "California"` with an
+// empty ranking and no other signal is a wrong answer about a covered place.
+test("an unresolved place phrase is named against the committed universe", () => {
+  const spelled = queryAirports(scored, { state: "California" });
+  assert.equal(spelled.matched, 0);
+  assert.deepEqual(spelled.unknownPlace, [{ field: "state", value: "California" }]);
+  assert.equal(queryAirports(scored, { state: "CA" }).matched, 12);
+
+  // Both values are real; only the combination is empty, so nothing is unknown.
+  const combined = queryAirports(scored, { region: "New England", state: "CA" });
+  assert.equal(combined.matched, 0);
+  assert.deepEqual(combined.unknownPlace, []);
 });
 
 test("a query result survives JSON unchanged, so an HTTP body can equal it", () => {

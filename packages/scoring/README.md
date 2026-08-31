@@ -66,10 +66,11 @@ Filters and sorts already-scored rows. It never re-percentiles: a region
 question filters the national ranking, it does not rank New England against
 itself.
 
-- Filters: `iata` (one code or a list), `region`, `state`, `municipality`,
-  `peerGroup`. Matching ignores case and padding and nothing else — place
-  phrases are resolved to snapshot values before the call, so the screen never
-  geocodes a guess. ORD and MDW are two Chicago rows; there is no city market.
+- Filters: `iata` (one code or a list) and the four `PLACE_FIELDS` — `region`,
+  `state`, `municipality`, `peerGroup`. Matching ignores case and padding and
+  nothing else — place phrases are resolved to snapshot values before the call,
+  so the screen never geocodes a guess. ORD and MDW are two Chicago rows; there
+  is no city market.
 - `sortBy`: one of `SORT_KEYS` — `composite` (default) or one component's
   percentile. Withheld composites sort last; ties keep the snapshot's order,
   which is enplanements descending. An off-list key throws a `RangeError` naming
@@ -88,12 +89,20 @@ itself.
   resolves to nothing. Values of the wrong *type* stay the caller's problem: the
   tool schema and the query-string parser validate those (a `limit` of `"3"` is
   not a number and falls back to the default).
-- Returns `{ rows, matched, sortBy, limit, unknownIata }`; `matched` is the count
-  before the limit. `unknownIata` lists requested codes with no airport in the
-  scored universe, in the order asked: "LAX vs ITH" comes back as one row, and
-  the caller has to be able to tell that from a compare that returned both. It
-  means outside the top-100 screen, not filtered out — a code the place filters
-  excluded is not listed. Both key sets, the row's and the result's, are pinned
+- Returns `{ rows, matched, sortBy, limit, unknownIata, unknownPlace }`;
+  `matched` is the count before the limit. `unknownIata` lists requested codes
+  with no airport in the scored universe, in the order asked: "LAX vs ITH" comes
+  back as one row, and the caller has to be able to tell that from a compare that
+  returned both. `unknownPlace` does the same for a place filter, in
+  `PLACE_FIELDS` order: `state: "California"` matches nothing because the
+  snapshot spells a state as two letters, and an empty ranking with no other
+  signal reads as "no airport in California is a candidate" while LAX and SNA sit
+  in the screen. Both mean *outside the universe*, not *filtered out* — New
+  England and CA are real places even though no airport is in both, and a code
+  the place filters excluded is not listed either. Neither refuses the query the
+  way an off-list `sortBy` does: an unresolved place legitimately has no
+  airports, so zero rows is the honest answer, it just has to be
+  distinguishable. Both key sets, the row's and the result's, are pinned
   by tests, and so is the fact that the result survives `JSON.parse(JSON.stringify(...))`
   unchanged, so the rank HTTP can assert its body equals the module output.
 

@@ -40,6 +40,19 @@ export const SORT_KEYS = ["composite", ...COMPONENTS] as const;
 
 export type SortBy = (typeof SORT_KEYS)[number];
 
+/**
+ * The place filters, in the order an unresolved one is reported. Exported as
+ * values for the same reason as `SORT_KEYS`: the rank HTTP reads these off a
+ * query string and the agent tool takes them from the model, so both walk one
+ * list instead of re-typing four field names that can drift from this module.
+ *
+ * `iata` is absent: it names airports rather than a place, and a code outside
+ * the universe is reported on its own as `unknownIata`.
+ */
+export const PLACE_FIELDS = ["region", "state", "municipality", "peerGroup"] as const;
+
+export type PlaceField = (typeof PLACE_FIELDS)[number];
+
 export type ScoreComponent = {
   /** Rank inside the airport's national peer group, 0-100; null when missing. */
   percentile: number | null;
