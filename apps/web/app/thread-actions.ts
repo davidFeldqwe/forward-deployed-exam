@@ -40,5 +40,6 @@ export async function askQuestion(formData: FormData): Promise<void> {
     redirect(thread ? chatDestination(thread.id) : CHAT_PATH);
   }
 
-  redirect(chatDestination(startThread(session.email, question).id));
+  const started = startThread(session.email, question);
+  redirect(started ? chatDestination(started.id) : CHAT_PATH);
 }

@@ -302,8 +302,16 @@ function snapshotOf(thread: Thread): Thread {
   return structuredClone(thread);
 }
 
-/** A new conversation, titled with the question that opened it. */
-export function startThread(ownerEmail: string, question: string): Thread {
+/**
+ * A new conversation, titled with the question that opened it. A question with
+ * nothing in it is refused, the same way `appendMessage` refuses a message that
+ * cannot render: recents would show a blank row opening a blank transcript.
+ */
+export function startThread(ownerEmail: string, question: string): Thread | null {
+  const opening = parseThreadMessage(userMessage(question));
+  if (!opening) {
+    return null;
+  }
   const now = Date.now();
   const thread: Thread = {
     id: newThreadId(),
@@ -311,7 +319,7 @@ export function startThread(ownerEmail: string, question: string): Thread {
     title: threadTitle(question),
     createdAt: now,
     updatedAt: now,
-    messages: [userMessage(question)],
+    messages: [opening],
   };
   threadsById().set(thread.id, thread);
   return snapshotOf(thread);

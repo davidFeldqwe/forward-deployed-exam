@@ -140,3 +140,14 @@ test("two copies of this module share one store, as Next's route bundles are", a
   assert.equal(asThePage.readThread(analyst, started.id)?.title, NEW_ENGLAND);
   assert.equal(asThePage.latestThreadId(analyst), started.id);
 });
+
+test("a thread needs a first question: a blank one is refused, not stored untitled", () => {
+  // Recents shows the first user question, so a thread with no question is a
+  // blank row that opens a blank transcript. `appendMessage` already refuses a
+  // message that cannot render; starting one is held to the same rule.
+  const analyst = "blank@example.com";
+
+  assert.equal(startThread(analyst, "   \n\t "), null);
+  assert.deepEqual(listThreads(analyst), []);
+  assert.equal(latestThreadId(analyst), null);
+});
