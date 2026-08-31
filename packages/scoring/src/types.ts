@@ -20,12 +20,16 @@ export const COMPONENT_LABELS: Readonly<Record<Component, string>> = {
   growth: "Growth",
 };
 
-export type CandidateLamp =
-  | "Strong candidate"
-  | "Mixed vector"
-  | "Weak candidate"
-  | "Partial inputs"
-  | "No data";
+/** The candidate lamp, in ranking order. Hue never appears without this text. */
+export const CANDIDATE_LAMPS = [
+  "Strong candidate",
+  "Mixed vector",
+  "Weak candidate",
+  "Partial inputs",
+  "No data",
+] as const;
+
+export type CandidateLamp = (typeof CANDIDATE_LAMPS)[number];
 
 /**
  * The accepted `sortBy` values, in the order the answer objects show them:
