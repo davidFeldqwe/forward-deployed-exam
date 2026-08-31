@@ -45,12 +45,12 @@ test("the glossary's peer group is every hub size the snapshot accepts", () => {
 // airports in one metro area that the screen never ranks against each other.
 test("the glossary's Santa Ana versus Los Angeles example is the committed snapshot's", () => {
   const row = rowLookup(scoreUniverse(loadSnapshot()));
-  for (const [iata, municipality] of [
-    ["SNA", "Santa Ana"],
-    ["LAX", "Los Angeles"],
+  for (const { iata, municipality } of [
+    { iata: "SNA", municipality: "Santa Ana" },
+    { iata: "LAX", municipality: "Los Angeles" },
   ]) {
-    assert.equal(row(iata!).municipality, municipality);
-    assert.ok(peerGroup.includes(municipality!), `the entry names ${municipality}`);
+    assert.equal(row(iata).municipality, municipality);
+    assert.ok(peerGroup.includes(municipality), `the entry names ${municipality}`);
   }
   assert.notEqual(row("SNA").peerGroup, row("LAX").peerGroup);
 });

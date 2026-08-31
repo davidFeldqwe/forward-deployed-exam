@@ -14,28 +14,24 @@ import { rowLookup } from "./rows.ts";
 const scored = scoreUniverse(FIXTURE);
 const row = rowLookup(scored);
 
-const nonhubScored = scoreUniverse(NONHUB_FIXTURE);
-const nonhubRow = rowLookup(nonhubScored);
+// The nonhub rows rank in a snapshot of their own, so both universes are scored.
+const nonhubRow = rowLookup(scoreUniverse(NONHUB_FIXTURE));
 
-function percentiles(iata: string) {
-  const { scoreVector } = row(iata);
-  return {
-    congestion: scoreVector.congestion.percentile,
-    unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
-    delay: scoreVector.delay.percentile,
-    growth: scoreVector.growth.percentile,
+/** The four percentiles of one row in a scored universe, as one object. */
+function percentilesIn(lookup: (iata: string) => ScoredAirport) {
+  return (iata: string) => {
+    const { scoreVector } = lookup(iata);
+    return {
+      congestion: scoreVector.congestion.percentile,
+      unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
+      delay: scoreVector.delay.percentile,
+      growth: scoreVector.growth.percentile,
+    };
   };
 }
 
-function nonhubPercentiles(iata: string) {
-  const { scoreVector } = nonhubRow(iata);
-  return {
-    congestion: scoreVector.congestion.percentile,
-    unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
-    delay: scoreVector.delay.percentile,
-    growth: scoreVector.growth.percentile,
-  };
-}
+const percentiles = percentilesIn(row);
+const nonhubPercentiles = percentilesIn(nonhubRow);
 
 /** The numbers scoring computes for one row, apart from the snapshot it read. */
 function scoredNumbers(scoredRow: ScoredAirport) {
