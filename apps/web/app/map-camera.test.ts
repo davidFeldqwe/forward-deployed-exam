@@ -11,6 +11,7 @@ import {
   MIN_POLAR_ANGLE,
   easeOut,
   introEase,
+  type ScenePoint,
 } from "./map-camera.ts";
 
 const web = new URL("../", import.meta.url);
@@ -65,6 +66,27 @@ test("the ease arrives rather than stopping, and is bounded at both ends", () =>
   assert.ok(easeOut(0.5) > 0.5);
   for (const t of [0.1, 0.25, 0.5, 0.75, 0.9]) {
     assert.ok(easeOut(t) > easeOut(t - 0.1));
+  }
+});
+
+/** Where a point sits relative to the orbit's target: how far, and how high. */
+function orbitOf(point: ScenePoint): { distance: number; polar: number } {
+  const dx = point.x - CONUS_VIEW.target.x;
+  const dy = point.y - CONUS_VIEW.target.y;
+  const dz = point.z - CONUS_VIEW.target.z;
+  const distance = Math.hypot(dx, dy, dz);
+  return { distance, polar: Math.acos(dy / distance) };
+}
+
+test("the ease starts and ends somewhere the orbit could have been put", () => {
+  // An endpoint outside the limits would be clamped by the controls on the very
+  // first frame, so the opening move would fight the constraint rather than run.
+  for (const point of [introEase(false).from, introEase(false).to]) {
+    const { distance, polar } = orbitOf(point);
+    assert.ok(polar >= MIN_POLAR_ANGLE, `polar ${polar}`);
+    assert.ok(polar <= MAX_POLAR_ANGLE, `polar ${polar}`);
+    assert.ok(distance >= MIN_DISTANCE, `distance ${distance}`);
+    assert.ok(distance <= MAX_DISTANCE, `distance ${distance}`);
   }
 });
 

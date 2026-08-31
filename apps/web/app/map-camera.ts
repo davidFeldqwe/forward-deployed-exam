@@ -37,8 +37,12 @@ export const MAX_DISTANCE = 46;
 /** The first-load ease, in milliseconds: a demo moment, not a fly-through. */
 export const INTRO_MS = 850;
 
-/** Where that ease starts: higher and further back, looking almost straight down. */
-const INTRO_FROM: ScenePoint = { x: 0, y: 30, z: 4 };
+/**
+ * Where that ease starts: higher up and further out, looking down on the
+ * country rather than along it. Inside the orbit's own limits, so the controls
+ * do not clamp the first frame out from under the move.
+ */
+const INTRO_FROM: ScenePoint = { x: 0, y: 26, z: 6 };
 
 export type IntroEase = {
   from: ScenePoint;
