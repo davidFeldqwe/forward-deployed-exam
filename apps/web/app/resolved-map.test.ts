@@ -252,3 +252,19 @@ test("the map is drawn after the ranking table it belongs to", () => {
   assert.ok(at("<Ranking") < at("<ResolvedMap"));
   assert.ok(at("<ResolvedMap") < at("<Caveats"));
 });
+
+const prd = readFileSync(new URL("../../PRD.md", web), "utf8");
+
+test("the PRD states the map gate the build enforces, and the slot it draws in", () => {
+  const start = prd.indexOf("In-thread map");
+  assert.notEqual(start, -1, "PRD does not name the in-thread map");
+  const map = prd.slice(start, start + 900);
+
+  // The three halves of the gate, in the doc a reviewer reads before the code.
+  for (const clause of [/state/i, /region/i, /two or more/i, /coordinates/i]) {
+    assert.match(map, clause);
+  }
+  assert.match(map, /after the ranking table/i);
+  // No tiles is a claim about the shipped bundle, so the doc makes it too.
+  assert.match(map, /no tiles?\b|no map library/i);
+});
