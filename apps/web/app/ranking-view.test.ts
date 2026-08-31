@@ -4,8 +4,9 @@ import { test } from "node:test";
 import type { ScoredAirport } from "@repo/scoring";
 
 import { runAgentTool } from "./agent-tools.ts";
+import { lampPill } from "./lamp-hue.ts";
 import { rankingView } from "./ranking-view.ts";
-import type { JsonValue, ToolCall } from "./thread-messages.ts";
+import type { JsonObject, JsonValue, ToolCall } from "./thread-messages.ts";
 
 const bos: ScoredAirport = {
   iata: "BOS",
@@ -49,8 +50,8 @@ const hya: ScoredAirport = {
   gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for HYA."],
 };
 
-function call(result: JsonValue): ToolCall {
-  return { tool: "queryAirports", args: { region: "New England" }, result, durationMs: 12 };
+function call(result: JsonValue, args: JsonObject = { region: "New England" }): ToolCall {
+  return { tool: "queryAirports", args, result, durationMs: 12 };
 }
 
 const twoRows = call({
@@ -173,6 +174,83 @@ test("caveats are this answer's, gathered off the rows it shows", () => {
   ]);
 });
 
+// Story 30: a lookup is one number per airport, so the answer objects drop the
+// composite and the candidate lamp rather than dressing a lookup as an
+// investment recommendation. The stored row still carries both.
+const delayLookup = call({
+  rows: [bos, hya],
+  matched: 2,
+  resolvedIata: ["BOS", "HYA"],
+  sortBy: null,
+  metric: "delay",
+  limit: 10,
+  unknownIata: [],
+  unknownPlace: [],
+});
+
+test("a single-metric lookup shows that number and no candidate lamp", () => {
+  const view = rankingView(delayLookup);
+  const [first, second] = view?.rows ?? [];
+
+  assert.deepEqual(view?.lookup, { key: "delay", label: "Delay" });
+  assert.equal(view?.sortLabel, "delay");
+  assert.equal(first?.lookupValue, "14.8 min");
+  assert.equal(first?.lamp, null);
+  assert.equal(first?.composite, null);
+  // A row with no delay says so in words: a lookup of a missing number is not a
+  // zero, the same way a missing component is not a low score.
+  assert.equal(second?.lookupValue, "Not reported");
+  assert.equal(second?.lamp, null);
+});
+
+test("long-haul share is a lookup the screen never ranks on, printed as a share", () => {
+  const view = rankingView(
+    call({
+      rows: [bos, hya],
+      matched: 2,
+      resolvedIata: ["BOS", "HYA"],
+      sortBy: null,
+      metric: "longHaulShare",
+      limit: 10,
+      unknownIata: [],
+      unknownPlace: [],
+    }),
+  );
+
+  assert.deepEqual(view?.lookup, { key: "longHaulShare", label: "Long-haul share" });
+  assert.deepEqual(
+    view?.rows.map((row) => row.lookupValue),
+    ["24.1%", "Not reported"],
+  );
+  assert.equal(view?.resolved.summary, "2 airports found");
+});
+
+test("a ranking is not a lookup: it keeps the composite and the lamp, and shows no metric", () => {
+  const view = rankingView(twoRows);
+
+  assert.equal(view?.lookup, null);
+  assert.deepEqual(
+    view?.rows.map((row) => row.lookupValue),
+    [null, null],
+  );
+  assert.deepEqual(
+    view?.rows.map((row) => row.lamp),
+    ["Strong candidate", "Partial inputs"],
+  );
+});
+
+test("a lookup off the committed screen is the module's own metric and rows", () => {
+  const result = runAgentTool("queryAirports", { iata: "ANC", metric: "longHaulShare" });
+  const view = rankingView(call(result));
+
+  assert.equal(result.metric, "longHaulShare");
+  assert.equal(view?.lookup?.key, "longHaulShare");
+  assert.deepEqual(
+    view?.rows.map((row) => row.lamp),
+    [null],
+  );
+});
+
 test("a real ranking off the committed screen renders every row it was handed", () => {
   const result = runAgentTool("queryAirports", { region: "New England" });
   const view = rankingView(call(result));
@@ -183,4 +261,77 @@ test("a real ranking off the committed screen renders every row it was handed", 
     view?.rows.map((row) => row.iata),
     result.rows.map((row) => row.iata),
   );
+});
+
+// Story 28: Los Angeles vs Santa Ana is two airports, and the screen has no city
+// market to merge them into. The compare is drawn as two rows off the committed
+// universe, with the peer-group caveat visible on each of them.
+test("a compare keeps LAX and SNA as two rows, in two peer groups", () => {
+  const result = runAgentTool("queryAirports", { iata: ["LAX", "SNA"] });
+  const view = rankingView(call(result, { iata: ["LAX", "SNA"] }));
+
+  assert.deepEqual(view?.resolved.codes, result.resolvedIata);
+  assert.equal(view?.rows.length, 2);
+  assert.deepEqual(
+    view?.rows.map((row) => row.iata).sort(),
+    ["LAX", "SNA"],
+  );
+  assert.equal(new Set(view?.rows.map((row) => row.name)).size, 2);
+  // Different FAA hub sizes, so the two composites are not like-for-like — the
+  // row says which peer group it was ranked in.
+  assert.deepEqual(
+    view?.rows.map((row) => row.peerLabel).sort(),
+    ["large FAA hubs", "medium FAA hubs"],
+  );
+  assert.equal(view?.resolved.phrase, "LAX · SNA");
+});
+
+test("the municipality Los Angeles is one airport, not a metro that swallows SNA", () => {
+  const losAngeles = runAgentTool("queryAirports", { municipality: "Los Angeles" });
+
+  assert.deepEqual(losAngeles.resolvedIata, ["LAX"]);
+  assert.deepEqual(losAngeles.unknownPlace, []);
+});
+
+// Story 27, end to end on the row the table draws: a coverage state is words and
+// a withheld composite, never a low number and never red.
+test("Partial inputs and No data are text pills with no hue, and the composite is —", () => {
+  const noData: ScoredAirport = {
+    ...hya,
+    iata: "ACK",
+    name: "Nantucket Memorial",
+    candidateLamp: "No data",
+    scoreVector: {
+      congestion: { percentile: null, raw: null, coverage: "missing" },
+      unmetFlightDemand: { percentile: null, raw: null, coverage: "missing" },
+      delay: { percentile: null, raw: null, coverage: "missing" },
+      growth: { percentile: null, raw: null, coverage: "missing" },
+    },
+  };
+  const view = rankingView(
+    call({
+      rows: [hya, noData],
+      matched: 2,
+      resolvedIata: ["HYA", "ACK"],
+      sortBy: "composite",
+      metric: null,
+      limit: 10,
+      unknownIata: [],
+      unknownPlace: [],
+    }),
+  );
+
+  assert.deepEqual(
+    view?.rows.map((row) => [row.lamp, row.composite, row.coverage]),
+    [
+      ["Partial inputs", "—", "3 of 4"],
+      ["No data", "—", "0 of 4"],
+    ],
+  );
+  for (const row of view?.rows ?? []) {
+    assert.ok(row.lamp);
+    // The pill prints the words; its classes carry no hue, so missing is never
+    // read as a weak candidate.
+    assert.doesNotMatch(lampPill(row.lamp), /lamp-/);
+  }
 });

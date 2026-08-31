@@ -1,32 +1,29 @@
+import { carriedContext, type CarriedContext as CarriedContextView } from "@/app/carried-context";
 import { rankingView, type RankingView } from "@/app/ranking-view";
 import type { ThreadMessage } from "@/app/thread-messages";
+import { CarriedContext } from "@/components/answers/CarriedContext";
 import { Caveats } from "@/components/answers/Caveats";
 import { Ranking } from "@/components/answers/Ranking";
 import { ResolvedSet } from "@/components/answers/ResolvedSet";
 import { ToolRow } from "@/components/answers/ToolRow";
-
-const roleLabel: Record<ThreadMessage["role"], string> = {
-  user: "You",
-  assistant: "Agent",
-};
+import { Prose, RoleLabel } from "@/components/Turn";
 
 /**
  * The persisted message list. An answer is drawn in the locked order: the
- * inspectable tool rows, the resolved airport set, the model's prose, the
- * ranking, and this answer's caveats. Everything but the prose is rendered from
- * the tool payloads the message carries, so a sentence that disagrees with the
- * table is visibly the sentence that is wrong.
+ * inspectable tool rows, the carried context a follow-up resolved, the resolved
+ * airport set, the model's prose, the ranking, and this answer's caveats.
+ * Everything but the prose is rendered from the tool payloads the message
+ * carries, so a sentence that disagrees with the table is visibly the sentence
+ * that is wrong.
  */
 export function Transcript({ messages }: { messages: readonly ThreadMessage[] }) {
   return (
     <ol className="flex list-none flex-col gap-6 p-0">
       {messages.map((message, index) => (
         <li key={index} className="flex flex-col gap-3">
-          <span className="font-mono text-[11.5px] tracking-wide text-muted-foreground uppercase">
-            {roleLabel[message.role]}
-          </span>
+          <RoleLabel role={message.role} />
           {message.role === "assistant" ? (
-            <Answer message={message} />
+            <Answer message={message} carried={carriedContext(messages, index)} />
           ) : (
             <Prose text={message.text} />
           )}
@@ -36,7 +33,13 @@ export function Transcript({ messages }: { messages: readonly ThreadMessage[] })
   );
 }
 
-function Answer({ message }: { message: ThreadMessage }) {
+function Answer({
+  message,
+  carried,
+}: {
+  message: ThreadMessage;
+  carried: CarriedContextView | null;
+}) {
   const rankings = message.toolCalls
     .map((call) => rankingView(call))
     .filter((view): view is RankingView => view !== null);
@@ -46,6 +49,9 @@ function Answer({ message }: { message: ThreadMessage }) {
       {message.toolCalls.map((call, index) => (
         <ToolRow key={`${call.tool}-${index}`} call={call} />
       ))}
+      {/* Before the resolved set and the vector under it: how the follow-up
+          reference was resolved comes before any number read for it. */}
+      {carried ? <CarriedContext carried={carried} /> : null}
       {rankings.map((view, index) => (
         <ResolvedSet key={index} resolved={view.resolved} unknown={view.unknown} />
       ))}
@@ -63,7 +69,7 @@ function Answer({ message }: { message: ThreadMessage }) {
         </div>
       ) : null}
       {rankings.map((view, index) => (
-        <Ranking key={index} rows={view.rows} sortLabel={view.sortLabel} />
+        <Ranking key={index} rows={view.rows} lookup={view.lookup} sortLabel={view.sortLabel} />
       ))}
       <Caveats
         assumptions={mergedLines(rankings, "assumptions")}
@@ -71,10 +77,6 @@ function Answer({ message }: { message: ThreadMessage }) {
       />
     </>
   );
-}
-
-function Prose({ text }: { text: string }) {
-  return <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">{text}</p>;
 }
 
 // One caveats block per answer, even when the answer ran two queries.

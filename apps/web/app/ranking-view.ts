@@ -8,15 +8,20 @@
 import {
   COMPONENTS,
   COMPONENT_LABELS,
+  LOOKUP_METRICS,
+  LOOKUP_METRIC_LABELS,
   PLACE_FIELDS,
   SORT_KEYS,
   WEIGHTS,
+  metricValue,
   type CandidateLamp,
   type Component,
+  type LookupMetric,
   type ScoredAirport,
   type SortBy,
 } from "@repo/scoring";
 
+import { unknownIataRefusal, unknownPlaceRefusal } from "./refusals.ts";
 import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./thread-messages.ts";
 
 /**
@@ -41,9 +46,16 @@ export type RankingRowView = {
   rank: number;
   iata: string;
   name: string;
-  /** The composite, or `WITHHELD_COMPOSITE`. Missing is not a low score. */
-  composite: string;
-  lamp: CandidateLamp;
+  /**
+   * The composite, or `WITHHELD_COMPOSITE` where the screen withheld one — and
+   * null on a lookup, which has no composite column at all: a withheld number
+   * and a number nobody asked for are two different absences.
+   */
+  composite: string | null;
+  /** Null on a lookup: a lookup is not an investment recommendation. */
+  lamp: CandidateLamp | null;
+  /** The one number a lookup prints, formatted; null on a ranking. */
+  lookupValue: string | null;
   whyLabels: string[];
   peerLabel: string;
   coverage: string;
@@ -61,11 +73,24 @@ export type ResolvedSet = {
 export type RankingUnknowns = {
   iata: string[];
   place: { field: string; value: string }[];
+  /**
+   * The locked refusals for what did not resolve, or null when everything did.
+   * They are on the answer object rather than left to the prose, so an analyst
+   * is told what the screen accepts even when the model does not say it.
+   */
+  placeRefusal: string | null;
+  iataRefusal: string | null;
 };
 
 export type RankingView = {
   resolved: ResolvedSet;
   rows: RankingRowView[];
+  /**
+   * The single metric this answer looks up, or null when it is a ranking. It is
+   * what the table reads to draw one number instead of a composite and a lamp.
+   */
+  lookup: { key: LookupMetric; label: string } | null;
+  /** What the rows are in the order of: the sort key, or the lookup's metric. */
   sortLabel: string;
   assumptions: string[];
   gaps: string[];
@@ -86,8 +111,8 @@ export function rankingView(call: ToolCall | undefined): RankingView | null {
   // same object — the matched set, the sort key, the unknowns — off it.
   const result = isObject(call.result) ? call.result : {};
   const resolvedIata = stringsOf(result.resolvedIata) ?? rows.map((row) => row.iata);
-  const sortBy = sortKeyOf(result.sortBy);
-  const sortLabel = sortBy === "composite" ? "composite" : COMPONENT_LABELS[sortBy].toLowerCase();
+  const metric = metricOf(result.metric);
+  const sortLabel = orderLabel(metric, sortKeyOf(result.sortBy));
 
   return {
     resolved: {
@@ -95,18 +120,21 @@ export function rankingView(call: ToolCall | undefined): RankingView | null {
       codes: resolvedIata,
       summary: summaryOf(resolvedIata.length, rows.length, sortLabel),
     },
-    rows: rows.map((row, index) => rowView(row, index + 1)),
+    rows: rows.map((row, index) => rowView(row, index + 1, metric)),
+    lookup: metric === null ? null : { key: metric, label: LOOKUP_METRIC_LABELS[metric] },
     sortLabel,
     assumptions: uniqueLines(rows, "assumptions"),
     gaps: uniqueLines(rows, "gaps"),
-    unknown: {
-      iata: stringsOf(result.unknownIata) ?? [],
-      place: unknownPlacesOf(result.unknownPlace),
-    },
+    unknown: unknownsOf(result),
   };
 }
 
-function rowView(row: ScoredAirport, rank: number): RankingRowView {
+/**
+ * One row, as a ranking draws it or as a lookup does. A lookup reads the same
+ * stored row — the payload is one shape — and prints its one number instead of
+ * the composite and the lamp, so a lookup is never dressed as a screen result.
+ */
+function rowView(row: ScoredAirport, rank: number, metric: LookupMetric | null): RankingRowView {
   const present = COMPONENTS.filter(
     (component) => row.scoreVector[component].coverage === "present",
   ).length;
@@ -115,13 +143,45 @@ function rowView(row: ScoredAirport, rank: number): RankingRowView {
     rank,
     iata: row.iata,
     name: row.name,
-    composite: row.composite === null ? WITHHELD_COMPOSITE : String(row.composite),
-    lamp: row.candidateLamp,
+    ...answerCells(row, metric),
     whyLabels: whyLabels(row),
     peerLabel: `${row.peerGroup} FAA hubs`,
     coverage: `${present} of ${COMPONENTS.length}`,
     vector: COMPONENTS.map((component) => vectorCell(row, component)),
   };
+}
+
+/**
+ * The three cells the answer shape decides between, filled in one place so they
+ * cannot half-agree: a ranking draws the screen's composite and candidate lamp,
+ * a lookup draws the one number it was asked for and neither of those.
+ */
+function answerCells(
+  row: ScoredAirport,
+  metric: LookupMetric | null,
+): Pick<RankingRowView, "composite" | "lamp" | "lookupValue"> {
+  if (metric !== null) {
+    return { composite: null, lamp: null, lookupValue: lookupValue(row, metric) };
+  }
+  return {
+    // The screen's number, or the mark that says it withheld one.
+    composite: row.composite === null ? WITHHELD_COMPOSITE : String(row.composite),
+    lamp: row.candidateLamp,
+    lookupValue: null,
+  };
+}
+
+/**
+ * The one number a lookup prints. A component keeps the units the vector shows
+ * it in; long-haul share is a share, and a missing one says so in words — a
+ * lookup of a number the snapshot does not carry is not a zero.
+ */
+function lookupValue(row: ScoredAirport, metric: LookupMetric): string {
+  const value = metricValue(row, metric);
+  if (metric === "longHaulShare") {
+    return value === null ? "Not reported" : `${(value * 100).toFixed(1)}%`;
+  }
+  return rawValue(metric, value);
 }
 
 function vectorCell(row: ScoredAirport, key: Component): VectorCell {
@@ -221,6 +281,18 @@ function uniqueLines(rows: readonly ScoredAirport[], key: "assumptions" | "gaps"
   return [...lines];
 }
 
+/** What the query could not resolve, with the refusal each one is owed. */
+function unknownsOf(result: JsonObject): RankingUnknowns {
+  const iata = stringsOf(result.unknownIata) ?? [];
+  const place = unknownPlacesOf(result.unknownPlace);
+  return {
+    iata,
+    place,
+    placeRefusal: unknownPlaceRefusal(place),
+    iataRefusal: unknownIataRefusal(iata),
+  };
+}
+
 function unknownPlacesOf(value: JsonValue | undefined): { field: string; value: string }[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) =>
@@ -232,6 +304,16 @@ function unknownPlacesOf(value: JsonValue | undefined): { field: string; value: 
 
 function sortKeyOf(value: JsonValue | undefined): SortBy {
   return SORT_KEYS.find((key) => key === value) ?? "composite";
+}
+
+function metricOf(value: JsonValue | undefined): LookupMetric | null {
+  return LOOKUP_METRICS.find((metric) => metric === value) ?? null;
+}
+
+/** What the rows are in the order of, in the words the answer prints elsewhere. */
+function orderLabel(metric: LookupMetric | null, sortBy: SortBy): string {
+  if (metric !== null) return LOOKUP_METRIC_LABELS[metric].toLowerCase();
+  return sortBy === "composite" ? "composite" : COMPONENT_LABELS[sortBy].toLowerCase();
 }
 
 function stringsOf(value: JsonValue | undefined): string[] | null {

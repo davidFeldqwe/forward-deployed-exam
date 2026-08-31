@@ -3,12 +3,16 @@ import { test } from "node:test";
 
 import {
   DEFAULT_LIMIT,
+  LOOKUP_METRICS,
+  LOOKUP_METRIC_LABELS,
   MAX_LIMIT,
   PLACE_FIELDS,
   SORT_KEYS,
+  metricValue,
   placeVocabulary,
   queryAirports,
   scoreUniverse,
+  type LookupMetric,
   type QueryAirportsArgs,
   type SortBy,
 } from "../src/index.ts";
@@ -394,4 +398,105 @@ test("the resolved airport set is named in full, even when the limit cuts the ro
   assert.deepEqual(result.resolvedIata, ["BDL", "BOS", "ORH", "PVD", "HYA"]);
   // The count and the set are the same answer, so they cannot disagree.
   assert.equal(result.matched, result.resolvedIata.length);
+});
+
+// Story 30: a single-metric lookup is one number per airport, not a ranking, so
+// the module says which number was asked for and orders the rows by it. The row
+// keeps its composite and lamp — the answer objects are what withhold them —
+// because a lookup must still survive the same payload check a ranking does.
+test("a lookup names its metric and orders the rows by that raw number", () => {
+  const result = queryAirports(scored, { metric: "delay" });
+
+  assert.equal(result.metric, "delay");
+  assert.deepEqual(result.rows.map((row) => row.iata), [
+    "ORD",
+    "ATL",
+    "LAX",
+    "BOS",
+    "BDL",
+    "ORH",
+    "SNA",
+    "PVD",
+    "MDW",
+    "HYA",
+  ]);
+  // Raw minutes, not the percentile the same key ranks on: a lookup shows the
+  // number it is read for, and MDW has none.
+  assert.deepEqual(result.rows.map((row) => metricValue(row, "delay")), [
+    16.5, 13.5, 13, 12, 12, 11, 10.5, 9, null, null,
+  ]);
+});
+
+test("long-haul share is a lookup metric, though it is still not a sort key", () => {
+  const result = queryAirports(scored, { metric: "longHaulShare" });
+
+  assert.equal(result.metric, "longHaulShare");
+  assert.deepEqual(result.rows.map((row) => row.iata), [
+    "LAX",
+    "BOS",
+    "SNA",
+    "ATL",
+    "BDL",
+    "PVD",
+    "ORD",
+    "MDW",
+    "ORH",
+    "HYA",
+  ]);
+  const top = result.rows[0];
+  assert.ok(top, "the lookup returned no rows");
+  assert.equal(metricValue(top, "longHaulShare"), 0.2823);
+  assert.throws(() => queryAirports(scored, { sortBy: "longHaulShare" as SortBy }), RangeError);
+});
+
+// A lookup and a ranking are two answers, and the payload says which one it is:
+// the view drops the composite column and the candidate lamp from a lookup, so
+// a result that reported both keys would let it draw a lamp on a lookup.
+test("a ranking has a sort key and no metric; a lookup has a metric and no sort key", () => {
+  const ranking = queryAirports(scored, { sortBy: "delay" });
+  assert.equal(ranking.sortBy, "delay");
+  assert.equal(ranking.metric, null);
+
+  // A lookup is ordered by its own number, so a sort key passed beside it is not
+  // the order the rows came back in and is not reported as one.
+  const lookup = queryAirports(scored, { metric: "delay", sortBy: "composite" });
+  assert.equal(lookup.sortBy, null);
+  assert.equal(lookup.metric, "delay");
+});
+
+test("an off-list metric is refused by name, the way an off-list sort key is", () => {
+  assert.throws(
+    () => queryAirports(scored, { metric: "roi" as LookupMetric }),
+    (error: unknown) => {
+      assert.ok(error instanceof RangeError, `threw ${String(error)}`);
+      assert.match(error.message, /roi/);
+      for (const metric of LOOKUP_METRICS) assert.match(error.message, new RegExp(metric));
+      return true;
+    },
+  );
+  assert.equal(queryAirports(scored, { metric: null }).metric, null);
+});
+
+test("LOOKUP_METRICS is the four components plus long-haul share", () => {
+  assert.deepEqual(LOOKUP_METRICS, [
+    "congestion",
+    "unmetFlightDemand",
+    "delay",
+    "growth",
+    "longHaulShare",
+  ]);
+  for (const metric of LOOKUP_METRICS) {
+    assert.equal(queryAirports(scored, { metric }).metric, metric);
+    assert.ok(LOOKUP_METRIC_LABELS[metric].length > 0);
+  }
+});
+
+test("a lookup filters like any other query, and still names an unknown place", () => {
+  const result = queryAirports(scored, { region: "New England", metric: "longHaulShare" });
+
+  assert.deepEqual(result.rows.map((row) => row.iata), ["BOS", "BDL", "PVD", "ORH", "HYA"]);
+  assert.equal(result.matched, 5);
+  assert.deepEqual(queryAirports(scored, { state: "California", metric: "delay" }).unknownPlace, [
+    { field: "state", value: "California" },
+  ]);
 });

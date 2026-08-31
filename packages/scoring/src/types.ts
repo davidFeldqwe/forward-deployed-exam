@@ -41,6 +41,24 @@ export const SORT_KEYS = ["composite", ...COMPONENTS] as const;
 export type SortBy = (typeof SORT_KEYS)[number];
 
 /**
+ * The single numbers one airport can be looked up for (story 30), in the order
+ * the answer objects show them: the four vector slots, then long-haul share.
+ *
+ * Long-haul share is here and absent from `SORT_KEYS` for the same reason: it is
+ * a lookup, not something the screen ranks on. A lookup is not a ranking either
+ * — the answer shows this one number, and no composite and no candidate lamp —
+ * so asking for one is a different argument from asking for a sort.
+ */
+export const LOOKUP_METRICS = [...COMPONENTS, "longHaulShare"] as const;
+
+export type LookupMetric = (typeof LOOKUP_METRICS)[number];
+
+export const LOOKUP_METRIC_LABELS: Readonly<Record<LookupMetric, string>> = {
+  ...COMPONENT_LABELS,
+  longHaulShare: "Long-haul share",
+};
+
+/**
  * The place filters, in the order an unresolved one is reported. Exported as
  * values for the same reason as `SORT_KEYS`: the rank HTTP reads these off a
  * query string and the agent tool takes them from the model, so both walk one

@@ -1,6 +1,8 @@
 import {
+  LOOKUP_METRICS,
   PLACE_FIELDS,
   SORT_KEYS,
+  type LookupMetric,
   type PlaceField,
   type ScoredAirport,
   type SortBy,
@@ -26,6 +28,13 @@ export type QueryAirportsArgs = {
   municipality?: string | null;
   peerGroup?: string | null;
   sortBy?: SortBy | null;
+  /**
+   * Asks for one number per airport instead of a ranking (story 30). It orders
+   * the rows too — a lookup of delay minutes is read in delay order — so a
+   * `sortBy` beside it is not the order the rows come back in and is not
+   * reported as one.
+   */
+  metric?: LookupMetric | null;
   limit?: number | null;
 };
 
@@ -49,7 +58,15 @@ export type QueryResult = {
    * score vectors nobody asked for and still stops at 25.
    */
   resolvedIata: string[];
-  sortBy: SortBy;
+  /** How the rows are ranked, or null when `metric` made this a lookup. */
+  sortBy: SortBy | null;
+  /**
+   * The one number this answer looks up, or null for a ranking. The rows still
+   * carry their composite and candidate lamp — a row is one shape, and the
+   * stored payload is checked against it — so this is what tells the answer
+   * objects to show neither: a lookup is not an investment recommendation.
+   */
+  metric: LookupMetric | null;
   /** The limit actually applied, after the default and the hard cap. */
   limit: number;
   /**
@@ -118,7 +135,7 @@ export function queryAirports(
   // Arguments are resolved before any work, so a bad `sortBy` is refused rather
   // than reported after a filter the caller never gets to see.
   const codes = requestedCodes(args.iata);
-  const sortBy = resolveSortBy(args.sortBy);
+  const ordering = resolveOrdering(args);
   // Naming codes is an explicit ask for those rows, so it lifts the default to
   // the cap: a two-code compare returns both.
   const limit = resolveLimit(args.limit, codes === null ? DEFAULT_LIMIT : MAX_LIMIT);
@@ -131,7 +148,7 @@ export function queryAirports(
   // `filter` already copied, so sorting in place leaves the scored universe
   // untouched. The sort is stable, so airports tied on the sort key keep the
   // snapshot's order, which is enplanements descending.
-  matchedRows.sort((left, right) => byDescending(left, right, sortBy));
+  matchedRows.sort((left, right) => byDescending(left, right, ordering));
 
   // The resolved set and its count are one answer, derived from one array, so a
   // caller cannot be told twelve airports matched and handed eleven codes.
@@ -141,7 +158,8 @@ export function queryAirports(
     rows: matchedRows.slice(0, limit),
     matched: resolvedIata.length,
     resolvedIata,
-    sortBy,
+    sortBy: ordering.sortBy,
+    metric: ordering.metric,
     limit,
     unknownIata: codes === null ? [] : unknownCodes(codes, scored),
     unknownPlace: unknownPlaces(args, scored),
@@ -163,6 +181,34 @@ function resolveSortBy(requested: SortBy | null | undefined): SortBy {
   if (SORT_KEYS.includes(requested)) return requested;
   throw new RangeError(
     `sortBy must be one of ${SORT_KEYS.join(", ")}; received ${JSON.stringify(requested)}`,
+  );
+}
+
+/**
+ * How the rows are ordered: a ranking's sort key, or the one number a lookup
+ * shows. Exactly one of the two, because a lookup is read in the order of the
+ * column in front of the analyst — so a `sortBy` passed beside a `metric` is not
+ * the order the rows came back in, and is not reported as one.
+ */
+type Ordering =
+  | { sortBy: SortBy; metric: null }
+  | { sortBy: null; metric: LookupMetric };
+
+function resolveOrdering(args: QueryAirportsArgs): Ordering {
+  const metric = resolveMetric(args.metric);
+  return metric === null
+    ? { sortBy: resolveSortBy(args.sortBy), metric: null }
+    : { sortBy: null, metric };
+}
+
+// A lookup metric reaches this module the same way `sortBy` does, so it is
+// checked the same way: named back to the caller rather than left to read
+// `undefined` off a row it does not have.
+function resolveMetric(requested: LookupMetric | null | undefined): LookupMetric | null {
+  if (unspecified(requested)) return null;
+  if (LOOKUP_METRICS.includes(requested)) return requested;
+  throw new RangeError(
+    `metric must be one of ${LOOKUP_METRICS.join(", ")}; received ${JSON.stringify(requested)}`,
   );
 }
 
@@ -216,15 +262,35 @@ function resolveLimit(requested: number | null | undefined, fallback: number): n
   return Math.min(Math.max(asked, 1), MAX_LIMIT);
 }
 
-function byDescending(left: ScoredAirport, right: ScoredAirport, sortBy: SortBy): number {
-  const leftValue = sortValue(left, sortBy);
-  const rightValue = sortValue(right, sortBy);
+function byDescending(left: ScoredAirport, right: ScoredAirport, ordering: Ordering): number {
+  const leftValue = orderValue(left, ordering);
+  const rightValue = orderValue(right, ordering);
   // A withheld number is not a low one, so it sorts to the end either way.
   if (leftValue === null) return rightValue === null ? 0 : 1;
   if (rightValue === null) return -1;
   return rightValue - leftValue;
 }
 
-function sortValue(row: ScoredAirport, sortBy: SortBy): number | null {
-  return sortBy === "composite" ? row.composite : row.scoreVector[sortBy].percentile;
+/**
+ * A ranking is ordered on the composite or a component's percentile; a lookup is
+ * ordered on the raw number it prints, so the same component key reads a
+ * different field depending on which answer this is.
+ */
+function orderValue(row: ScoredAirport, ordering: Ordering): number | null {
+  if (ordering.metric !== null) {
+    return metricValue(row, ordering.metric);
+  }
+  return ordering.sortBy === "composite"
+    ? row.composite
+    : row.scoreVector[ordering.sortBy].percentile;
+}
+
+/**
+ * The number a single-metric lookup shows for one airport: the component's raw
+ * value, or long-haul share, which lives on the row rather than in the vector.
+ * Exported because the answer objects print this column and would otherwise
+ * re-derive which field a metric reads from.
+ */
+export function metricValue(row: ScoredAirport, metric: LookupMetric): number | null {
+  return metric === "longHaulShare" ? row.longHaulShare : row.scoreVector[metric].raw;
 }

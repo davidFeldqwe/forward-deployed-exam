@@ -37,15 +37,14 @@ export function ResolvedSet({
         </ul>
       ) : null}
       <span className="text-[12.5px] text-muted-foreground">{resolved.summary}</span>
-      {unknown.place.map(({ field, value }) => (
-        <span key={`${field}:${value}`} className="text-[12.5px] text-body">
-          No airport in this screen carries {field} “{value}”, so nothing was ranked for it.
-        </span>
-      ))}
-      {unknown.iata.length > 0 ? (
-        <span className="text-[12.5px] text-body">
-          Outside the screened universe: {unknown.iata.join(", ")}.
-        </span>
+      {/* The refusals are locked copy on the answer object (stories 31-32), not
+          a sentence composed here or left to the prose: an analyst is told what
+          the screen accepts even when the model does not say it. */}
+      {unknown.placeRefusal ? (
+        <span className="text-[12.5px] text-body">{unknown.placeRefusal}</span>
+      ) : null}
+      {unknown.iataRefusal ? (
+        <span className="text-[12.5px] text-body">{unknown.iataRefusal}</span>
       ) : null}
     </section>
   );
