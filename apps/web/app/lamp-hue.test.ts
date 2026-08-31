@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
 
-import { LAMP_LEGEND_NOTE, lampPill } from "./lamp-hue.ts";
+import { LAMP_LEGEND_NOTE, lampPill, lampVariable } from "./lamp-hue.ts";
 
 const HUE_CLASS = /(?:text|bg|border)-lamp-/;
 
@@ -108,4 +108,28 @@ test("PRD Out of Scope no longer forbids in-thread lamp hue, and still forbids 3
   assert.match(outOfScope, /3D map/);
   assert.match(outOfScope, /profit/i);
   assert.doesNotMatch(outOfScope, /lamp|hue/i);
+});
+
+test("the canvas lights the same custom properties the pills do, and greys the rings", () => {
+  // The skyline reads a colour, not a class, so the two surfaces agree by
+  // sharing the custom property rather than by matching hex strings.
+  assert.equal(lampVariable("Strong candidate"), "--lamp-strong");
+  assert.equal(lampVariable("Mixed vector"), "--lamp-mixed");
+  assert.equal(lampVariable("Weak candidate"), "--lamp-weak");
+  for (const lamp of ["Partial inputs", "No data"] as const) {
+    assert.equal(lampVariable(lamp), "--muted-foreground");
+  }
+
+  // Each lamp word's pill and its column come off the same token.
+  for (const lamp of CANDIDATE_LAMPS) {
+    assert.match(lampPill(lamp), new RegExp(lampVariable(lamp).replace("--", "")));
+  }
+});
+
+test("every hue the canvas asks for is a property the stylesheet defines", () => {
+  const globals = source("app/globals.css");
+
+  for (const lamp of CANDIDATE_LAMPS) {
+    assert.match(globals, new RegExp(`\\n\\s*${lampVariable(lamp)}:`), lamp);
+  }
 });
