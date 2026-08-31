@@ -24,7 +24,7 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 3. As a visitor, I want suggested-question cards that use glossary language (renovation-investment candidate, New England, compare two airports), so that I see what the agent actually answers.
 4. As a visitor, I want a How it works strip (ingest → snapshot → tools → answer objects), so that I understand numbers come from code.
 5. As a visitor, I want a Built on row for Next.js, Convex, and Vercel AI SDK, so that the stack on the page matches the repo.
-6. As a visitor, I do not want a 3D map, Chat-as-public-demo, or logos for FastAPI / LangGraph / Neon / Clerk, so that the landing does not advertise surfaces we will not ship.
+6. As a visitor, I want the Landing header to offer **Map** — the one 3D surface we do ship (amended by [public /map](https://github.com/davidFeldqwe/forward-deployed-exam/issues/68)) — and no Chat-as-public-demo or logos for FastAPI / LangGraph / Neon / Clerk, so that the landing advertises only surfaces that exist.
 7. As a visitor, I want the landing in the dark zip palette, so that it matches the signed-in agent.
 8. As a visitor, I want GitHub in the site header on both surfaces, and still in the Landing footer, pointing at this repo, so that a reviewer can open the source.
 9. As a visitor, I want /chat to send me to /login, so that the agent is not a guest toy.
@@ -79,8 +79,9 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 
 - `/` — **Landing** when signed out. When signed in, redirect to chat (last thread, else empty).
 - `/login` — password sign-up and sign-in, dark zip chrome, no second visual system.
-- Shared site header on Landing and chat: sticky at the top of the viewport, full-bleed (the bar spans the width; its content is padded off the edges, not squeezed into the page column), still — no enter/exit motion. Left is identity: a compact mark plus the wordmark **Airport Investment Intelligence Agent**, not truncated at desktop width. Right is chat, GitHub, and the profile control — one icon that reaches `/login` signed out and signs out signed in. Chat adds the comparison window and the recents drawer control; the drawer control leads the bar, so keyboard order is identity, then header actions, then page content. On a phone-width viewport nothing overflows: action labels are read but not drawn, the comparison window shortens to its years, and the wordmark is what gives way. No Methodology control in the left cluster.
-- Chat — that header, a left thread rail, and the transcript/composer column beside it. The transcript scrolls under the bar and the composer stays at the bottom of the viewport. No Methodology popover, no Rankings / dossier / 3D map routes.
+- Shared site header on Landing, chat and `/map`: sticky at the top of the viewport, full-bleed (the bar spans the width; its content is padded off the edges, not squeezed into the page column), still — no enter/exit motion. Left is identity: a compact mark plus the wordmark **Airport Investment Intelligence Agent**, not truncated at desktop width. Right is chat, **Map**, GitHub, and the profile control, with the current surface's own control marked — one icon that reaches `/login` signed out and signs out signed in. Chat adds the comparison window and the recents drawer control; the drawer control leads the bar, so keyboard order is identity, then header actions, then page content. On a phone-width viewport nothing overflows: action labels are read but not drawn, the comparison window shortens to its years, and the wordmark is what gives way. No Methodology control in the left cluster.
+- Chat — that header, a left thread rail, and the transcript/composer column beside it. The transcript scrolls under the bar and the composer stays at the bottom of the viewport. No Methodology popover, no Rankings / dossier routes.
+- `/map` — the public capacity-pressure skyline. No gate: it opens signed out, with no LLM key and no aviation HTTP. Same bar, with **Map** marked current and the comparison window beside it. Column height is the **composite score**, linear; radius is constant; hue is the **candidate lamp**, always over a legend that names all five lamp words. A withheld composite is a flat neutral ring, never a short red column. The ground plane is committed US-states geometry — no Mapbox, no tiles, no token. Numbers come from `scoreUniverse` over the same committed snapshot chat answers from; the canvas holds no second screen. No WebGL is a short empty state that points at that module, not a second SVG map. The page is a skyline plus its key: no sidecar ranking table, no filter chips, no year toggle.
 - Thread rail on chat: thread title = first user question; New thread at the top; the open thread marked current; empty recents explains that a question starts one. Dense and near-black, no search, folders, Settled, "show more", or footer tray. On a narrow viewport it is a drawer a header control opens. The comparison window stays in the header, beside the shared actions.
 - Gate: unauthenticated `/chat` (or equivalent) → `/login`. Start asking and landing cards go through login, then a new thread. Cards may prefill or send the prompt after sign-in.
 - Empty chat: blank transcript + chips (same prompts as landing cards). No thesis paragraph.
@@ -88,7 +89,7 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 ### Landing content (screenshot composition, zip palette)
 
 Keep: the shared header (wordmark, chat, GitHub, profile control into Sign in), hero, demo card, suggested questions, How it works, Start asking, privacy line if threads store questions (email + questions logged in Convex; never sold), GitHub footer credit.
-Drop: 3D map nav and CTA, Clerk/FastAPI/LangGraph/Neon/Cloud Run/Langfuse as “Built on”.
+Drop: the zip's 3D map CTA (the header's **Map** action is the way to `/map`), Clerk/FastAPI/LangGraph/Neon/Cloud Run/Langfuse as “Built on”.
 Demo card on the landing is fixture UI in zip chrome, not a second scoring path.
 
 ### Snapshot
@@ -131,7 +132,7 @@ Fixed weights (not a UI knob): congestion 35, unmet flight demand 35, delay 20, 
 - Partial inputs — at least one component missing; withhold composite (`—`); do not emit a 3-of-4 number; do not zero-fill; do not re-weight remaining components into a fake composite
 - No data — no composite available
 
-Hue never without a text pill. Missing is never red. On the ranking table the lamp words carry hue: Strong candidate green, Mixed vector yellow, Weak candidate red, Partial inputs and No data grey or outline. A legend names those five lamp words beside their hue, so the table reads without colour. Percentile bars inside the score vector stay grey, and indigo stays send, focus, and links. In-thread lamp hue is in scope; a heat-map page and a 3D map route are not.
+Hue never without a text pill. Missing is never red. On the ranking table the lamp words carry hue: Strong candidate green, Mixed vector yellow, Weak candidate red, Partial inputs and No data grey or outline. A legend names those five lamp words beside their hue, so the table reads without colour. Percentile bars inside the score vector stay grey, and indigo stays send, focus, and links. In-thread lamp hue is in scope, and so is the `/map` skyline, whose columns take the same three hues off the same tokens and sit over a legend naming all five lamp words. A heat-map page is not.
 
 Module shape (names can move; behavior cannot):
 
@@ -228,13 +229,14 @@ There is no prior test suite in this repo; scoring tests are the first.
 
 ## Out of Scope
 
-- Voice input, cloud TTS, PDF export, heat-map-as-a-page, 3D map route, public guest chat (browser `speechSynthesis` on the last assistant prose is reopened by [exam edges](https://github.com/davidFeldqwe/forward-deployed-exam/issues/24); it adds no vendor and no key)
+- Voice input, cloud TTS, PDF export, heat-map-as-a-page, public guest chat (browser `speechSynthesis` on the last assistant prose is reopened by [exam edges](https://github.com/davidFeldqwe/forward-deployed-exam/issues/24); it adds no vendor and no key)
 - Live aviation HTTP at query time (document the vintage instead)
 - Universe beyond the top ~100
 - Airports, scores, or ingest output stored in Convex
 - Weight sliders, ROI / profit / construction cost / land / politics / airline leases as scored inputs
 - Gate/terminal capacity as a real field (proxy only)
 - Metro grouping; BTS CityMarketID as identity
+- On `/map`: Mapbox / Leaflet / any basemap token, an SVG twin of the canvas, a sidecar ranking table, a dossier route, filter chips, a year-A/B height toggle, or `?region=` coupling from a **Thread**
 - Methodology popover as a page, Rankings or dossier routes (recents as a persistent left column is reopened by [T3 density](https://github.com/davidFeldqwe/forward-deployed-exam/issues/32); it is chrome over the same `listThreads` data)
 - LangGraph, split Python/TS stack, Postgres/DuckDB for 100 rows
 - Social login as a blocker (stretch only)

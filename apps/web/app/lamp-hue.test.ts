@@ -102,12 +102,16 @@ test("the PRD assigns the five hues and keeps the percentile bars grey", () => {
   assert.match(prd, /percentile bars grey/);
 });
 
-test("PRD Out of Scope no longer forbids in-thread lamp hue, and still forbids 3D map", () => {
+test("PRD Out of Scope forbids neither in-thread lamp hue nor the map that #68 added", () => {
   const outOfScope = section(prd, "## Out of Scope");
 
-  assert.match(outOfScope, /3D map/);
   assert.match(outOfScope, /profit/i);
   assert.doesNotMatch(outOfScope, /lamp|hue/i);
+  // #68 amends the "3D map route" lock; what stays out is a basemap token and
+  // a second renderer beside the canvas.
+  assert.doesNotMatch(outOfScope, /3D map route/);
+  assert.match(outOfScope, /Mapbox/);
+  assert.match(outOfScope, /SVG twin/i);
 });
 
 test("the canvas lights the same custom properties the pills do, and greys the rings", () => {

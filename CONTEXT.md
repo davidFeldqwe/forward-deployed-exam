@@ -22,6 +22,10 @@ _Avoid_: marketing site, dashboard, home as a synonym for the agent
 One persisted conversation for a signed-in user. Its title is the first user question.
 _Avoid_: session, chat history (as the object)
 
+**Map**:
+The public `/map` surface: one capacity-pressure skyline of the screened universe, extruded from `scoreUniverse`. A surface of its own, not a **Landing** section and not a **Thread** answer object. Column height is the **composite score**; hue is the **candidate lamp**; a withheld composite is a flat ring.
+_Avoid_: heat map, globe, basemap, dashboard
+
 ### Thesis
 
 **Renovation-investment candidate**:

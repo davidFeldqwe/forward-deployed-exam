@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { CHAT_PATH, LOGIN_PATH } from "./auth-gate.ts";
+import { CHAT_PATH, LOGIN_PATH, MAP_PATH, postLoginPath } from "./auth-gate.ts";
 import { chatCopy } from "./chat-copy.ts";
 import { landingCopy } from "./landing-copy.ts";
 import { loginCopy } from "./login-copy.ts";
@@ -41,15 +41,10 @@ test("the product name is one string, and both surfaces wear the same header", (
   }
 });
 
-test("both surfaces offer chat and GitHub, in that order", () => {
-  for (const signedIn of [false, true]) {
-    assert.deepEqual(
-      siteHeader(signedIn).links.map((action) => action.key),
-      ["chat", "github"],
-    );
-  }
-
+test("chat is the first action, and stays inside the product", () => {
   const chat = link(false, "chat");
+
+  assert.equal(chat.label, "Chat");
   assert.equal(chat.href, CHAT_PATH);
   assert.equal(chat.external, false);
 });
@@ -111,9 +106,8 @@ test("a phone-width bar gives way at the identity, never at the actions", () => 
   // Labels are read but not drawn on a phone, so the glyphs stay hittable.
   assert.match(header, /max-sm:sr-only/);
 
-  // The comparison window is the secondary phrase that shortens to its years;
-  // `chat-copy.test.ts` pins the two strings against each other.
-  assert.match(source("components/Chat.tsx"), /comparisonWindowYears/);
+  // The comparison window is the secondary phrase that shortens to its years.
+  assert.match(header, /comparisonWindowYears/);
 });
 
 test("focus order is identity, then the header actions, then the page", () => {
@@ -128,6 +122,15 @@ test("focus order is identity, then the header actions, then the page", () => {
     const surface = source(file);
     assert.ok(surface.indexOf("<SiteHeader") < surface.indexOf("<main"), file);
   }
+});
+
+test("the bar names the comparison window, and shortens it to its years", () => {
+  assert.match(siteHeaderCopy.comparisonWindow, /Comparison window/);
+  assert.match(siteHeaderCopy.comparisonWindow, /2023/);
+  assert.match(siteHeaderCopy.comparisonWindow, /2024/);
+  // A phone-width bar drops the phrase, never the years.
+  assert.ok(siteHeaderCopy.comparisonWindow.includes(siteHeaderCopy.comparisonWindowYears));
+  assert.match(siteHeaderCopy.comparisonWindowYears, /^2023.2024$/);
 });
 
 test("chat fills both header slots: the drawer control and the window", () => {
@@ -152,4 +155,51 @@ test("the PRD and the coding standards describe the shared header", () => {
     assert.match(text, /sticky/i);
     assert.match(text, /profile control/i);
   }
+});
+
+test("every surface offers the same three actions, in one order", () => {
+  for (const signedIn of [false, true]) {
+    assert.deepEqual(
+      siteHeader(signedIn).links.map((action) => action.key),
+      ["chat", "map", "github"],
+    );
+  }
+
+  const map = link(false, "map");
+  assert.equal(map.label, "Map");
+  assert.equal(map.href, MAP_PATH);
+  assert.equal(map.external, false);
+  // The map is a public surface, so the gate does not accept it as somewhere to
+  // land after signing in: only chat paths are honoured there.
+  assert.equal(postLoginPath(MAP_PATH), CHAT_PATH);
+});
+
+test("a surface marks its own control current, and nothing else's", () => {
+  const onMap = siteHeader(false, "map").links;
+
+  assert.deepEqual(
+    onMap.map((action) => action.current),
+    [false, true, false],
+  );
+  // Landing is the brochure: it is not one of the header's own actions, so no
+  // control is current there.
+  assert.equal(
+    siteHeader(false).links.some((action) => action.current),
+    false,
+  );
+  assert.deepEqual(
+    siteHeader(true, "chat").links.filter((action) => action.current).map((action) => action.key),
+    ["chat"],
+  );
+});
+
+test("the current control says so to a screen reader, not only in the palette", () => {
+  const header = source("components/SiteHeader.tsx");
+
+  assert.match(header, /aria-current=/);
+});
+
+test("both surfaces hand the header the one they are", () => {
+  assert.match(source("components/Chat.tsx"), /current="chat"/);
+  assert.match(source("components/Skyline.tsx"), /current="map"/);
 });
