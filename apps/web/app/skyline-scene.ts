@@ -63,23 +63,23 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   const palette = resolvePalette(host);
   scene.add(...lights(), ground(input.outlines, palette), ...marks(input.marks, palette));
 
+  // A canvas is inline by default, which would leave a text descender's worth
+  // of gap under it inside a pane sized to the viewport.
+  renderer.domElement.style.display = "block";
   host.appendChild(renderer.domElement);
   const controls = orbit(camera, renderer.domElement, target);
   const resize = fitToHost(host, renderer, camera);
 
   const intro = introEase(input.reducedMotion);
+  const from = new THREE.Vector3(intro.from.x, intro.from.y, intro.from.z);
+  const to = new THREE.Vector3(intro.to.x, intro.to.y, intro.to.z);
   const startedAt = performance.now();
   renderer.setAnimationLoop((now) => {
     // A reduced-motion visitor gets a zero-length ease, so this never runs and
     // the first frame is already the tilted view.
     const elapsed = now - startedAt;
     if (elapsed < intro.durationMs) {
-      const eased = easeOut(elapsed / intro.durationMs);
-      camera.position.lerpVectors(
-        new THREE.Vector3(intro.from.x, intro.from.y, intro.from.z),
-        new THREE.Vector3(intro.to.x, intro.to.y, intro.to.z),
-        eased,
-      );
+      camera.position.lerpVectors(from, to, easeOut(elapsed / intro.durationMs));
     }
     controls.update();
     renderer.render(scene, camera);
@@ -231,7 +231,9 @@ function fitToHost(
   const fit = (): void => {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
-    renderer.setSize(width, height, false);
+    // `setSize` writes the CSS size as well as the drawing buffer, so a device
+    // pixel ratio above 1 sharpens the canvas rather than doubling its box.
+    renderer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
   };
