@@ -1,5 +1,6 @@
 export {
   COMPONENTS,
+  COMPONENTS as SCORE_COMPONENTS,
   COMPONENT_LABELS,
   PLACE_FIELDS,
   SORT_KEYS,
@@ -25,9 +26,6 @@ export {
   type UnknownPlace,
 } from "./query.ts";
 
-/** Alias of `COMPONENTS` for thread payload checks that import this name. */
-export { COMPONENTS as SCORE_COMPONENTS };
-
 /** The candidate lamp, in ranking order. Hue never appears without this text. */
 export const CANDIDATE_LAMPS = [
   "Strong candidate",
@@ -39,3 +37,4 @@ export const CANDIDATE_LAMPS = [
 
 /** FAA schedule constraint levels. No level at all is the common case. */
 export const SLOT_LIMIT_LEVELS = ["Level 2", "Level 3"] as const;
+
