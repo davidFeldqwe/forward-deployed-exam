@@ -12,16 +12,20 @@ import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 /** One legend line: a lamp word, the shape it draws, and what it means. */
 export type LampLegendEntry = {
   lamp: CandidateLamp;
-  shape: "column" | "ring";
+  /** Names the shape as well as the number, so the key reads without colour. */
   meaning: string;
 };
 
+/**
+ * The two coverage states lie flat: missing is not a low composite, so the key
+ * gives them a shape of their own rather than a hue at the bottom of a scale.
+ */
 const LEGEND_MEANINGS: Readonly<Record<CandidateLamp, string>> = {
-  "Strong candidate": "A composite of 70 or more: a tall column.",
-  "Mixed vector": "A composite of 40 to 69.",
-  "Weak candidate": "A composite under 40: a short column.",
-  "Partial inputs": "Some of the four components are missing, so the screen withholds a composite — a flat ring, with no height to read.",
-  "No data": "None of the four components arrived. A flat ring, like Partial inputs.",
+  "Strong candidate": "column, composite 70 and over",
+  "Mixed vector": "column, composite 40 to 69",
+  "Weak candidate": "column, composite under 40",
+  "Partial inputs": "flat ring — a component is missing, so there is no composite to stand it up",
+  "No data": "flat ring — no component arrived",
 };
 
 export const mapCopy = {
@@ -34,10 +38,10 @@ export const mapCopy = {
     "twice the column of 40. Every column is the same width, so FAA hub size is " +
     "not a second thing to read off the canvas.",
   legendHeading: "Candidate lamp",
+  // The two coverage states lie flat: missing is not a low composite, so the
+  // key gives them a shape of their own rather than a hue at the bottom.
   legend: CANDIDATE_LAMPS.map((lamp) => ({
     lamp,
-    // The two coverage states lie flat: missing is not a low composite.
-    shape: lamp === "Partial inputs" || lamp === "No data" ? "ring" : "column",
     meaning: LEGEND_MEANINGS[lamp],
   })) satisfies readonly LampLegendEntry[],
   /** What a screen reader is told the canvas is; it cannot read the mesh. */

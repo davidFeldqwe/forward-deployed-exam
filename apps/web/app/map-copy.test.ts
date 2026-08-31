@@ -20,17 +20,21 @@ test("the legend names all five lamp words, so hue never appears without them", 
   }
 });
 
-test("the legend says the two coverage states are rings, and says it in words", () => {
-  const rings = mapCopy.legend.filter((entry) => entry.shape === "ring");
+test("the legend gives each lamp word its shape, and only the two rings a ring", () => {
+  const shapeOf = (lamp: string): string => {
+    const entry = mapCopy.legend.find((line) => line.lamp === lamp);
+    assert.ok(entry, lamp);
+    return entry.meaning;
+  };
 
-  assert.deepEqual(
-    rings.map((entry) => entry.lamp),
-    ["Partial inputs", "No data"],
-  );
-  for (const entry of rings) {
-    assert.match(entry.meaning, /ring/i);
-    // A ring is missing coverage, not a low composite: it is never a red column.
-    assert.doesNotMatch(entry.meaning, /red|weak/i);
+  for (const lamp of ["Strong candidate", "Mixed vector", "Weak candidate"]) {
+    assert.match(shapeOf(lamp), /column/i);
+    assert.doesNotMatch(shapeOf(lamp), /ring/i);
+  }
+  for (const lamp of ["Partial inputs", "No data"]) {
+    assert.match(shapeOf(lamp), /ring/i);
+    // A ring is missing coverage, not a low composite: never a red column.
+    assert.doesNotMatch(shapeOf(lamp), /red|weak|column/i);
   }
 });
 

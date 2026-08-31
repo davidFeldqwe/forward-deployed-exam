@@ -50,15 +50,13 @@ function LampKey() {
           {mapCopy.legendHeading}
         </h2>
         {mapCopy.legend.map((entry) => (
-          <span
-            key={entry.lamp}
-            title={entry.meaning}
-            className={`rounded border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${lampPill(entry.lamp)}`}
-          >
-            {entry.lamp}
-            <span className="ml-1 font-normal text-muted-foreground">
-              {entry.shape === "ring" ? "ring" : "column"}
+          <span key={entry.lamp} className="flex items-center gap-1.5">
+            <span
+              className={`rounded border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${lampPill(entry.lamp)}`}
+            >
+              {entry.lamp}
             </span>
+            <span className="text-[11px] text-muted-foreground">{entry.meaning}</span>
           </span>
         ))}
       </div>

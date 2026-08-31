@@ -14,6 +14,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
+
 import { lampVariable } from "./lamp-hue.ts";
 import {
   CONUS_VIEW,
@@ -33,6 +35,9 @@ const RING_OUTER_RADIUS = COLUMN_RADIUS * 1.5;
 
 /** Clear of the ground plane, so a ring is not fighting it for the same pixels. */
 const RING_LIFT = 0.008;
+
+/** If a custom property does not resolve, the canvas greys rather than guesses. */
+const FALLBACK_HUE = "#8a8f98";
 
 export type SkylineInput = {
   marks: readonly MapMark[];
@@ -56,7 +61,7 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   camera.position.set(position.x, position.y, position.z);
 
   const palette = resolvePalette(host);
-  scene.add(...lights(), ground(input.outlines, palette.ground), ...columns(input.marks, palette));
+  scene.add(...lights(), ground(input.outlines, palette), ...marks(input.marks, palette));
 
   host.appendChild(renderer.domElement);
   const controls = orbit(camera, renderer.domElement, target);
@@ -65,13 +70,15 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   const intro = introEase(input.reducedMotion);
   const startedAt = performance.now();
   renderer.setAnimationLoop((now) => {
+    // A reduced-motion visitor gets a zero-length ease, so this never runs and
+    // the first frame is already the tilted view.
     const elapsed = now - startedAt;
     if (elapsed < intro.durationMs) {
       const eased = easeOut(elapsed / intro.durationMs);
-      camera.position.set(
-        intro.from.x + (intro.to.x - intro.from.x) * eased,
-        intro.from.y + (intro.to.y - intro.from.y) * eased,
-        intro.from.z + (intro.to.z - intro.from.z) * eased,
+      camera.position.lerpVectors(
+        new THREE.Vector3(intro.from.x, intro.from.y, intro.from.z),
+        new THREE.Vector3(intro.to.x, intro.to.y, intro.to.z),
+        eased,
       );
     }
     controls.update();
@@ -103,26 +110,23 @@ function createRenderer(): THREE.WebGLRenderer | null {
   }
 }
 
-/** The hues the canvas draws in, read off the stylesheet the table reads. */
-type Palette = { ground: THREE.Color; lamp: (mark: MapMark) => THREE.Color };
+/**
+ * The hues the canvas draws in, resolved once off the stylesheet the ranking
+ * table reads: a lamp word's column and its pill light the same custom
+ * property, so the two surfaces cannot hold two greens.
+ */
+type Palette = { ground: THREE.Color; lamp: Readonly<Record<CandidateLamp, THREE.Color>> };
 
 function resolvePalette(host: HTMLElement): Palette {
   const styles = getComputedStyle(host);
   const colourOf = (variable: string): THREE.Color =>
-    new THREE.Color(styles.getPropertyValue(variable).trim() || "#8a8f98");
-  const lamps = new Map<string, THREE.Color>();
+    new THREE.Color(styles.getPropertyValue(variable).trim() || FALLBACK_HUE);
 
   return {
     ground: colourOf("--muted-foreground"),
-    lamp: (mark) => {
-      const variable = lampVariable(mark.lamp);
-      let colour = lamps.get(variable);
-      if (!colour) {
-        colour = colourOf(variable);
-        lamps.set(variable, colour);
-      }
-      return colour;
-    },
+    lamp: Object.fromEntries(
+      CANDIDATE_LAMPS.map((lamp) => [lamp, colourOf(lampVariable(lamp))]),
+    ) as Record<CandidateLamp, THREE.Color>,
   };
 }
 
@@ -133,7 +137,7 @@ function lights(): THREE.Object3D[] {
 }
 
 /** The country: committed state outlines, drawn as lines on the y = 0 plane. */
-function ground(outlines: readonly PlacedOutline[], colour: THREE.Color): THREE.Object3D {
+function ground(outlines: readonly PlacedOutline[], palette: Palette): THREE.Object3D {
   const points: number[] = [];
   for (const outline of outlines) {
     for (const ring of outline.rings) {
@@ -147,43 +151,52 @@ function ground(outlines: readonly PlacedOutline[], colour: THREE.Color): THREE.
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
   return new THREE.LineSegments(
     geometry,
-    new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity: 0.45 }),
+    new THREE.LineBasicMaterial({ color: palette.ground, transparent: true, opacity: 0.45 }),
   );
 }
 
 /**
- * One instanced mesh per lamp word, so hue is the lamp and nothing else can set
- * it. A column is a cylinder of the one radius, scaled to the mark's height; a
- * ring is a flat annulus of the same footprint, and has no height at all.
+ * One instanced mesh per lamp word and shape, so a mesh's colour is its lamp
+ * and nothing else can set it. A column is a cylinder of the one radius scaled
+ * to the mark's own height; a ring is a flat annulus of the same footprint,
+ * with no height to scale at all.
  */
-function columns(marks: readonly MapMark[], palette: Palette): THREE.Object3D[] {
-  const byLamp = new Map<string, MapMark[]>();
-  for (const mark of marks) {
-    const group = byLamp.get(mark.lamp);
+function marks(all: readonly MapMark[], palette: Palette): THREE.Object3D[] {
+  const groups = new Map<string, MapMark[]>();
+  for (const mark of all) {
+    const group = groups.get(`${mark.shape}:${mark.lamp}`);
     if (group) group.push(mark);
-    else byLamp.set(mark.lamp, [mark]);
+    else groups.set(`${mark.shape}:${mark.lamp}`, [mark]);
   }
 
-  return [...byLamp.values()].map((group) => {
-    const drawsRings = group[0].shape === "ring";
-    const geometry = drawsRings
-      ? new THREE.RingGeometry(RING_INNER_RADIUS, RING_OUTER_RADIUS, 24).rotateX(-Math.PI / 2)
-      : // A unit-tall cylinder, sat on the ground by its own half-height below.
-        new THREE.CylinderGeometry(COLUMN_RADIUS, COLUMN_RADIUS, 1, 18).translate(0, 0.5, 0);
+  return [...groups.values()].map((group) => {
     const mesh = new THREE.InstancedMesh(
-      geometry,
-      new THREE.MeshLambertMaterial({ color: palette.lamp(group[0]), side: THREE.DoubleSide }),
+      shapeGeometry(group[0].shape),
+      new THREE.MeshLambertMaterial({
+        color: palette.lamp[group[0].lamp],
+        side: THREE.DoubleSide,
+      }),
       group.length,
     );
 
     const placement = new THREE.Matrix4();
     group.forEach((mark, index) => {
-      placement.makeScale(1, drawsRings ? 1 : mark.height, 1);
-      placement.setPosition(mark.x, drawsRings ? RING_LIFT : 0, mark.z);
+      // A ring keeps its own scale and sits just clear of the ground lines; a
+      // column is stretched from its base by the height the mark carries.
+      const isRing = mark.shape === "ring";
+      placement.makeScale(1, isRing ? 1 : mark.height, 1);
+      placement.setPosition(mark.x, isRing ? RING_LIFT : 0, mark.z);
       mesh.setMatrixAt(index, placement);
     });
     return mesh;
   });
+}
+
+function shapeGeometry(shape: MapMark["shape"]): THREE.BufferGeometry {
+  return shape === "ring"
+    ? new THREE.RingGeometry(RING_INNER_RADIUS, RING_OUTER_RADIUS, 24).rotateX(-Math.PI / 2)
+    : // A unit-tall cylinder, sat on the ground by its own half-height below.
+      new THREE.CylinderGeometry(COLUMN_RADIUS, COLUMN_RADIUS, 1, 18).translate(0, 0.5, 0);
 }
 
 /**
