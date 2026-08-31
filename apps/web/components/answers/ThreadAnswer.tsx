@@ -1,4 +1,6 @@
-import type { ThreadAnswerPart } from "@/app/thread-answer";
+import type { ReactElement } from "react";
+
+import type { ProsePart, ThreadAnswerPart } from "@/app/thread-answer";
 import { CarriedContext } from "@/components/answers/CarriedContext";
 import { Caveats } from "@/components/answers/Caveats";
 import { PendingRow } from "@/components/answers/PendingRow";
@@ -18,7 +20,8 @@ export function ThreadAnswer({ parts }: { parts: readonly ThreadAnswerPart[] }) 
   return parts.map((part, index) => <Part key={index} part={part} />);
 }
 
-function Part({ part }: { part: ThreadAnswerPart }) {
+/** One tag, drawn. The return type is what makes a tag with no case an error. */
+function Part({ part }: { part: ThreadAnswerPart }): ReactElement {
   switch (part.tag) {
     case "tool":
       return <ToolRow call={part.call} />;
@@ -27,20 +30,7 @@ function Part({ part }: { part: ThreadAnswerPart }) {
     case "resolved":
       return <ResolvedSet resolved={part.resolved} unknown={part.unknown} />;
     case "prose":
-      return (
-        <div className="flex flex-col gap-2">
-          {part.heading ? (
-            <span className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-              {part.heading}
-              <span aria-hidden className="h-px flex-1 bg-grid" />
-            </span>
-          ) : null}
-          <Prose text={part.text} />
-          {/* Read aloud sits with the prose it speaks, under it and above the
-              table it does not. */}
-          {part.spoken ? <ReadAloud text={part.spoken} /> : null}
-        </div>
-      );
+      return <ProseBlock part={part} />;
     case "ranking":
       return <Ranking rows={part.rows} lookup={part.lookup} sortLabel={part.sortLabel} />;
     case "pending":
@@ -48,4 +38,21 @@ function Part({ part }: { part: ThreadAnswerPart }) {
     case "caveats":
       return <Caveats assumptions={part.assumptions} gaps={part.gaps} />;
   }
+}
+
+function ProseBlock({ part }: { part: ProsePart }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {part.heading ? (
+        <span className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+          {part.heading}
+          <span aria-hidden className="h-px flex-1 bg-grid" />
+        </span>
+      ) : null}
+      <Prose text={part.text} />
+      {/* Read aloud sits with the prose it speaks, under it and above the table
+          it does not. */}
+      {part.spoken ? <ReadAloud text={part.spoken} /> : null}
+    </div>
+  );
 }

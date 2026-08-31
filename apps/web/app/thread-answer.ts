@@ -26,19 +26,6 @@ import {
 import { spokenProse } from "./read-aloud.ts";
 import type { ThreadMessage, ToolCall } from "./thread-messages.ts";
 
-/** Every block a Thread answer may draw, in the order it draws them. */
-export const THREAD_ANSWER_TAGS = [
-  "tool",
-  "carried",
-  "resolved",
-  "prose",
-  "ranking",
-  "pending",
-  "caveats",
-] as const;
-
-export type ThreadAnswerTag = (typeof THREAD_ANSWER_TAGS)[number];
-
 export type ThreadAnswerPart =
   | { tag: "tool"; call: ToolCall }
   | { tag: "carried"; carried: CarriedContext }
@@ -55,12 +42,33 @@ export type ThreadAnswerPart =
   | ({ tag: "pending" } & typeof pendingAnswer)
   | { tag: "caveats"; assumptions: string[]; gaps: string[] };
 
+/** The tag of every block a Thread answer may draw. */
+export type ThreadAnswerTag = ThreadAnswerPart["tag"];
+
+/**
+ * The same tags as a list, so the test that every one of them is drawn has
+ * something to walk. `satisfies` keeps the two from drifting: a name no part
+ * carries is not a tag.
+ */
+export const THREAD_ANSWER_TAGS = [
+  "tool",
+  "carried",
+  "resolved",
+  "prose",
+  "ranking",
+  "pending",
+  "caveats",
+] as const satisfies readonly ThreadAnswerTag[];
+
 /**
  * What marks the model's sentences off from the screen's numbers. Drawn only
  * where a table sits under the prose: a label marks a boundary, so it needs
  * something on the other side of it.
  */
 export const PROSE_HEADING = "AI explanation";
+
+/** The prose part, as the block that draws it takes it. */
+export type ProsePart = Extract<ThreadAnswerPart, { tag: "prose" }>;
 
 /** The one part the pending Thread answer is made of, as the row draws it. */
 export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
@@ -74,7 +82,7 @@ export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
  * The in-flight question is a user turn, not part of this list, and Chat is
  * what decides the form is in flight.
  */
-export const PENDING_THREAD_ANSWER: readonly ThreadAnswerPart[] = [
+export const PENDING_THREAD_ANSWER: readonly [PendingRowPart] = [
   { tag: "pending", ...pendingAnswer },
 ];
 
@@ -94,10 +102,8 @@ export function threadAnswer(
     .map((call) => rankingView(call))
     .filter((view): view is RankingView => view !== null);
   const carried = carriedContext(messages, index);
-  const assumptions = mergedLines(views, "assumptions");
-  const gaps = mergedLines(views, "gaps");
 
-  // The locked order, one group per line, each one skipped where it is empty.
+  // The locked order, one group per block, each one skipped where it is empty.
   const parts: ThreadAnswerPart[] = [];
   for (const call of message.toolCalls) {
     parts.push({ tag: "tool", call });
@@ -118,9 +124,19 @@ export function threadAnswer(
       spoken: spokenProse(messages, index),
     });
   }
-  for (const view of views.filter((view) => view.rows.length > 0)) {
-    parts.push({ tag: "ranking", rows: view.rows, lookup: view.lookup, sortLabel: view.sortLabel });
+  for (const view of views) {
+    // A query that matched nothing has a resolved set to show and no table.
+    if (view.rows.length > 0) {
+      parts.push({
+        tag: "ranking",
+        rows: view.rows,
+        lookup: view.lookup,
+        sortLabel: view.sortLabel,
+      });
+    }
   }
+  const assumptions = mergedLines(views, "assumptions");
+  const gaps = mergedLines(views, "gaps");
   if (assumptions.length > 0 || gaps.length > 0) {
     parts.push({ tag: "caveats", assumptions, gaps });
   }
@@ -128,6 +144,6 @@ export function threadAnswer(
 }
 
 // One caveats block per answer, even when the answer ran two queries.
-function mergedLines(views: RankingView[], key: "assumptions" | "gaps"): string[] {
+function mergedLines(views: readonly RankingView[], key: "assumptions" | "gaps"): string[] {
   return [...new Set(views.flatMap((view) => view[key]))];
 }
