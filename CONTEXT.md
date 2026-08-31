@@ -57,3 +57,11 @@ _Avoid_: universe, city, metro
 **Composite score**:
 One number made from the score vector. Each component is a percentile in the peer group. Constraint-relief weighs more than growth. Weights are fixed.
 _Avoid_: rank, grade, profit
+
+**Region**:
+One of the nine US Census divisions, derived from the airport's state. New England is a region.
+_Avoid_: metro, area, market, city market
+
+**Resolved airport set**:
+The airports that a place phrase maps to. The agent names this set before it ranks the airports.
+_Avoid_: metro area, grouping
