@@ -4,7 +4,6 @@ import { test } from "node:test";
 
 import {
   CONUS_VIEW,
-  INTRO_MS,
   MAX_DISTANCE,
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
@@ -48,7 +47,6 @@ test("the first load eases into that frame, in under about a second", () => {
   assert.notDeepEqual(intro.from, intro.to);
   assert.ok(intro.durationMs > 0);
   assert.ok(intro.durationMs <= 1000);
-  assert.equal(intro.durationMs, INTRO_MS);
 });
 
 test("reduced motion opens on the tilted view instead of flying into it", () => {

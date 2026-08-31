@@ -23,6 +23,7 @@ import {
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
   MIN_POLAR_ANGLE,
+  type ScenePoint,
   easeOut,
   introEase,
 } from "./map-camera.ts";
@@ -57,8 +58,7 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-  const { position, target } = CONUS_VIEW;
-  camera.position.set(position.x, position.y, position.z);
+  camera.position.copy(vector(CONUS_VIEW.position));
 
   const palette = resolvePalette(host);
   scene.add(
@@ -71,12 +71,12 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   // of gap under it inside a pane sized to the viewport.
   renderer.domElement.style.display = "block";
   host.appendChild(renderer.domElement);
-  const controls = orbit(camera, renderer.domElement, target);
+  const controls = orbit(camera, renderer.domElement, CONUS_VIEW.target);
   const resize = fitToHost(host, renderer, camera);
 
   const intro = introEase(input.reducedMotion);
-  const from = new THREE.Vector3(intro.from.x, intro.from.y, intro.from.z);
-  const to = new THREE.Vector3(intro.to.x, intro.to.y, intro.to.z);
+  const from = vector(intro.from);
+  const to = vector(intro.to);
   const startedAt = performance.now();
   renderer.setAnimationLoop((now) => {
     // A reduced-motion visitor gets a zero-length ease, so this never runs and
@@ -97,6 +97,11 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
     disposeAll(scene);
     renderer.dispose();
   };
+}
+
+/** A camera-module point as three.js wants it. The two agree on world units. */
+function vector(point: ScenePoint): THREE.Vector3 {
+  return new THREE.Vector3(point.x, point.y, point.z);
 }
 
 /**
@@ -240,10 +245,10 @@ function shapeGeometry(shape: MapMark["shape"]): THREE.BufferGeometry {
 function orbit(
   camera: THREE.PerspectiveCamera,
   canvas: HTMLCanvasElement,
-  target: { x: number; y: number; z: number },
+  target: ScenePoint,
 ): OrbitControls {
   const controls = new OrbitControls(camera, canvas);
-  controls.target.set(target.x, target.y, target.z);
+  controls.target.copy(vector(target));
   controls.enablePan = false;
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;

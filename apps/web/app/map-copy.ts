@@ -7,7 +7,12 @@
  * rings rather than as a colour. A visitor who cannot tell green from red still
  * reads the skyline.
  */
-import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
+import {
+  CANDIDATE_LAMPS,
+  MIXED_VECTOR_AT,
+  STRONG_CANDIDATE_AT,
+  type CandidateLamp,
+} from "@repo/scoring";
 
 /** One legend line: a lamp word, the shape it draws, and what it means. */
 export type LampLegendEntry = {
@@ -17,14 +22,17 @@ export type LampLegendEntry = {
 };
 
 /**
- * What each lamp word draws, and the band of composites behind it. The two
- * coverage states lie flat: missing is not a low composite, so the key gives
- * them a shape of their own rather than a hue at the bottom of a scale.
+ * What each lamp word draws, and the band of composites behind it. The bands
+ * are the scoring module's own, as `describeMethodology` states them, so the
+ * key cannot name a threshold the lamps are not drawn at.
+ *
+ * The two coverage states lie flat: missing is not a low composite, so the key
+ * gives them a shape of their own rather than a hue at the bottom of a scale.
  */
 const LEGEND_MEANINGS: Readonly<Record<CandidateLamp, string>> = {
-  "Strong candidate": "column, composite 70 and over",
-  "Mixed vector": "column, composite 40 to 69",
-  "Weak candidate": "column, composite under 40",
+  "Strong candidate": `column, composite ${STRONG_CANDIDATE_AT} and over`,
+  "Mixed vector": `column, composite ${MIXED_VECTOR_AT} to ${STRONG_CANDIDATE_AT - 1}`,
+  "Weak candidate": `column, composite under ${MIXED_VECTOR_AT}`,
   "Partial inputs": "flat ring — a component is missing, so there is no composite to stand it up",
   "No data": "flat ring — no component arrived",
 };

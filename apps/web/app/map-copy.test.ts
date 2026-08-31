@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { CANDIDATE_LAMPS } from "@repo/scoring";
+import { CANDIDATE_LAMPS, MIXED_VECTOR_AT, STRONG_CANDIDATE_AT } from "@repo/scoring";
 
 import { mapCopy } from "./map-copy.ts";
 import { siteHeaderCopy } from "./site-header.ts";
@@ -13,6 +13,13 @@ function source(file: string): string {
   return readFileSync(new URL(file, web), "utf8");
 }
 
+/** The line the key gives one lamp word: its shape, and the band behind it. */
+function meaningOf(lamp: string): string {
+  const entry = mapCopy.legend.find((line) => line.lamp === lamp);
+  assert.ok(entry, lamp);
+  return entry.meaning;
+}
+
 test("the legend names all five lamp words, so hue never appears without them", () => {
   assert.deepEqual(mapCopy.legend.map((entry) => entry.lamp), [...CANDIDATE_LAMPS]);
   for (const entry of mapCopy.legend) {
@@ -21,21 +28,27 @@ test("the legend names all five lamp words, so hue never appears without them", 
 });
 
 test("the legend gives each lamp word its shape, and only the two rings a ring", () => {
-  const shapeOf = (lamp: string): string => {
-    const entry = mapCopy.legend.find((line) => line.lamp === lamp);
-    assert.ok(entry, lamp);
-    return entry.meaning;
-  };
-
   for (const lamp of ["Strong candidate", "Mixed vector", "Weak candidate"]) {
-    assert.match(shapeOf(lamp), /column/i);
-    assert.doesNotMatch(shapeOf(lamp), /ring/i);
+    assert.match(meaningOf(lamp), /column/i);
+    assert.doesNotMatch(meaningOf(lamp), /ring/i);
   }
   for (const lamp of ["Partial inputs", "No data"]) {
-    assert.match(shapeOf(lamp), /ring/i);
+    assert.match(meaningOf(lamp), /ring/i);
     // A ring is missing coverage, not a low composite: never a red column.
-    assert.doesNotMatch(shapeOf(lamp), /red|weak|column/i);
+    assert.doesNotMatch(meaningOf(lamp), /red|weak|column/i);
   }
+});
+
+test("the bands the key names are the scoring module's own thresholds", () => {
+  // The lamp is decided in `@repo/scoring`; a key that spelled the numbers out
+  // by hand would go on reading 70 after the band moved.
+  assert.match(meaningOf("Strong candidate"), new RegExp(`\\b${STRONG_CANDIDATE_AT}\\b`));
+  assert.match(meaningOf("Weak candidate"), new RegExp(`\\b${MIXED_VECTOR_AT}\\b`));
+  // Mixed closes just under strong: the two bands leave no gap between them.
+  assert.match(
+    meaningOf("Mixed vector"),
+    new RegExp(`${MIXED_VECTOR_AT} to ${STRONG_CANDIDATE_AT - 1}\\b`),
+  );
 });
 
 test("the page says what height is, and that it is the only thing height is", () => {

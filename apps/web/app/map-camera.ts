@@ -35,7 +35,7 @@ export const MIN_DISTANCE = 3;
 export const MAX_DISTANCE = 46;
 
 /** The first-load ease, in milliseconds: a demo moment, not a fly-through. */
-export const INTRO_MS = 850;
+const INTRO_MS = 850;
 
 /**
  * Where that ease starts: higher up and further out, looking down on the
