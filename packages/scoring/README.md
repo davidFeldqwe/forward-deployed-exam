@@ -28,7 +28,7 @@ pressure.
 Weights are fixed, not a UI knob: constraint-relief outweighs growth.
 
 **Percentile** — inside the airport's FAA hub-size peer group (large / medium /
-small), computed nationally, once:
+small / nonhub), computed nationally, once:
 
 ```
 percentile = round(100 * (peers below + half the ties) / peers scored)
