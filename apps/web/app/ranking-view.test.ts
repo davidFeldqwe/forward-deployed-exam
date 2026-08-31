@@ -58,6 +58,8 @@ const bgr: ScoredAirport = {
   name: "Bangor Intl",
   municipality: "Bangor",
   peerGroup: "nonhub",
+  assumptions: ["Weather delays are excluded.", "Delay is missing for BGR."],
+  gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for BGR."],
 };
 
 function call(result: JsonValue, args: JsonObject = { region: "New England" }): ToolCall {
@@ -325,6 +327,13 @@ test("a peer-group filter is the phrase its members answer to: hubs, or nonhub a
   assert.equal(rankingView(bangor)?.resolved.phrase, "nonhub airports");
   const large = rankingView({ ...twoRows, args: { peerGroup: "large" } });
   assert.equal(large?.resolved.phrase, "large hubs");
+});
+
+// A stored value that is not a hub size resolves to no rows, and the resolved
+// set still says what was filtered on: `unknownPlace` is what reports the miss.
+test("a peer-group value that is not a hub size is printed as it was asked for", () => {
+  const asked = rankingView({ ...twoRows, args: { peerGroup: "jumbo" } });
+  assert.equal(asked?.resolved.phrase, "jumbo hubs");
 });
 
 test("the municipality Los Angeles is one airport, not a metro that swallows SNA", () => {

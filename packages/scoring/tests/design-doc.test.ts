@@ -23,6 +23,10 @@ import {
  */
 const repo = new URL("../../../", import.meta.url);
 const design = readFileSync(new URL("DESIGN.md", repo), "utf8");
+
+/** The writeup as one line, so a list that wraps across lines still reads as one. */
+const prose = design.replace(/\s+/g, " ");
+
 const snapshot = loadSnapshot();
 const scored = scoreUniverse(snapshot);
 
@@ -102,7 +106,7 @@ test("the stated vintage is the committed snapshot's own", () => {
 // says is not there.
 test("the stated peer groups are every hub size the snapshot accepts", () => {
   const hubSizes = peerGroupSchema.options.join(" / ");
-  assert.ok(design.includes(hubSizes), `DESIGN.md names the hub sizes as ${hubSizes}`);
+  assert.ok(prose.includes(hubSizes), `DESIGN.md names the hub sizes as ${hubSizes}`);
 });
 
 test("the peer-relative example is the committed snapshot's own numbers", () => {
