@@ -30,24 +30,14 @@ export function Ranking({
   if (rows.length === 0) {
     return null;
   }
-  if (lookup) {
-    return (
-      <section className="overflow-hidden rounded-lg border bg-card">
-        <div className={`${LOOKUP_GRID} border-b bg-row-head px-3.5 py-2.5`}>
-          <HeadCell>#</HeadCell>
-          <HeadCell>Airport</HeadCell>
-          <HeadCell className="text-right">{lookup.label}</HeadCell>
-        </div>
-        {rows.map((row) => (
-          <LookupRow key={row.iata} row={row} />
-        ))}
-        <p className="m-0 border-t border-grid px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
-          A single-metric lookup: {sortLabel} for each airport in the resolved set. No composite and
-          no candidate lamp — one number is not a capacity-pressure screen result.
-        </p>
-      </section>
-    );
-  }
+  return lookup ? (
+    <LookupTable rows={rows} label={lookup.label} sortLabel={sortLabel} />
+  ) : (
+    <RankingTable rows={rows} sortLabel={sortLabel} />
+  );
+}
+
+function RankingTable({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel: string }) {
   return (
     <section className="overflow-hidden rounded-lg border bg-card">
       <div className={`${GRID} border-b bg-row-head px-3.5 py-2.5`}>
@@ -64,6 +54,34 @@ export function Ranking({
       <p className="m-0 border-t border-grid px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
         Composite 0–100, sorted by {sortLabel} · percentile within the airport&apos;s FAA hub-size
         peer group, computed nationally. Open a row for its score vector.
+      </p>
+    </section>
+  );
+}
+
+/** The lookup's three columns: the airport, and the one number asked for. */
+function LookupTable({
+  rows,
+  label,
+  sortLabel,
+}: {
+  rows: RankingRowView[];
+  label: string;
+  sortLabel: string;
+}) {
+  return (
+    <section className="overflow-hidden rounded-lg border bg-card">
+      <div className={`${LOOKUP_GRID} border-b bg-row-head px-3.5 py-2.5`}>
+        <HeadCell>#</HeadCell>
+        <HeadCell>Airport</HeadCell>
+        <HeadCell className="text-right">{label}</HeadCell>
+      </div>
+      {rows.map((row) => (
+        <LookupRow key={row.iata} row={row} />
+      ))}
+      <p className="m-0 border-t border-grid px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
+        A single-metric lookup: {sortLabel} for each airport in the resolved set. No composite and no
+        candidate lamp — one number is not a capacity-pressure screen result.
       </p>
     </section>
   );
@@ -113,7 +131,9 @@ function Row({ row }: { row: RankingRowView }) {
           )}
         </span>
         {/* Hue on the lamp, never instead of it: the words are always in the
-            pill, and the legend under the table names all five of them. */}
+            pill, and the legend under the table names all five of them. A
+            ranked row always has one — only a lookup withholds the lamp, and a
+            lookup is not drawn here — so the empty cell just holds the column. */}
         {row.lamp === null ? (
           <span />
         ) : (

@@ -143,7 +143,7 @@ function rowView(row: ScoredAirport, rank: number, metric: LookupMetric | null):
     rank,
     iata: row.iata,
     name: row.name,
-    composite: metric !== null ? null : compositeOf(row),
+    composite: metric === null ? compositeOf(row) : null,
     lamp: metric === null ? row.candidateLamp : null,
     lookupValue: metric === null ? null : lookupValue(row, metric),
     whyLabels: whyLabels(row),
