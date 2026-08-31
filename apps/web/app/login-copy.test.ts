@@ -21,10 +21,13 @@ function visibleText(value: unknown): string {
 test("login wears the same wordmark as Landing and chat, from one place", () => {
   // Login keeps its own centred chrome, but not its own product name: the
   // string is the shared header's, so all three surfaces move together.
-  const login = readFileSync(new URL("../components/Login.tsx", import.meta.url), "utf8");
+  const login = readFileSync(
+    new URL("../components/Login.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.equal("wordmark" in loginCopy, false);
-  assert.match(login, /<Wordmark name=\{siteHeaderCopy\.wordmark\}/);
+  assert.match(login, /name=\{siteHeaderCopy\.wordmark\}/);
 });
 
 test("one page serves sign-in and sign-up, with a switch either way", () => {

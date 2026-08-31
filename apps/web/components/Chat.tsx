@@ -67,14 +67,7 @@ export function Chat({
       <SiteHeader
         signedIn
         leading={<ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />}
-        // Every airport is on the same two years. The phrase says which years
-        // those are; a phone-width bar keeps the years and drops the phrase.
-        status={
-          <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
-            <span className="max-md:hidden">{chatCopy.comparisonWindow}</span>
-            <span className="md:hidden">{chatCopy.comparisonWindowYears}</span>
-          </Badge>
-        }
+        status={<ComparisonWindow />}
       />
 
       {/* The rail is a column of its own from `md` up, and a drawer over the
@@ -137,6 +130,20 @@ export function Chat({
         </form>
       </div>
     </div>
+  );
+}
+
+/**
+ * The two years every airport in an answer is compared over, in the header
+ * beside the shared actions. The phrase says what the years are; a phone-width
+ * bar keeps the years and drops the phrase rather than the whole pill.
+ */
+function ComparisonWindow() {
+  return (
+    <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
+      <span className="max-md:hidden">{chatCopy.comparisonWindow}</span>
+      <span className="md:hidden">{chatCopy.comparisonWindowYears}</span>
+    </Badge>
   );
 }
 

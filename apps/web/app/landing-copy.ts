@@ -39,9 +39,9 @@ export const landingCopy = {
   },
   privacy:
     "We log account email and the questions you ask. We never sell data.",
+  // The footer credit and the header action are the one repository.
   footer: {
     githubLabel: siteHeaderCopy.githubLabel,
-    // The footer credit and the header action are the one repository.
     githubHref: siteHeaderCopy.githubHref,
   },
 } as const;

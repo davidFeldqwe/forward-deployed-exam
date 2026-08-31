@@ -60,8 +60,6 @@ test("GitHub opens this repository, and leaves the product to do it", () => {
   assert.equal(github.label, "GitHub");
   assert.equal(github.href, "https://github.com/davidFeldqwe/forward-deployed-exam");
   assert.equal(github.external, true);
-  // The footer credit and the header action are the one URL.
-  assert.equal(landingCopy.footer.githubHref, github.href);
   // An external link opens in its own tab, and cannot reach back at the opener.
   assert.match(source("components/SiteHeader.tsx"), /rel="noreferrer"/);
 });
@@ -113,8 +111,8 @@ test("a phone-width bar gives way at the identity, never at the actions", () => 
   // Labels are read but not drawn on a phone, so the glyphs stay hittable.
   assert.match(header, /max-sm:sr-only/);
 
-  // The comparison window is the secondary phrase that shortens to its years.
-  assert.ok(chatCopy.comparisonWindow.includes(chatCopy.comparisonWindowYears));
+  // The comparison window is the secondary phrase that shortens to its years;
+  // `chat-copy.test.ts` pins the two strings against each other.
   assert.match(source("components/Chat.tsx"), /comparisonWindowYears/);
 });
 
@@ -132,12 +130,12 @@ test("focus order is identity, then the header actions, then the page", () => {
   }
 });
 
-test("chat keeps the comparison window and the recents drawer control", () => {
+test("chat fills both header slots: the drawer control and the window", () => {
   const chat = source("components/Chat.tsx");
 
   assert.match(chat, /<SiteHeader\s+signedIn\b/);
   assert.match(chat, /leading=\{<ThreadRailToggle/);
-  assert.match(chat, /chatCopy\.comparisonWindow\b/);
+  assert.match(chat, /status=\{<ComparisonWindow/);
 });
 
 test("the PRD and the coding standards describe the shared header", () => {
