@@ -61,7 +61,11 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   camera.position.set(position.x, position.y, position.z);
 
   const palette = resolvePalette(host);
-  scene.add(...lights(), ground(input.outlines, palette), ...marks(input.marks, palette));
+  scene.add(
+    ...lights(),
+    groundLines(input.outlines, palette.ground),
+    ...markMeshes(input.marks, palette.lamp),
+  );
 
   // A canvas is inline by default, which would leave a text descender's worth
   // of gap under it inside a pane sized to the viewport.
@@ -110,12 +114,15 @@ function createRenderer(): THREE.WebGLRenderer | null {
   }
 }
 
+/** The hue each lamp word lights: one colour per word, and nothing else. */
+export type LampColours = Readonly<Record<CandidateLamp, THREE.Color>>;
+
 /**
  * The hues the canvas draws in, resolved once off the stylesheet the ranking
  * table reads: a lamp word's column and its pill light the same custom
  * property, so the two surfaces cannot hold two greens.
  */
-type Palette = { ground: THREE.Color; lamp: Readonly<Record<CandidateLamp, THREE.Color>> };
+type Palette = { ground: THREE.Color; lamp: LampColours };
 
 function resolvePalette(host: HTMLElement): Palette {
   const styles = getComputedStyle(host);
@@ -126,7 +133,7 @@ function resolvePalette(host: HTMLElement): Palette {
     ground: colourOf("--muted-foreground"),
     lamp: Object.fromEntries(
       CANDIDATE_LAMPS.map((lamp) => [lamp, colourOf(lampVariable(lamp))]),
-    ) as Record<CandidateLamp, THREE.Color>,
+    ) as LampColours,
   };
 }
 
@@ -136,8 +143,15 @@ function lights(): THREE.Object3D[] {
   return [new THREE.HemisphereLight(0xdfe6f2, 0x0b0c0d, 1.1), key];
 }
 
-/** The country: committed state outlines, drawn as lines on the y = 0 plane. */
-function ground(outlines: readonly PlacedOutline[], palette: Palette): THREE.Object3D {
+/**
+ * The country: committed state outlines, drawn as lines on the y = 0 plane.
+ * Exported so the whole outline can be counted without a canvas — a dropped
+ * ring is a state missing from under the columns.
+ */
+export function groundLines(
+  outlines: readonly PlacedOutline[],
+  colour: THREE.Color,
+): THREE.LineSegments {
   const points: number[] = [];
   for (const outline of outlines) {
     for (const ring of outline.rings) {
@@ -151,7 +165,7 @@ function ground(outlines: readonly PlacedOutline[], palette: Palette): THREE.Obj
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
   return new THREE.LineSegments(
     geometry,
-    new THREE.LineBasicMaterial({ color: palette.ground, transparent: true, opacity: 0.45 }),
+    new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity: 0.45 }),
   );
 }
 
@@ -181,12 +195,18 @@ function groupByShapeAndLamp(all: readonly MapMark[]): MarkGroup[] {
  * and nothing else can set it. A column is a cylinder of the one radius scaled
  * to the mark's own height; a ring is a flat annulus of the same footprint,
  * with no height to scale at all.
+ *
+ * Exported for the same reason `groundLines` is: three.js builds the instances
+ * without a context, so how many there are, how tall and what hue is testable.
  */
-function marks(all: readonly MapMark[], palette: Palette): THREE.Object3D[] {
+export function markMeshes(
+  all: readonly MapMark[],
+  lampColours: LampColours,
+): THREE.InstancedMesh[] {
   return groupByShapeAndLamp(all).map(({ shape, lamp, members }) => {
     const mesh = new THREE.InstancedMesh(
       shapeGeometry(shape),
-      new THREE.MeshLambertMaterial({ color: palette.lamp[lamp], side: THREE.DoubleSide }),
+      new THREE.MeshLambertMaterial({ color: lampColours[lamp], side: THREE.DoubleSide }),
       members.length,
     );
 
