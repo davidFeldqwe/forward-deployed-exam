@@ -575,13 +575,6 @@ a:focus-visible {
   background: var(--header);
 }
 
-.login-column {
-  width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
 .login-header-inner {
   width: 100%;
   max-width: 720px;
@@ -590,6 +583,13 @@ a:focus-visible {
   padding: 0 24px;
   display: flex;
   align-items: center;
+}
+
+.login-column {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
 .login-main {

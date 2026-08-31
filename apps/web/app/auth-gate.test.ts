@@ -20,11 +20,11 @@ test("a Landing question card carries its prompt through login into a new thread
   const gated = loginRedirect(chatPathWithPrompt(question));
 
   const next = new URL(gated, "https://example.test").searchParams.get("next");
-  const landed = postLoginPath(next ?? undefined);
+  const landed = postLoginPath(next);
   const prompt = new URL(landed, "https://example.test").searchParams.get("prompt");
 
   assert.equal(landed.startsWith("/chat"), true);
-  assert.equal(carriedPrompt(prompt ?? undefined), question);
+  assert.equal(carriedPrompt(prompt), question);
 });
 
 test("a signed-in analyst lands on their last thread, or an empty chat when they have none", () => {
@@ -62,7 +62,7 @@ test("every Landing suggested question survives the gate unchanged", () => {
     const gated = loginRedirect(chatPathWithPrompt(question));
     const next = new URL(gated, "https://example.test").searchParams.get("next");
 
-    assert.equal(promptFromPath(postLoginPath(next ?? undefined)), question);
+    assert.equal(promptFromPath(postLoginPath(next)), question);
   }
 });
 

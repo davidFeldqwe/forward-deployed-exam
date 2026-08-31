@@ -9,6 +9,23 @@ type LoginMode = "signIn" | "signUp";
 
 const emptyLoginState: LoginState = { email: "", errors: {} };
 
+/**
+ * The fields as this mode and this attempt need them: signup asks the browser
+ * for a new password, and a refused attempt hands back the typed email — React
+ * resets the form, so the password is always retyped.
+ */
+function fieldsToRender(mode: LoginMode, state: LoginState) {
+  return loginCopy.fields.map((field) => ({
+    ...field,
+    autoComplete:
+      field.name === "password" && mode === "signUp"
+        ? "new-password"
+        : field.autoComplete,
+    defaultValue: field.name === "email" ? state.email : "",
+    error: state.errors[field.name],
+  }));
+}
+
 export function Login({
   next,
   carriedPrompt,
@@ -19,7 +36,7 @@ export function Login({
   const [mode, setMode] = useState<LoginMode>("signIn");
   const [state, action, pending] = useActionState(submitLogin, emptyLoginState);
   const copy = loginCopy[mode];
-  const other: LoginMode = mode === "signIn" ? "signUp" : "signIn";
+  const otherMode: LoginMode = mode === "signIn" ? "signUp" : "signIn";
 
   return (
     <div className="login">
@@ -51,8 +68,7 @@ export function Login({
               <input type="hidden" name="mode" value={mode} />
               <input type="hidden" name="next" value={next} />
 
-              {loginCopy.fields.map((field) => {
-                const error = state.errors[field.name];
+              {fieldsToRender(mode, state).map((field) => {
                 const errorId = `${field.name}-error`;
                 return (
                   <div key={field.name} className="login-field">
@@ -62,18 +78,14 @@ export function Login({
                       name={field.name}
                       type={field.type}
                       required
-                      defaultValue={field.name === "email" ? state.email : ""}
-                      autoComplete={
-                        field.name === "password" && mode === "signUp"
-                          ? "new-password"
-                          : field.autoComplete
-                      }
-                      aria-invalid={error ? true : undefined}
-                      aria-describedby={error ? errorId : undefined}
+                      defaultValue={field.defaultValue}
+                      autoComplete={field.autoComplete}
+                      aria-invalid={field.error ? true : undefined}
+                      aria-describedby={field.error ? errorId : undefined}
                     />
-                    {error ? (
+                    {field.error ? (
                       <p id={errorId} className="login-error" role="alert">
-                        {error}
+                        {field.error}
                       </p>
                     ) : null}
                   </div>
@@ -90,7 +102,7 @@ export function Login({
               <button
                 type="button"
                 className="login-switch-action"
-                onClick={() => setMode(other)}
+                onClick={() => setMode(otherMode)}
               >
                 {copy.switchLabel}
               </button>

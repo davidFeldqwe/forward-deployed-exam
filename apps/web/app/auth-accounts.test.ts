@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  type AccountResult,
+  type CredentialErrors,
   MIN_PASSWORD_LENGTH,
   authenticate,
   createAccount,
@@ -10,6 +12,12 @@ import {
   validateCredentials,
   verifyPassword,
 } from "./auth-accounts.ts";
+
+/** Asserts the attempt was refused and hands back what it complained about. */
+function refusedErrors(result: AccountResult): CredentialErrors {
+  assert.equal(result.ok, false);
+  return result.ok ? {} : result.errors;
+}
 
 test("signup is open: any well-formed email is accepted, with no invite list", () => {
   for (const email of [
@@ -49,6 +57,7 @@ test("a stored password is salted, never plaintext, and only verifies itself", (
   assert.equal(verifyPassword(password, stored), true);
   assert.equal(verifyPassword("wrong horse battery", stored), false);
   assert.equal(verifyPassword(password, "not-a-stored-hash"), false);
+  assert.equal(verifyPassword(password, "scrypt$abcd$abcd"), false);
 });
 
 test("open signup creates an account and signs it in", () => {
@@ -64,10 +73,9 @@ test("open signup creates an account and signs it in", () => {
 
 test("an email already in use is refused with a sign-in hint, not a duplicate account", () => {
   createAccount("taken@example.com", "correct horse battery");
-  const result = createAccount("TAKEN@example.com", "another password");
+  const errors = refusedErrors(createAccount("TAKEN@example.com", "another password"));
 
-  assert.equal(result.ok, false);
-  assert.match(String(result.ok === false && result.errors.email), /already/i);
+  assert.match(String(errors.email), /already/i);
   assert.deepEqual(authenticate("taken@example.com", "correct horse battery"), {
     ok: true,
     email: "taken@example.com",
@@ -85,10 +93,9 @@ test("sign-in refuses a wrong password or an unknown email without saying which"
 });
 
 test("credential rules apply before an account is created", () => {
-  const result = createAccount("not-an-email", "short");
+  const errors = refusedErrors(createAccount("not-an-email", "short"));
 
-  assert.equal(result.ok, false);
-  assert.ok(result.ok === false && result.errors.email);
-  assert.ok(result.ok === false && result.errors.password);
+  assert.ok(errors.email);
+  assert.ok(errors.password);
   assert.equal(authenticate("not-an-email", "short").ok, false);
 });

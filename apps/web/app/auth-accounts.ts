@@ -4,6 +4,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 export const MIN_PASSWORD_LENGTH = 8;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+const SCRYPT_SALT_LENGTH = 16;
 const SCRYPT_KEY_LENGTH = 32;
 
 export type CredentialErrors = {
@@ -42,7 +43,7 @@ export function validateCredentials(
 
 /** `scrypt$<salt>$<derived key>`, both hex. */
 export function hashPassword(password: string): string {
-  const salt = randomBytes(16);
+  const salt = randomBytes(SCRYPT_SALT_LENGTH);
   const derived = scryptSync(password, salt, SCRYPT_KEY_LENGTH);
   return `scrypt$${salt.toString("hex")}$${derived.toString("hex")}`;
 }

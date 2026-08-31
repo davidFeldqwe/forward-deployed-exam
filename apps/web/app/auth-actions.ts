@@ -15,7 +15,7 @@ export type LoginState = {
   errors: CredentialErrors;
 };
 
-function field(formData: FormData, name: string): string {
+function textField(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
 }
@@ -24,10 +24,10 @@ export async function submitLogin(
   _previous: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
-  const email = field(formData, "email");
-  const password = field(formData, "password");
+  const email = textField(formData, "email");
+  const password = textField(formData, "password");
   const result =
-    field(formData, "mode") === "signUp"
+    textField(formData, "mode") === "signUp"
       ? createAccount(email, password)
       : authenticate(email, password);
 
@@ -36,7 +36,7 @@ export async function submitLogin(
   }
 
   await startSession(result.email);
-  redirect(postLoginPath(field(formData, "next")));
+  redirect(postLoginPath(textField(formData, "next")));
 }
 
 export async function signOut(): Promise<void> {

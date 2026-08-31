@@ -6,6 +6,11 @@ export type Session = {
   email: string;
 };
 
+type SessionClaims = {
+  email: string;
+  expiresAt: number;
+};
+
 function sign(payload: string, secret: string): string {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
@@ -15,9 +20,11 @@ export function signSessionToken(
   secret: string,
   now: number = Date.now(),
 ): string {
-  const payload = Buffer.from(
-    JSON.stringify({ email, expiresAt: now + SESSION_MAX_AGE_SECONDS * 1000 }),
-  ).toString("base64url");
+  const claims: SessionClaims = {
+    email,
+    expiresAt: now + SESSION_MAX_AGE_SECONDS * 1000,
+  };
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   return `${payload}.${sign(payload, secret)}`;
 }
 
@@ -41,9 +48,7 @@ export function readSessionToken(
   return claims && claims.expiresAt > now ? { email: claims.email } : null;
 }
 
-function parseClaims(
-  payload: string,
-): { email: string; expiresAt: number } | null {
+function parseClaims(payload: string): SessionClaims | null {
   try {
     const claims: unknown = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
