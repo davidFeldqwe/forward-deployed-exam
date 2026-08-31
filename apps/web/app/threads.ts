@@ -275,6 +275,10 @@ type ThreadHost = { __aiiThreadStore?: Map<string, Thread> };
  * Insertion order is the recents order: a thread that gets a new message is
  * re-inserted at the end, which is what an index on (owner, updatedAt) will do
  * in Convex without depending on two writes landing in different milliseconds.
+ *
+ * Reads here are unparsed because every write went through
+ * `parseThreadMessage`. A Convex-backed `readThread` hands over a document this
+ * process never validated, so it has to run the messages back through it.
  */
 function threadsById(): Map<string, Thread> {
   const host = globalThis as unknown as ThreadHost;
