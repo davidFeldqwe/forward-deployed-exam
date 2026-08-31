@@ -5,12 +5,13 @@ import { censusDivisionOf } from "../src/census-divisions.ts";
 import {
   airportSnapshotSchema,
   type AirportSnapshot,
-  type PeerGroup,
   type SnapshotAirport,
 } from "../src/schema.ts";
 import { SLOT_LIMITS, SLOT_LIMIT_VERIFIED_ON, slotLimitOf } from "../src/slot-limits.ts";
 import { download } from "./lib/cache.ts";
 import { forEachCsvRow } from "./lib/csv.ts";
+import { readFaaUniverse, type FaaUniverseRow } from "./lib/faa-workbook.ts";
+import { placeFor, stateOf, type Place } from "./lib/ourairports.ts";
 import { readWorksheetRows } from "./lib/xlsx.ts";
 import { readZipEntry } from "./lib/zip.ts";
 
@@ -27,36 +28,6 @@ const FAA_SLOT_PAGE =
   "https://www.faa.gov/about/office_org/headquarters_offices/ato/service_units/systemops/perf_analysis/slot_administration/slot_administration_schedule_facilitation";
 const OURAIRPORTS_PAGE = "https://davidmegginson.github.io/ourairports-data/";
 const BTS_ON_TIME_PAGE = "https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ";
-
-const PEER_GROUP_BY_FAA_HUB: Record<string, PeerGroup> = {
-  L: "large",
-  M: "medium",
-  S: "small",
-};
-
-// Column letters in the FAA ACAIS enplanement workbook.
-const FAA_COLUMNS = {
-  rank: "A",
-  state: "C",
-  locid: "D",
-  hubSize: "H",
-  secondYearEnplanements: "I",
-  firstYearEnplanements: "J",
-} as const;
-
-type UniverseRow = {
-  iata: string;
-  peerGroup: PeerGroup;
-  state: string;
-  enplanements: { firstYear: number; secondYear: number };
-};
-
-type Place = { ident: string; name: string; municipality: string; state: string };
-
-// OurAirports files Palm Beach International under the post-rename code DJT
-// while FAA ACAIS and BTS both still publish PBI. The snapshot keys on the
-// FAA/BTS code and looks the place up under the OurAirports one.
-const OURAIRPORTS_IATA_ALIASES: Readonly<Record<string, string>> = { PBI: "DJT" };
 
 type FlightTotals = {
   departures: number;
@@ -76,44 +47,13 @@ function emptyTotals(): FlightTotals {
   };
 }
 
-async function readUniverse(): Promise<UniverseRow[]> {
+async function readUniverse(): Promise<FaaUniverseRow[]> {
   const year = COMPARISON_WINDOW.secondYear;
   const workbook = await download(
     `${FAA_ENPLANEMENTS_PAGE}/arp-cy${year}-commercial-service-enplanements.xlsx`,
     `faa-acais-cy${year}.xlsx`,
   );
-  const rows = readWorksheetRows(workbook);
-  const universe: UniverseRow[] = [];
-  for (const row of rows) {
-    const rank = Number(row.get(FAA_COLUMNS.rank));
-    const locid = (row.get(FAA_COLUMNS.locid) ?? "").trim().toUpperCase();
-    const hub = row.get(FAA_COLUMNS.hubSize) ?? "";
-    // Subtotal rows carry a count but no rank, and a four-character FAA location
-    // identifier is not an IATA code, so neither joins into the universe.
-    if (!Number.isInteger(rank) || rank < 1 || rank > UNIVERSE_SIZE) {
-      continue;
-    }
-    if (!/^[A-Z]{3}$/.test(locid)) {
-      continue;
-    }
-    const peerGroup = PEER_GROUP_BY_FAA_HUB[hub];
-    if (!peerGroup) {
-      throw new Error(`FAA hub size ${hub} at rank ${rank} is not a peer group`);
-    }
-    universe.push({
-      iata: locid,
-      peerGroup,
-      state: (row.get(FAA_COLUMNS.state) ?? "").trim().toUpperCase(),
-      enplanements: {
-        secondYear: Number(row.get(FAA_COLUMNS.secondYearEnplanements)),
-        firstYear: Number(row.get(FAA_COLUMNS.firstYearEnplanements)),
-      },
-    });
-  }
-  if (universe.length !== UNIVERSE_SIZE) {
-    throw new Error(`expected ${UNIVERSE_SIZE} ranked airports, read ${universe.length}`);
-  }
-  return universe;
+  return readFaaUniverse(readWorksheetRows(workbook), COMPARISON_WINDOW, UNIVERSE_SIZE);
 }
 
 // OurAirports files territories under their own ISO country code, so a US
@@ -130,12 +70,7 @@ async function readPlaces(): Promise<Map<string, Place>> {
       if (!US_COUNTRY_CODES.has(country) || iata.length !== 3) {
         return;
       }
-      places.set(iata, {
-        ident,
-        name,
-        municipality,
-        state: region.replace(/^US-/, ""),
-      });
+      places.set(iata, { ident, name, municipality, state: stateOf(country, region) });
     },
   );
   return places;
@@ -261,7 +196,7 @@ function longHaulShareOf(
 }
 
 function buildAirport(
-  row: UniverseRow,
+  row: FaaUniverseRow,
   place: Place,
   runwayCount: number | null,
   firstYearTotals: FlightTotals | undefined,
@@ -319,10 +254,7 @@ async function ingest(): Promise<AirportSnapshot> {
   const airports = [...universe]
     .sort((left, right) => right.enplanements.secondYear - left.enplanements.secondYear)
     .map((row) => {
-      const place = places.get(OURAIRPORTS_IATA_ALIASES[row.iata] ?? row.iata);
-      if (!place) {
-        throw new Error(`${row.iata} has no OurAirports row to join on IATA`);
-      }
+      const place = placeFor(row.iata, row.state, places);
       return buildAirport(
         row,
         place,

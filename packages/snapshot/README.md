@@ -52,3 +52,11 @@ pnpm --filter @repo/snapshot ingest
 Downloads roughly 700 MB of BTS monthly files into `.cache/` (override with
 `INGEST_CACHE_DIR`) and rewrites the snapshot; a second run reuses the cache.
 This is a deliberate manual step, not CI: the committed file is the contract.
+
+A rebuild refuses to write a snapshot it cannot stand behind. The FAA columns
+are found by header label — including both comparison-window years, so a
+different release cannot be read as this one — every slot-limited code must be
+in the universe, and an OurAirports place has to sit in the state FAA files the
+airport in, so a reassigned IATA code fails loudly instead of attaching the
+wrong city. `scripts/lib` is covered by `tests/faa-workbook.test.ts` and
+`tests/place-join.test.ts`, which run offline.
