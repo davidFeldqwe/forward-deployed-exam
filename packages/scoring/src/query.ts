@@ -1,4 +1,4 @@
-import type { ScoredAirport, SortBy } from "./types.ts";
+import { SORT_KEYS, type ScoredAirport, type SortBy } from "./types.ts";
 
 /** Locked in the PRD: ten rows unless asked otherwise, never more than 25. */
 export const DEFAULT_LIMIT = 10;
@@ -43,13 +43,24 @@ export function queryAirports(
       matches(row.peerGroup, args.peerGroup),
   );
 
-  const sortBy = args.sortBy ?? "composite";
+  const sortBy = resolveSortBy(args.sortBy);
   const limit = resolveLimit(args.limit, codes === null ? DEFAULT_LIMIT : MAX_LIMIT);
   // Stable, so airports tied on the sort key keep the snapshot's order, which is
   // enplanements descending.
   const rows = [...matched].sort((left, right) => byDescending(left, right, sortBy));
 
   return { rows: rows.slice(0, limit), matched: matched.length, sortBy, limit };
+}
+
+// `sortBy` reaches this module from a query string and from the model, where the
+// compile-time type is no help. An unknown key is named rather than left to fail
+// as a TypeError inside the comparator, so the caller can correct it.
+function resolveSortBy(requested: SortBy | undefined): SortBy {
+  if (requested === undefined) return "composite";
+  if (SORT_KEYS.includes(requested)) return requested;
+  throw new RangeError(
+    `sortBy must be one of ${SORT_KEYS.join(", ")}; received ${JSON.stringify(requested)}`,
+  );
 }
 
 function requestedCodes(iata: QueryAirportsArgs["iata"]): Set<string> | null {

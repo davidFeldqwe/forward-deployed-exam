@@ -4,9 +4,11 @@ import { test } from "node:test";
 import {
   DEFAULT_LIMIT,
   MAX_LIMIT,
+  SORT_KEYS,
   queryAirports,
   scoreUniverse,
   type QueryAirportsArgs,
+  type SortBy,
 } from "../src/index.ts";
 import { FIXTURE } from "./fixture.ts";
 
@@ -144,4 +146,35 @@ test("querying leaves the scored universe untouched", () => {
   const before = scored.map((row) => row.iata);
   queryAirports(scored, { sortBy: "delay" });
   assert.deepEqual(scored.map((row) => row.iata), before);
+});
+
+// #19's rank HTTP takes sortBy from a query string and #21's tool takes it from
+// the model, so the accepted keys are exported rather than re-typed downstream.
+test("SORT_KEYS is composite plus the four components, in vector order", () => {
+  assert.deepEqual(SORT_KEYS, [
+    "composite",
+    "congestion",
+    "unmetFlightDemand",
+    "delay",
+    "growth",
+  ]);
+  for (const sortBy of SORT_KEYS) {
+    assert.equal(queryAirports(scored, { sortBy }).sortBy, sortBy);
+  }
+});
+
+test("an off-list sortBy is refused by name, not a TypeError from the sort", () => {
+  assert.throws(
+    () => queryAirports(scored, { sortBy: "longHaulShare" as SortBy }),
+    (error: unknown) => {
+      assert.ok(error instanceof RangeError, `threw ${String(error)}`);
+      assert.match(error.message, /longHaulShare/);
+      // The message lists what the caller may pass, so a model can correct itself.
+      for (const key of SORT_KEYS) assert.match(error.message, new RegExp(key));
+      return true;
+    },
+  );
+  // Long-haul share is a lookup on the row, so it is not a sort key at all.
+  const lax = queryAirports(scored, { iata: "LAX" }).rows[0];
+  assert.equal(lax?.longHaulShare, 0.2823);
 });

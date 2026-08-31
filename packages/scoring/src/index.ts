@@ -1,6 +1,7 @@
 export {
   COMPONENTS,
   COMPONENT_LABELS,
+  SORT_KEYS,
   type CandidateLamp,
   type Component,
   type Coverage,

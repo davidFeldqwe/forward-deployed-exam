@@ -27,7 +27,18 @@ export type CandidateLamp =
   | "Partial inputs"
   | "No data";
 
-export type SortBy = "composite" | Component;
+/**
+ * The accepted `sortBy` values, in the order the answer objects show them:
+ * the composite first, then the four vector slots. Exported as values, not just
+ * a type, so the rank HTTP and the agent tool validate an outside-supplied key
+ * against this list instead of re-typing the strings.
+ *
+ * Long-haul share is absent for the same reason it is absent from `COMPONENTS`:
+ * it is a lookup, not something the screen ranks on.
+ */
+export const SORT_KEYS = ["composite", ...COMPONENTS] as const;
+
+export type SortBy = (typeof SORT_KEYS)[number];
 
 export type ScoreComponent = {
   /** Rank inside the airport's national peer group, 0-100; null when missing. */
