@@ -63,12 +63,17 @@ test("sign out lives in the chat header", () => {
   assert.equal(chatCopy.signOutLabel, "Sign out");
 });
 
-test("the header carries recents and New thread, so there is no left thread rail", () => {
+test("the thread rail is Recents and New thread, in the glossary's words", () => {
   assert.equal(chatCopy.recentsLabel, "Recents");
   assert.equal(chatCopy.newThreadLabel, "New thread");
   assert.match(chatCopy.noRecentsLabel, /No threads yet/);
+  // The narrow-viewport control names the same list it slides in.
+  assert.match(chatCopy.showRecentsLabel, /recents/i);
+  assert.match(chatCopy.hideRecentsLabel, /recents/i);
 
   const text = visibleText(chatCopy);
+  // The rail is a layout word, not a product one: the list on screen is
+  // Recents, and CONTEXT.md's Thread entry rules out chat history as its name.
   for (const forbidden of ["rail", "sidebar", "Chat history", "History"]) {
     assert.equal(text.includes(forbidden), false, `should not mention ${forbidden}`);
   }

@@ -35,8 +35,8 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 14. As a user, I want Google or GitHub sign-in if the build still has time, so that I can skip a password — this is stretch, not a blocker.
 15. As a signed-in analyst, I want `/` to take me to chat (last thread, or empty if none), so that I am not shown the brochure again.
 16. As a signed-in analyst, I want Sign out in the chat header, so that I can leave the session on a shared machine.
-17. As a signed-in analyst, I want a header recents control listing my threads by first user question, so that I can reopen work without a left rail.
-18. As a signed-in analyst, I want New thread from that control, so that a new question does not append to an old ranking.
+17. As a signed-in analyst, I want a left thread rail listing my threads by first user question, so that I can reopen work without leaving the transcript.
+18. As a signed-in analyst, I want New thread at the top of that rail, so that a new question does not append to an old ranking.
 19. As a signed-in analyst, I want threads to survive refresh, so that Convex ownership is real.
 20. As a signed-in analyst, I want empty chat to be a blank transcript plus the same prompt chips as the landing, with no thesis paragraph, so that the zip empty state still holds.
 21. As an analyst, I want to ask which airports in a Census division are renovation-investment candidates, so that I get a filtered national composite, not a local re-percentile.
@@ -79,8 +79,8 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 
 - `/` — **Landing** when signed out. When signed in, redirect to chat (last thread, else empty).
 - `/login` — password sign-up and sign-in, dark zip chrome, no second visual system.
-- Chat — single zip column (header, transcript, composer). No thread rail, no Methodology popover, no Rankings / dossier / 3D map routes.
-- Header recents on chat: thread title = first user question; New thread; Sign out.
+- Chat — header, a left thread rail, and the transcript/composer column beside it. No Methodology popover, no Rankings / dossier / 3D map routes.
+- Thread rail on chat: thread title = first user question; New thread at the top; the open thread marked current; empty recents explains that a question starts one. Dense and near-black, no search, folders, Settled, "show more", or footer tray. On a narrow viewport it is a drawer a header control opens. Sign out and the comparison window stay in the header.
 - Gate: unauthenticated `/chat` (or equivalent) → `/login`. Start asking and landing cards go through login, then a new thread. Cards may prefill or send the prompt after sign-in.
 - Empty chat: blank transcript + chips (same prompts as landing cards). No thesis paragraph.
 
@@ -234,7 +234,7 @@ There is no prior test suite in this repo; scoring tests are the first.
 - Weight sliders, ROI / profit / construction cost / land / politics / airline leases as scored inputs
 - Gate/terminal capacity as a real field (proxy only)
 - Metro grouping; BTS CityMarketID as identity
-- Thread rail, Methodology popover as a page, Rankings or dossier routes
+- Methodology popover as a page, Rankings or dossier routes (recents as a persistent left column is reopened by [T3 density](https://github.com/davidFeldqwe/forward-deployed-exam/issues/32); it is chrome over the same `listThreads` data)
 - LangGraph, split Python/TS stack, Postgres/DuckDB for 100 rows
 - Social login as a blocker (stretch only)
 - Building is not done by this document; this document is the handoff

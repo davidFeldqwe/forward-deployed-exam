@@ -8,6 +8,9 @@ export const chatCopy = {
   recentsLabel: "Recents",
   newThreadLabel: "New thread",
   noRecentsLabel: "No threads yet — ask a question to start one.",
+  /** The narrow-viewport control that slides the recents rail in and out. */
+  showRecentsLabel: "Show recents",
+  hideRecentsLabel: "Hide recents",
   chips: [
     "Which airports in New England are renovation-investment candidates?",
     "Compare congestion at Los Angeles and Santa Ana.",
