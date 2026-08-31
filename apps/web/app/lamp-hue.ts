@@ -8,33 +8,36 @@
  * coverage states, so they are an outline with no hue at all — missing data is
  * not a low composite, and never red.
  */
-import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
+import type { CandidateLamp } from "@repo/scoring";
 
-import { lampTone, type LampTone } from "./ranking-view.ts";
+/** Which hue a lamp word lights. Never drawn without the lamp's words beside it. */
+type LampTone = "strong" | "mixed" | "weak" | "none";
+
+const LAMP_TONES: Readonly<Record<CandidateLamp, LampTone>> = {
+  "Strong candidate": "strong",
+  "Mixed vector": "mixed",
+  "Weak candidate": "weak",
+  // Coverage states take no hue at all: missing data is never red.
+  "Partial inputs": "none",
+  "No data": "none",
+};
 
 /** The pill a lamp word sits in: hue on its text and a wash of it behind. */
-export const LAMP_PILL: Readonly<Record<LampTone, string>> = {
+const LAMP_PILL: Readonly<Record<LampTone, string>> = {
   strong: "border-lamp-strong/35 bg-lamp-strong/12 text-lamp-strong",
   mixed: "border-lamp-mixed/35 bg-lamp-mixed/12 text-lamp-mixed",
   weak: "border-lamp-weak/35 bg-lamp-weak/12 text-lamp-weak",
   none: "border-border bg-transparent text-muted-foreground",
 };
 
-export type LampLegendEntry = {
-  lamp: CandidateLamp;
-  tone: LampTone;
-  /** The same pill the ranking row draws, so the key cannot drift from the row. */
-  pill: string;
-};
-
-/** All five lamp words, in ranking order, each with the hue its rows light. */
-export const LAMP_LEGEND: readonly LampLegendEntry[] = CANDIDATE_LAMPS.map((lamp) => ({
-  lamp,
-  tone: lampTone(lamp),
-  pill: LAMP_PILL[lampTone(lamp)],
-}));
-
-export const LAMP_LEGEND_LABEL = "Candidate lamp";
+/**
+ * The pill classes one lamp word draws. Both the ranking rows and the legend
+ * that names all five words come through here, so a row and its key cannot
+ * disagree about what green means.
+ */
+export function lampPill(lamp: CandidateLamp): string {
+  return LAMP_PILL[LAMP_TONES[lamp]];
+}
 
 export const LAMP_LEGEND_NOTE =
   "Hue reads with the lamp words, never instead of them. Partial inputs and No data " +

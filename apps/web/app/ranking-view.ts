@@ -25,9 +25,6 @@ import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./t
  */
 export const WITHHELD_COMPOSITE = "—";
 
-/** Which lamp hue a row lights. Never drawn without the lamp's words beside it. */
-export type LampTone = "strong" | "mixed" | "weak" | "none";
-
 export type VectorCell = {
   key: Component;
   label: string;
@@ -47,7 +44,6 @@ export type RankingRowView = {
   /** The composite, or `WITHHELD_COMPOSITE`. Missing is not a low score. */
   composite: string;
   lamp: CandidateLamp;
-  tone: LampTone;
   whyLabels: string[];
   peerLabel: string;
   coverage: string;
@@ -75,24 +71,6 @@ export type RankingView = {
   gaps: string[];
   unknown: RankingUnknowns;
 };
-
-const LAMP_TONES: Readonly<Record<CandidateLamp, LampTone>> = {
-  "Strong candidate": "strong",
-  "Mixed vector": "mixed",
-  "Weak candidate": "weak",
-  // Coverage states take no hue at all: missing data is never red.
-  "Partial inputs": "none",
-  "No data": "none",
-};
-
-/**
- * Which hue a lamp word lights (issue #25). Exported because the table's rows
- * and the legend that names the five words have to read one mapping: a row and
- * its key cannot disagree about what green means.
- */
-export function lampTone(lamp: CandidateLamp): LampTone {
-  return LAMP_TONES[lamp];
-}
 
 /**
  * The answer objects for one stored tool call, or null when the call is not a
@@ -139,7 +117,6 @@ function rowView(row: ScoredAirport, rank: number): RankingRowView {
     name: row.name,
     composite: row.composite === null ? WITHHELD_COMPOSITE : String(row.composite),
     lamp: row.candidateLamp,
-    tone: lampTone(row.candidateLamp),
     whyLabels: whyLabels(row),
     peerLabel: `${row.peerGroup} FAA hubs`,
     coverage: `${present} of ${COMPONENTS.length}`,

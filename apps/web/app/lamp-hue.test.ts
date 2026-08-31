@@ -4,45 +4,29 @@ import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
 
-import { LAMP_LEGEND, LAMP_LEGEND_NOTE, LAMP_PILL } from "./lamp-hue.ts";
-import { lampTone } from "./ranking-view.ts";
+import { LAMP_LEGEND_NOTE, lampPill } from "./lamp-hue.ts";
 
-test("every lamp word has a tone, and only the scored three take a hue", () => {
-  assert.deepEqual(
-    CANDIDATE_LAMPS.map(lampTone),
-    ["strong", "mixed", "weak", "none", "none"],
-  );
-});
-
-test("the legend names all five lamp words, in ranking order", () => {
-  assert.deepEqual(
-    LAMP_LEGEND.map((entry) => entry.lamp),
-    [...CANDIDATE_LAMPS],
-  );
-  // The legend is the same mapping the rows draw with, so a row and its key
-  // cannot disagree about which hue a lamp word gets.
-  for (const entry of LAMP_LEGEND) {
-    assert.equal(entry.pill, LAMP_PILL[entry.tone]);
-  }
-});
+const HUE_CLASS = /(?:text|bg|border)-lamp-/;
 
 test("Strong is green, Mixed is yellow, Weak is red — three distinct hues", () => {
-  assert.match(LAMP_PILL.strong, /lamp-strong/);
-  assert.match(LAMP_PILL.mixed, /lamp-mixed/);
-  assert.match(LAMP_PILL.weak, /lamp-weak/);
-  assert.equal(new Set([LAMP_PILL.strong, LAMP_PILL.mixed, LAMP_PILL.weak]).size, 3);
+  assert.match(lampPill("Strong candidate"), /lamp-strong/);
+  assert.match(lampPill("Mixed vector"), /lamp-mixed/);
+  assert.match(lampPill("Weak candidate"), /lamp-weak/);
+
+  const scored = ["Strong candidate", "Mixed vector", "Weak candidate"] as const;
+  assert.equal(new Set(scored.map(lampPill)).size, 3);
 });
 
 test("Partial inputs and No data are grey or outline, and never red", () => {
-  const coverage = LAMP_LEGEND.filter((entry) => entry.tone === "none");
+  for (const lamp of ["Partial inputs", "No data"] as const) {
+    assert.doesNotMatch(lampPill(lamp), HUE_CLASS);
+    assert.match(lampPill(lamp), /muted-foreground/);
+  }
+});
 
-  assert.deepEqual(
-    coverage.map((entry) => entry.lamp),
-    ["Partial inputs", "No data"],
-  );
-  for (const entry of coverage) {
-    assert.doesNotMatch(entry.pill, /lamp-(?:strong|mixed|weak)/);
-    assert.match(entry.pill, /muted-foreground/);
+test("every lamp word has a pill, so no row can print words with no pill", () => {
+  for (const lamp of CANDIDATE_LAMPS) {
+    assert.match(lampPill(lamp), /border/);
   }
 });
 
@@ -54,14 +38,29 @@ test("the legend note explains hue as a companion to the words, in glossary term
 });
 
 const web = new URL("../", import.meta.url);
-const ranking = readFileSync(new URL("components/answers/Ranking.tsx", web), "utf8");
 
-test("the ranking table takes its hue from one map, so a bar cannot pick one up", () => {
-  assert.match(ranking, /LAMP_PILL/);
+function source(file: string): string {
+  return readFileSync(new URL(file, web), "utf8");
+}
+
+test("the ranking table takes its hue from `lampPill`, so a bar cannot pick one up", () => {
+  const ranking = source("components/answers/Ranking.tsx");
+
+  assert.match(ranking, /lampPill\(row\.lamp\)/);
   // Percentile bars inside the score vector stay grey: no hue class is written
   // anywhere in the table itself.
-  assert.doesNotMatch(ranking, /(?:text|bg|border)-lamp-/);
+  assert.doesNotMatch(ranking, HUE_CLASS);
   assert.match(ranking, /bg-muted-foreground/);
+});
+
+test("the legend names every lamp word, in ranking order, with the rows' own pills", () => {
+  const legend = source("components/answers/LampLegend.tsx");
+
+  // Mapping the lamp list rather than a hand-written copy is what keeps the key
+  // complete and in the same order the rows rank in.
+  assert.match(legend, /CANDIDATE_LAMPS\.map/);
+  assert.match(legend, /lampPill\(lamp\)/);
+  assert.doesNotMatch(legend, HUE_CLASS);
 });
 
 const repo = new URL("../../", web);
@@ -74,13 +73,20 @@ function section(markdown: string, heading: string): string {
   return end === -1 ? rest : rest.slice(0, end);
 }
 
-test("the glossary allows hue on the ranking table beside the lamp words", () => {
-  const lamp = section(readFileSync(new URL("CONTEXT.md", repo), "utf8"), "**Candidate lamp**");
+const context = readFileSync(new URL("CONTEXT.md", repo), "utf8");
+const prd = readFileSync(new URL("PRD.md", repo), "utf8");
 
-  assert.match(lamp, /green/i);
-  assert.match(lamp, /yellow/i);
-  assert.match(lamp, /red/i);
-  assert.match(lamp, /grey|outline/i);
+/** The five hues the lamp words carry, as the docs have to hand them out. */
+function assertNamesEveryHue(text: string): void {
+  for (const hue of [/green/i, /yellow/i, /red/i, /grey|outline/i]) {
+    assert.match(text, hue);
+  }
+}
+
+test("the glossary allows hue on the ranking table beside the lamp words", () => {
+  const lamp = section(context, "**Candidate lamp**");
+
+  assertNamesEveryHue(lamp);
   assert.match(lamp, /ranking table/i);
   assert.match(lamp, /never red/i);
   // Hues are allowed; the names for them are still not product copy.
@@ -89,19 +95,15 @@ test("the glossary allows hue on the ranking table beside the lamp words", () =>
 });
 
 test("the PRD assigns the five hues and keeps the percentile bars grey", () => {
-  const prd = readFileSync(new URL("PRD.md", repo), "utf8");
   const lamp = section(prd, "**Candidate lamp** (from the locked prototype):");
 
-  assert.match(lamp, /green/i);
-  assert.match(lamp, /yellow/i);
-  assert.match(lamp, /red/i);
-  assert.match(lamp, /grey|outline/i);
+  assertNamesEveryHue(lamp);
   assert.match(lamp, /legend/i);
   assert.match(prd, /percentile bars grey/);
 });
 
 test("PRD Out of Scope no longer forbids in-thread lamp hue, and still forbids 3D map", () => {
-  const outOfScope = section(readFileSync(new URL("PRD.md", repo), "utf8"), "## Out of Scope");
+  const outOfScope = section(prd, "## Out of Scope");
 
   assert.match(outOfScope, /3D map/);
   assert.match(outOfScope, /profit/i);

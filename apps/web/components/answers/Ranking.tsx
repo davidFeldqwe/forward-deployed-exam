@@ -1,4 +1,4 @@
-import { LAMP_PILL } from "@/app/lamp-hue";
+import { lampPill } from "@/app/lamp-hue";
 import { WITHHELD_COMPOSITE, type RankingRowView, type VectorCell } from "@/app/ranking-view";
 import { LampLegend } from "@/components/answers/LampLegend";
 
@@ -63,7 +63,7 @@ function Row({ row }: { row: RankingRowView }) {
         {/* Hue on the lamp, never instead of it: the words are always in the
             pill, and the legend under the table names all five of them. */}
         <span
-          className={`justify-self-start rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${LAMP_PILL[row.tone]}`}
+          className={`justify-self-start rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${lampPill(row.lamp)}`}
         >
           {row.lamp}
         </span>

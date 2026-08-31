@@ -47,8 +47,8 @@
   /* Candidate lamp. Hue never appears without the lamp's words beside it, and
      the two coverage states (Partial inputs, No data) take no hue at all --
      missing is not a low score, so it is never red. Which lamp word lights
-     which of these is `app/lamp-hue.ts`, the one map the ranking rows and the
-     legend that names all five words both draw from. */
+     which hue is `app/lamp-hue.ts`, the one map the ranking rows and the legend
+     that names all five words both draw from. */
   --lamp-strong: #4cb782;
   --lamp-mixed: #d9a13a;
   --lamp-weak: #c2685e;
