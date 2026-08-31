@@ -33,6 +33,15 @@ export const MAP_HEIGHT = 200;
 /** Breathing room inside the box, so an edge airport is not cut in half. */
 export const MAP_PADDING = 18;
 
+/**
+ * Room for one IATA code beside its dot, and the gap it sits off by. Three
+ * monospace characters at the size the card draws them, rounded up: the code is
+ * what makes a marker readable, so a marker near the eastern edge puts its code
+ * on the other side rather than letting the crop cut a letter off it.
+ */
+export const MAP_LABEL_WIDTH = 20;
+const MAP_LABEL_GAP = 7;
+
 export type MapMarker = {
   iata: string;
   name: string;
@@ -40,6 +49,8 @@ export type MapMarker = {
   lamp: CandidateLamp;
   x: number;
   y: number;
+  /** Where this marker's code is written: beside the dot, inside the crop. */
+  label: { x: number; anchor: "start" | "end" };
 };
 
 export type ResolvedMapView = {
@@ -172,13 +183,29 @@ function project(rows: readonly Located[]): MapMarker[] {
     (MAP_HEIGHT - 2 * MAP_PADDING) / down.span,
   );
 
-  return points.map(({ row, x, y }) => ({
-    iata: row.iata,
-    name: row.name,
-    lamp: row.candidateLamp,
-    x: round((x - across.middle) * scale + MAP_WIDTH / 2),
-    y: round((y - down.middle) * scale + MAP_HEIGHT / 2),
-  }));
+  return points.map(({ row, x, y }) => {
+    const placed = round((x - across.middle) * scale + MAP_WIDTH / 2);
+    return {
+      iata: row.iata,
+      name: row.name,
+      lamp: row.candidateLamp,
+      x: placed,
+      y: round((y - down.middle) * scale + MAP_HEIGHT / 2),
+      label: labelFor(placed),
+    };
+  });
+}
+
+/**
+ * Which side of its dot a code is written on. To the right, where a reader
+ * looks for it — unless the code would run out of the crop there, and then to
+ * the left, which always has room: the box is far wider than two labels.
+ */
+function labelFor(x: number): MapMarker["label"] {
+  const fitsRight = x + MAP_LABEL_GAP + MAP_LABEL_WIDTH <= MAP_WIDTH;
+  return fitsRight
+    ? { x: round(x + MAP_LABEL_GAP), anchor: "start" }
+    : { x: round(x - MAP_LABEL_GAP), anchor: "end" };
 }
 
 /**

@@ -4,7 +4,13 @@ import { test } from "node:test";
 
 import type { CandidateLamp, ScoredAirport } from "@repo/scoring";
 
-import { MAP_HEIGHT, MAP_PADDING, MAP_WIDTH, resolvedMap } from "./resolved-map.ts";
+import {
+  MAP_HEIGHT,
+  MAP_LABEL_WIDTH,
+  MAP_PADDING,
+  MAP_WIDTH,
+  resolvedMap,
+} from "./resolved-map.ts";
 import type { JsonObject, ToolCall } from "./thread-messages.ts";
 
 const base: ScoredAirport = {
@@ -176,6 +182,35 @@ test("every marker sits inside the padding, so no airport is drawn on the edge",
     assert.ok(marker.x >= MAP_PADDING - 0.1 && marker.x <= MAP_WIDTH - MAP_PADDING + 0.1);
     assert.ok(marker.y >= MAP_PADDING - 0.1 && marker.y <= MAP_HEIGHT - MAP_PADDING + 0.1);
   }
+});
+
+test("an edge airport keeps its code inside the drawing, on whichever side fits", () => {
+  // A set wide enough to fill the box across: the eastern-most marker sits on
+  // the padding, so its code has to flip to the left of the dot or be clipped
+  // by the crop — an airport drawn with half a code is worse than no code.
+  const map = resolvedMap(
+    "Which New York airports are constrained?",
+    call({ state: "NY" }, [
+      airport("BUF", 42.9405, -78.7322),
+      airport("ROC", 43.1189, -77.6724),
+      airport("ALB", 42.7483, -73.8017),
+    ]),
+  );
+  assert.ok(map);
+
+  for (const { iata, x, label } of map.markers) {
+    const [left, right] =
+      label.anchor === "start"
+        ? [label.x, label.x + MAP_LABEL_WIDTH]
+        : [label.x - MAP_LABEL_WIDTH, label.x];
+    assert.ok(left >= 0 && right <= MAP_WIDTH, `${iata} label ${left}..${right}`);
+    // And it is beside its own dot, not floating off on its own.
+    assert.ok(Math.abs(label.x - x) <= MAP_LABEL_WIDTH, `${iata} label at ${label.x}, dot at ${x}`);
+  }
+  // Only the eastern-most had to flip: a code reads to the right of its dot
+  // wherever there is room for it.
+  const anchors = new Map(map.markers.map((marker) => [marker.iata, marker.label.anchor]));
+  assert.deepEqual([...anchors], [["BUF", "start"], ["ROC", "start"], ["ALB", "end"]]);
 });
 
 test("north is up and east is right", () => {

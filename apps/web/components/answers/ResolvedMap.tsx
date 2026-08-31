@@ -44,7 +44,12 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
   );
 }
 
-/** One airport: its lamp as a dot, its code as the word beside the dot. */
+/**
+ * One airport: its lamp as a dot, its code as the word beside the dot. Which
+ * side the code sits on is the projection's call, not this component's — a
+ * marker on the eastern edge of the crop writes its code to the left of the
+ * dot, because the crop would otherwise cut a letter off it.
+ */
 function Marker({ marker }: { marker: MapMarker }) {
   return (
     <g>
@@ -58,8 +63,9 @@ function Marker({ marker }: { marker: MapMarker }) {
         className={lampMarker(marker.lamp)}
       />
       <text
-        x={marker.x + 7}
+        x={marker.label.x}
         y={marker.y + 3.5}
+        textAnchor={marker.label.anchor}
         className="fill-muted-foreground font-mono text-[9px]"
       >
         {marker.iata}
