@@ -138,8 +138,10 @@ test("every airport carries the OurAirports coordinate pair the map is drawn fro
   assert.ok(bos);
   assert.ok(Math.abs(bos.latitude! - 42.3643) < 0.01, `BOS latitude ${bos.latitude}`);
   assert.ok(Math.abs(bos.longitude! - -71.0052) < 0.01, `BOS longitude ${bos.longitude}`);
+  // Every airport in today's universe is west of Greenwich, San Juan included.
+  // A Pacific territory entering the top 100 would fail this line, which is the
+  // point: someone then checks the sign rather than shipping a mirrored map.
   for (const airport of snapshot.airports) {
-    if (airport.state === "GU" || airport.state === "MP") continue;
     assert.ok(airport.longitude! < 0, `${airport.iata} is in the western hemisphere`);
   }
 });

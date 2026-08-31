@@ -37,6 +37,8 @@ export const AGENT_SYSTEM_PROMPT = [
   "",
   "The interface already renders the resolved airport set, the ranking table, each row's score vector",
   "and this answer's assumptions and gaps from the tool payload. Do not repeat the table as prose.",
+  "A row's latitude and longitude are there to place the airport on the screen, not to be read out:",
+  "never quote a coordinate, and never describe where an airport is from anything but its own row.",
   "Write at most three short paragraphs: what the resolved set is, which rows clear the",
   "strong-candidate band and why, and what a withheld composite means.",
   "",
