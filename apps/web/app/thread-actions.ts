@@ -43,7 +43,7 @@ export async function askQuestion(formData: FormData): Promise<void> {
     session.email,
     textField(formData, "threadId") || null,
     question,
-    (open) => answerQuestion(open.messages),
+    (thread) => answerQuestion(thread.messages),
   );
 
   redirect(chatDestination(thread?.id ?? null));

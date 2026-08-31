@@ -306,11 +306,11 @@ test("two overlapping asks on one thread keep each answer under its own question
 
 test("an ask waits on its own thread only, not on every thread the analyst has", async () => {
   const analyst = "twothreads@example.com";
-  const held = startThread(analyst, NEW_ENGLAND)!;
+  const busy = startThread(analyst, NEW_ENGLAND)!;
   const free = startThread(analyst, "How much unmet flight demand is there at SFO?")!;
   const inFlight = gate();
 
-  const slow = askOnThread(analyst, held.id, "Hold this thread.", async () => {
+  const slow = askOnThread(analyst, busy.id, "Hold this thread.", async () => {
     await inFlight.held;
     return assistantMessage("the held answer");
   });
