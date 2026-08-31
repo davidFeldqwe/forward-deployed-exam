@@ -583,8 +583,11 @@ a:focus-visible {
 }
 
 .login-header-inner {
+  width: 100%;
   max-width: 720px;
   height: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
   display: flex;
   align-items: center;
 }

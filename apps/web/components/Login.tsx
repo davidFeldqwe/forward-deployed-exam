@@ -24,7 +24,7 @@ export function Login({
   return (
     <div className="login">
       <header className="login-header">
-        <div className="login-column login-header-inner">
+        <div className="login-header-inner">
           <div className="wordmark">
             <span className="wordmark-mark" aria-hidden="true" />
             <span className="wordmark-name">{loginCopy.wordmark}</span>
