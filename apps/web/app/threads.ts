@@ -68,9 +68,10 @@ export function assistantMessage(
 
 /**
  * The rows a persisted `queryAirports` call re-renders from, or null when the
- * call is not a ranking. `parseThreadMessage` has already checked that every
- * row carries the composite, lamp and score vector the transcript draws; the
- * rest of the row is whatever `@repo/scoring` put there, carried verbatim.
+ * call is not a ranking. `parseThreadMessage` has already checked every field
+ * of every row against `ScoredAirport` (`RANKING_ROW_CHECKS`), so the cast is
+ * checked rather than assumed. Anything the result carries beside `rows` — the
+ * matched count, the sort key — is stored verbatim.
  */
 export function rankingRows(call: ToolCall | undefined): ScoredAirport[] | null {
   if (!call || call.tool !== "queryAirports") {
@@ -105,6 +106,10 @@ export function parseThreadMessage(value: unknown): ThreadMessage | null {
     }
     toolCalls.push(parsed);
   }
+  // A message with no prose and no tool payload would draw a bare role label.
+  if (value.text.trim().length === 0 && toolCalls.length === 0) {
+    return null;
+  }
   return { role, text: value.text, toolCalls };
 }
 
@@ -130,28 +135,47 @@ function parseToolCall(value: unknown): ToolCall | null {
 }
 
 function hasRenderableRows(result: JsonValue): boolean {
-  return (
-    isRecord(result) && Array.isArray(result.rows) && result.rows.every(isRenderableRow)
-  );
+  return isRecord(result) && Array.isArray(result.rows) && result.rows.every(isRankingRow);
 }
 
 /**
- * What the ranking, the score vector and the lamp need from a stored
- * `queryAirports` row. The rest of the row is carried verbatim; scoring owns
- * its full shape.
+ * Every field of a stored `queryAirports` row, with the check it has to pass.
+ * The map is typed over `keyof ScoredAirport`, so a field added in
+ * `@repo/scoring` fails this typecheck until someone says how it is checked:
+ * the message list is the only re-render source, so a row that lost a value the
+ * answer objects draw — a name, a peer group, an assumption — would render a
+ * blank cell or drop a caveat silently rather than fail the write.
  */
-function isRenderableRow(row: unknown): boolean {
-  if (!isRecord(row) || typeof row.iata !== "string") {
-    return false;
-  }
-  if (!isNumberOrNull(row.composite) || !isLamp(row.candidateLamp)) {
-    return false;
-  }
-  const vector = row.scoreVector;
-  if (!isRecord(vector)) {
-    return false;
-  }
-  return SCORE_COMPONENTS.every((component) => isScoreComponent(vector[component]));
+const RANKING_ROW_CHECKS: {
+  [Field in keyof ScoredAirport]: (value: unknown) => boolean;
+} = {
+  iata: isNonEmptyString,
+  name: isNonEmptyString,
+  municipality: isString,
+  state: isNonEmptyString,
+  region: isNonEmptyString,
+  peerGroup: isNonEmptyString,
+  scoreVector: isScoreVector,
+  composite: isNumberOrNull,
+  candidateLamp: isLamp,
+  slotLimit: isSlotLimit,
+  longHaulShare: isNumberOrNull,
+  assumptions: isStringArray,
+  gaps: isStringArray,
+};
+
+function isRankingRow(row: unknown): boolean {
+  return (
+    isRecord(row) &&
+    Object.entries(RANKING_ROW_CHECKS).every(([field, check]) => check(row[field]))
+  );
+}
+
+function isScoreVector(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    SCORE_COMPONENTS.every((component) => isScoreComponent(value[component]))
+  );
 }
 
 function isScoreComponent(value: unknown): boolean {
@@ -161,6 +185,31 @@ function isScoreComponent(value: unknown): boolean {
     isNumberOrNull(value.raw) &&
     (value.coverage === "present" || value.coverage === "missing")
   );
+}
+
+/** The FAA schedule constraints, exhaustive over scoring's own union. */
+const SLOT_LIMITS: Record<NonNullable<ScoredAirport["slotLimit"]>, true> = {
+  "Level 2": true,
+  "Level 3": true,
+};
+
+function isSlotLimit(value: unknown): boolean {
+  return (
+    value === null || (typeof value === "string" && Object.hasOwn(SLOT_LIMITS, value))
+  );
+}
+
+function isString(value: unknown): boolean {
+  return typeof value === "string";
+}
+
+/** A drawn label: a blank one is a hole in the row, not a value. */
+function isNonEmptyString(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isStringArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every(isString);
 }
 
 function isNumberOrNull(value: unknown): boolean {

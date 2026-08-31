@@ -101,3 +101,28 @@ test("a stored message from an unknown role or tool is refused", () => {
   assert.equal(parseThreadMessage({ role: "user", text: 42, toolCalls: [] }), null);
   assert.equal(parseThreadMessage(null), null);
 });
+
+test("a stored ranking row is checked field by field, so no drawn value goes missing", () => {
+  // The message list is the only re-render source: a row that lost its name,
+  // peer group, slot limit or caveats would draw a blank cell or silently drop
+  // a caveat, so every field the answer objects read has to be present.
+  for (const field of Object.keys(bosRow)) {
+    const truncated = structuredClone(rankingCall) as ToolCall;
+    const rows = (truncated.result as { rows: Record<string, unknown>[] }).rows;
+    delete rows[0]![field];
+
+    assert.equal(
+      parseThreadMessage(assistantMessage("prose", [truncated])),
+      null,
+      `a row missing ${field} was stored anyway`,
+    );
+  }
+});
+
+test("a message with neither text nor a tool payload has nothing to render, so it is refused", () => {
+  assert.equal(parseThreadMessage(assistantMessage("")), null);
+  assert.equal(parseThreadMessage(userMessage("   ")), null);
+  // Prose alone, or a tool payload alone, both render.
+  assert.notEqual(parseThreadMessage(assistantMessage("BOS leads at 79.")), null);
+  assert.notEqual(parseThreadMessage(assistantMessage("", [rankingCall])), null);
+});
