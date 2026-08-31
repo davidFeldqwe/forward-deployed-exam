@@ -50,6 +50,16 @@ const hya: ScoredAirport = {
   gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for HYA."],
 };
 
+// The fourth hub size, off the fixture rather than the committed snapshot: the
+// snapshot is still the top ~100 by ACAIS and carries no nonhub row yet.
+const bgr: ScoredAirport = {
+  ...hya,
+  iata: "BGR",
+  name: "Bangor Intl",
+  municipality: "Bangor",
+  peerGroup: "nonhub",
+};
+
 function call(result: JsonValue, args: JsonObject = { region: "New England" }): ToolCall {
   return { tool: "queryAirports", args, result, durationMs: 12 };
 }
@@ -63,6 +73,19 @@ const twoRows = call({
   unknownIata: [],
   unknownPlace: [],
 });
+
+const bangor = call(
+  {
+    rows: [bgr],
+    matched: 1,
+    resolvedIata: ["BGR"],
+    sortBy: "composite",
+    limit: 10,
+    unknownIata: [],
+    unknownPlace: [],
+  },
+  { peerGroup: "nonhub" },
+);
 
 test("only a queryAirports payload becomes a ranking", () => {
   assert.equal(rankingView(undefined), null);
@@ -284,6 +307,24 @@ test("a compare keeps LAX and SNA as two rows, in two peer groups", () => {
     ["large FAA hubs", "medium FAA hubs"],
   );
   assert.equal(view?.resolved.phrase, "LAX · SNA");
+});
+
+// Issue #70 / #68 stories 9-10: the fourth FAA hub size is the primaries that
+// are *not* hubs, so the words the table prints for a peer group cannot be the
+// hub words with the size swapped in — "nonhub hub" names nothing an analyst
+// would write, and the row would be saying its percentiles are a hub rank.
+test("a nonhub row is ranked among nonhub airports, not among nonhub hubs", () => {
+  assert.equal(rankingView(bangor)?.rows[0]?.peerLabel, "nonhub FAA airports");
+});
+
+test("the why-label of a nonhub row names its peer group without calling it a hub", () => {
+  assert.deepEqual(rankingView(bangor)?.rows[0]?.whyLabels, ["Nonhub airport"]);
+});
+
+test("a peer-group filter is the phrase its members answer to: hubs, or nonhub airports", () => {
+  assert.equal(rankingView(bangor)?.resolved.phrase, "nonhub airports");
+  const large = rankingView({ ...twoRows, args: { peerGroup: "large" } });
+  assert.equal(large?.resolved.phrase, "large hubs");
 });
 
 test("the municipality Los Angeles is one airport, not a metro that swallows SNA", () => {

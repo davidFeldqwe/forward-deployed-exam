@@ -20,6 +20,7 @@ import {
   type ScoredAirport,
   type SortBy,
 } from "@repo/scoring";
+import { peerGroupSchema, type PeerGroup } from "@repo/snapshot";
 
 import { unknownIataRefusal, unknownPlaceRefusal } from "./refusals.ts";
 import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./thread-messages.ts";
@@ -29,6 +30,20 @@ import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./t
  * ranking table reads it back to know there is no number to put "/100" after.
  */
 export const WITHHELD_COMPOSITE = "—";
+
+/**
+ * What one member of a peer group is called. Three of the FAA's hub sizes are
+ * hubs and the fourth is the primaries that are not one, so a peer group is
+ * never printed as "nonhub hub" — a row saying that would be claiming its
+ * percentiles are a hub rank. Keyed off `PeerGroup`, so a fifth hub size fails
+ * to typecheck here rather than inventing a noun for itself.
+ */
+const PEER_GROUP_NOUNS: Readonly<Record<PeerGroup, string>> = {
+  large: "hub",
+  medium: "hub",
+  small: "hub",
+  nonhub: "airport",
+};
 
 export type VectorCell = {
   key: Component;
@@ -145,7 +160,7 @@ function rowView(row: ScoredAirport, rank: number, metric: LookupMetric | null):
     name: row.name,
     ...answerCells(row, metric),
     whyLabels: whyLabels(row),
-    peerLabel: `${row.peerGroup} FAA hubs`,
+    peerLabel: `${row.peerGroup} FAA ${PEER_GROUP_NOUNS[row.peerGroup]}s`,
     coverage: `${present} of ${COMPONENTS.length}`,
     vector: COMPONENTS.map((component) => vectorCell(row, component)),
   };
@@ -235,7 +250,7 @@ function signed(value: number): string {
  * label rather than a vector slot.
  */
 function whyLabels(row: ScoredAirport): string[] {
-  const labels = [`${capitalise(row.peerGroup)} hub`];
+  const labels = [`${capitalise(row.peerGroup)} ${PEER_GROUP_NOUNS[row.peerGroup]}`];
   if (row.slotLimit !== null) {
     labels.push(`Slot-limited · ${row.slotLimit}`);
   }
@@ -252,10 +267,22 @@ function phraseOf(args: JsonObject): string {
   for (const field of PLACE_FIELDS) {
     const value = args[field];
     if (typeof value !== "string" || value.trim().length === 0) continue;
-    parts.push(field === "peerGroup" ? `${value} hubs` : value);
+    parts.push(field === "peerGroup" ? peerGroupPhrase(value) : value);
   }
   parts.push(...codesOf(args.iata));
   return parts.length === 0 ? "Every airport in the screen" : parts.join(" · ");
+}
+
+/**
+ * A peer-group filter as words: "large hubs", and "nonhub airports" because a
+ * nonhub primary is precisely not a hub. A stored value that is not a hub size
+ * is still printed as it was asked for — the resolved set says what was
+ * filtered on, and the unresolved-place list is what reports it matched nothing.
+ */
+function peerGroupPhrase(value: string): string {
+  const asked = peerGroupSchema.safeParse(value);
+  const noun = asked.success ? PEER_GROUP_NOUNS[asked.data] : "hub";
+  return `${value} ${noun}s`;
 }
 
 /** One code or a list of them, the two shapes `queryAirports` accepts. */
