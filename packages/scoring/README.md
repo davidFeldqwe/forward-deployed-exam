@@ -77,6 +77,15 @@ itself.
   the accepted values rather than silently ranking on something else, because
   `sortBy` arrives from a query string or from the model, where the TypeScript
   type is no guard. Long-haul share is not a sort key.
+- `metric`: one of `LOOKUP_METRICS` — the four components, plus `longHaulShare`,
+  which is a lookup and so is here rather than in `SORT_KEYS`. It asks for one
+  number per airport instead of a ranking (story 30) and orders the rows by that
+  raw number, so the order read is the order of the column shown; `sortBy` is
+  therefore null on a lookup and `metric` is null on a ranking. The rows are
+  unchanged — a row is one shape, checked once — so a lookup still carries a
+  composite and a lamp that the answer objects withhold: a lookup is not an
+  investment recommendation. `metricValue(row, metric)` reads the number, so the
+  column and the sort cannot disagree about which field a metric lives in.
 - `limit`: default 10, hard cap 25. Passing `iata` lifts the default to the cap,
   so a two-code compare returns both rows. A limit below 1 is raised to 1 and a
   fraction truncates, so a stray number narrows the answer rather than emptying
@@ -89,7 +98,7 @@ itself.
   resolves to nothing. Values of the wrong *type* stay the caller's problem: the
   tool schema and the query-string parser validate those (a `limit` of `"3"` is
   not a number and falls back to the default).
-- Returns `{ rows, matched, resolvedIata, sortBy, limit, unknownIata,
+- Returns `{ rows, matched, resolvedIata, sortBy, metric, limit, unknownIata,
   unknownPlace }`. `resolvedIata` is every matched code in the order `rows` pages
   — the resolved airport set the agent names before it ranks, so a twelve-airport
   state does not come back as the ten `rows` held. `matched` is

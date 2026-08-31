@@ -235,6 +235,7 @@ test("a query result is exactly the locked payload, no more and no less", () => 
     "matched",
     "resolvedIata",
     "sortBy",
+    "metric",
     "limit",
     "unknownIata",
     "unknownPlace",
@@ -266,6 +267,9 @@ test("a query result survives JSON unchanged, so an HTTP body can equal it", () 
     { region: "New England" },
     { iata: ["LAX", "ITH"] },
     { sortBy: "delay", limit: MAX_LIMIT },
+    // A lookup nulls the sort key and names a metric, so both halves of that
+    // pair have to survive the round trip as null and as a string.
+    { metric: "longHaulShare" },
   ] as const) {
     const result = queryAirports(scored, args);
     assert.deepEqual(JSON.parse(JSON.stringify(result)), result, JSON.stringify(args));
