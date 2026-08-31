@@ -136,11 +136,13 @@ Module shape (names can move; behavior cannot):
 
 ```
 scoreUniverse(snapshot) → ScoredAirport[]
-queryAirports(scored, { iata?, region?, state?, municipality?, peerGroup?, sortBy, limit }) → QueryResult
+queryAirports(scored, { iata?, region?, state?, municipality?, peerGroup?, sortBy, metric, limit }) → QueryResult
 candidateLamp(row) → lamp
 ```
 
 `sortBy`: `composite` (default) or one of `congestion` | `unmetFlightDemand` | `delay` | `growth`. Default limit 10, hard cap 25. A two-code compare ignores the default limit and returns those rows.
+
+`metric`: one of those four, or `longHaulShare` — a **single-metric lookup** (story 30). It asks for one number per airport instead of a ranking and orders the rows by that raw number, so `sortBy` is null on a lookup and `metric` is null on a ranking. The rows are unchanged; the answer objects are what withhold the composite and the candidate lamp, because a lookup is not an investment recommendation.
 
 Row payload (every `queryAirports` row):
 
@@ -169,7 +171,7 @@ the screen never computes on them.
 
 Locked in [What tools does the agent get, and how does it reason](https://github.com/davidFeldqwe/forward-deployed-exam/issues/6) and the prototype ticket. A six-tool split (`resolve_airports`, `rank_airports`, …) is rejected: place resolution is **data**, and mock tools from the zip do not enter this product.
 
-- `queryAirports` — only path to airport numbers. Filters and sort as above.
+- `queryAirports` — only path to airport numbers. Filters, sort and single-metric lookup as above.
 - `describeMethodology` — weights, window, peer-group rule, long-haul cutoff, stated gaps. No ranking.
 
 Geography is a **resolved airport set** block, never a tool. Informal phrases (“Pacific Northwest”) are the model’s job mapped to states; unknown phrases refuse.
@@ -189,7 +191,7 @@ Follow-up: full message list in the **Thread**, including prior tool results. A 
 
 Empty, Ranking, Comparison (raw congestion; percentiles not comparable across peer groups), Single metric, Reasoning, Inspectable tools, Partial inputs / no data, Out of scope, Unresolvable place, Follow-up, Streaming.
 
-Ranking table, score vector, and resolved-set line render from tool payloads, not from model text. Per-answer caveats block. Canonical fixture: `prototype/transcripts/new-england-ranking.md` (numbers there are fake except locks: long-haul is >2000 mi, passenger-weighted).
+Ranking table, score vector, resolved-set line, **carried context** and the streaming pending row render from tool payloads and the message list, not from model text. The two refusals — off-thesis, and a place phrase the screen cannot resolve — are locked copy the repo owns: the prompt hands the model the same string the answer objects draw, so prose and block cannot disagree about what the screen answers. Per-answer caveats block. Canonical fixture: `prototype/transcripts/new-england-ranking.md` (numbers there are fake except locks: long-haul is >2000 mi, passenger-weighted).
 
 ### Threads (Convex)
 

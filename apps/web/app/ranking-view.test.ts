@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { ScoredAirport } from "@repo/scoring";
 
 import { runAgentTool } from "./agent-tools.ts";
+import { lampPill } from "./lamp-hue.ts";
 import { rankingView } from "./ranking-view.ts";
 import type { JsonValue, ToolCall } from "./thread-messages.ts";
 
@@ -295,4 +296,47 @@ test("the municipality Los Angeles is one airport, not a metro that swallows SNA
 
   assert.deepEqual(losAngeles.resolvedIata, ["LAX"]);
   assert.deepEqual(losAngeles.unknownPlace, []);
+});
+
+// Story 27, end to end on the row the table draws: a coverage state is words and
+// a withheld composite, never a low number and never red.
+test("Partial inputs and No data are text pills with no hue, and the composite is —", () => {
+  const noData: ScoredAirport = {
+    ...hya,
+    iata: "ACK",
+    name: "Nantucket Memorial",
+    candidateLamp: "No data",
+    scoreVector: {
+      congestion: { percentile: null, raw: null, coverage: "missing" },
+      unmetFlightDemand: { percentile: null, raw: null, coverage: "missing" },
+      delay: { percentile: null, raw: null, coverage: "missing" },
+      growth: { percentile: null, raw: null, coverage: "missing" },
+    },
+  };
+  const view = rankingView(
+    call({
+      rows: [hya, noData],
+      matched: 2,
+      resolvedIata: ["HYA", "ACK"],
+      sortBy: "composite",
+      metric: null,
+      limit: 10,
+      unknownIata: [],
+      unknownPlace: [],
+    }),
+  );
+
+  assert.deepEqual(
+    view?.rows.map((row) => [row.lamp, row.composite, row.coverage]),
+    [
+      ["Partial inputs", "—", "3 of 4"],
+      ["No data", "—", "0 of 4"],
+    ],
+  );
+  for (const row of view?.rows ?? []) {
+    assert.ok(row.lamp);
+    // The pill prints the words; its classes carry no hue, so missing is never
+    // read as a weak candidate.
+    assert.doesNotMatch(lampPill(row.lamp), /lamp-/);
+  }
 });
