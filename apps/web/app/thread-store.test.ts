@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
+import { rankingView } from "./ranking-view.ts";
 import {
   type ToolCall,
   assistantMessage,
+  rankingRows,
   userMessage,
 } from "./thread-messages.ts";
 import {
@@ -124,6 +127,34 @@ test("a stored thread is a copy, so a caller cannot reach into the store", () =>
   assert.deepEqual(reread?.messages[1]?.toolCalls, [
     { tool: "describeMethodology", args: { of: "weights" }, result: {}, durationMs: 4 },
   ]);
+});
+
+// #34: the live payload is one of the two adapters on this seam, and the
+// committed universe holds a territory airport — SJU, which the Census Bureau
+// files under no division. A store check stricter than the snapshot refused the
+// whole answer, so the analyst got a thread with the question and no ranking.
+test("a territory airport's answer stores on the thread and draws again as a ranking row", () => {
+  const analyst = "territory@example.com";
+  const args = { iata: "SJU" };
+  const thread = startThread(analyst, "Is San Juan a renovation-investment candidate?")!;
+  const call: ToolCall = {
+    tool: "queryAirports",
+    args,
+    result: toolPayloadJson(runAgentTool("queryAirports", args)),
+    durationMs: 11,
+  };
+
+  assert.notEqual(
+    appendMessage(analyst, thread.id, assistantMessage("SJU is one row.", [call])),
+    null,
+  );
+
+  const stored = readThread(analyst, thread.id)?.messages[1]?.toolCalls[0];
+  assert.equal(rankingRows(stored)?.[0]?.region, null);
+  assert.deepEqual(
+    rankingView(stored)?.rows.map((row) => row.iata),
+    ["SJU"],
+  );
 });
 
 test("an unknown thread id is not found rather than fabricated", () => {

@@ -137,6 +137,21 @@ Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,
 not in a global footer.
 
+## isScoredAirport
+
+`isScoredAirport(value)` answers "is this JSON one of the rows above" for a
+caller holding a row this process did not score: the Thread store reads a
+persisted answer back, and the message list is the only thing that answer
+re-renders from, so a row that lost its lamp or its name has to fail the read
+rather than draw a blank cell. The check is here because the shape is here — a
+store that listed the fields itself is a second copy of `ScoredAirport`, free to
+drift and free to be stricter than the snapshot. `region` is null for a territory
+the Census Bureau files under no division (SJU), a coordinate is still refused
+when only half of it is there, and the closed label sets — hub size, slot level,
+coverage, the five lamps — are typed over the row's own unions, so a value added
+to one fails the typecheck here instead of being refused at a boundary that never
+heard of it.
+
 ## Tests
 
 ```sh

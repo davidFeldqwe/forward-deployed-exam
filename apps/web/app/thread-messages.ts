@@ -5,12 +5,7 @@
  * resolved set, so a follow-up reads prior tool payloads back out of it, and
  * every message crossing the store boundary is checked in both directions.
  */
-import {
-  CANDIDATE_LAMPS,
-  SCORE_COMPONENTS,
-  SLOT_LIMIT_LEVELS,
-  type ScoredAirport,
-} from "@repo/scoring";
+import { isScoredAirport, type ScoredAirport } from "@repo/scoring";
 
 import { clip } from "./text.ts";
 
@@ -72,17 +67,17 @@ export function assistantMessage(
 
 /**
  * The rows a persisted `queryAirports` call re-renders from, or null when the
- * call is not a ranking. `parseThreadMessage` has already checked every field
- * of every row against `ScoredAirport` (`RANKING_ROW_CHECKS`), so the cast is
- * checked rather than assumed. Anything the result carries beside `rows` — the
- * matched count, the sort key — is stored verbatim.
+ * call is not a ranking. Scoring's own `isScoredAirport` decides what a row is,
+ * here and at the write, so nothing downstream is handed a half-written payload
+ * and no cast stands in for the check. Anything the result carries beside
+ * `rows` — the matched count, the sort key — is stored verbatim.
  */
 export function rankingRows(call: ToolCall | undefined): ScoredAirport[] | null {
   if (!call || call.tool !== "queryAirports" || !isRecord(call.result)) {
     return null;
   }
-  const { rows } = call.result;
-  return Array.isArray(rows) ? (rows as ScoredAirport[]) : null;
+  const rows: unknown = call.result.rows;
+  return Array.isArray(rows) && rows.every(isScoredAirport) ? rows : null;
 }
 
 /**
@@ -147,106 +142,14 @@ function parseToolCall(value: unknown): ToolCall | null {
   };
 }
 
+/**
+ * A stored ranking is rows the screen scored. The check is `@repo/scoring`'s,
+ * not a field map kept here: the row shape is that module's, and a second copy
+ * of it drifts — this one used to demand a Census division, which refused the
+ * whole answer for a territory airport the snapshot allows to have none.
+ */
 function hasRenderableRows(result: JsonValue): boolean {
-  return isRecord(result) && Array.isArray(result.rows) && result.rows.every(isRankingRow);
-}
-
-/**
- * Every field of a stored `queryAirports` row, with the check it has to pass.
- * The map is typed over `keyof ScoredAirport`, so a field added in
- * `@repo/scoring` fails this typecheck until someone says how it is checked:
- * the message list is the only re-render source, so a row that lost a value the
- * answer objects draw — a name, a peer group, an assumption — would render a
- * blank cell or drop a caveat silently rather than fail the write.
- */
-const RANKING_ROW_CHECKS: {
-  [Field in keyof ScoredAirport]: (value: unknown) => boolean;
-} = {
-  iata: isNonEmptyString,
-  name: isNonEmptyString,
-  municipality: isString,
-  state: isNonEmptyString,
-  region: isNonEmptyString,
-  latitude: isDegrees(90),
-  longitude: isDegrees(180),
-  peerGroup: isNonEmptyString,
-  scoreVector: isScoreVector,
-  composite: isNumberOrNull,
-  candidateLamp: isLamp,
-  slotLimit: isSlotLimit,
-  longHaulShare: isNumberOrNull,
-  assumptions: isStringArray,
-  gaps: isStringArray,
-};
-
-function isRankingRow(row: unknown): boolean {
-  return (
-    isRecord(row) &&
-    Object.entries(RANKING_ROW_CHECKS).every(([field, check]) => check(row[field])) &&
-    isCoordinatePair(row)
-  );
-}
-
-/**
- * A coordinate the snapshot could carry: degrees, or none. The bound is checked
- * because a stored row is JSON that has been outside this process — an off-world
- * number would put a map marker somewhere the airport is not.
- */
-function isDegrees(bound: number): (value: unknown) => boolean {
-  return (value) =>
-    value === null ||
-    (typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= bound);
-}
-
-/**
- * The snapshot's rule, re-checked here because this is the store boundary: a
- * coordinate is a pair, and half of one is not a point to draw. An airport the
- * source does not locate keeps both nulls and still renders as a ranked row.
- */
-function isCoordinatePair(row: Record<string, unknown>): boolean {
-  return (row.latitude === null) === (row.longitude === null);
-}
-
-function isScoreVector(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    SCORE_COMPONENTS.every((component) => isScoreComponent(value[component]))
-  );
-}
-
-function isScoreComponent(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isNumberOrNull(value.percentile) &&
-    isNumberOrNull(value.raw) &&
-    (value.coverage === "present" || value.coverage === "missing")
-  );
-}
-
-/** A slot limit, or none: an airport under no FAA schedule constraint. */
-function isSlotLimit(value: unknown): boolean {
-  return value === null || SLOT_LIMIT_LEVELS.some((level) => level === value);
-}
-
-function isString(value: unknown): boolean {
-  return typeof value === "string";
-}
-
-/** A drawn label: a blank one is a hole in the row, not a value. */
-function isNonEmptyString(value: unknown): boolean {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function isStringArray(value: unknown): boolean {
-  return Array.isArray(value) && value.every(isString);
-}
-
-function isNumberOrNull(value: unknown): boolean {
-  return value === null || typeof value === "number";
-}
-
-function isLamp(value: unknown): boolean {
-  return CANDIDATE_LAMPS.some((lamp) => lamp === value);
+  return isRecord(result) && Array.isArray(result.rows) && result.rows.every(isScoredAirport);
 }
 
 function isAgentTool(value: unknown): value is AgentTool {

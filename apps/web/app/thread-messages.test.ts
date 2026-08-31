@@ -141,6 +141,26 @@ test("a stored row with half a coordinate, or one off the world, is refused", ()
   assert.notEqual(parseThreadMessage(assistantMessage("prose", [unlocated])), null);
 });
 
+// #34: the snapshot leaves `region` null for a territory, so a store check that
+// demanded a Census division refused the answer that held one.
+test("a territory airport with no Census division is stored, not refused", () => {
+  const territory = structuredClone(rankingCall);
+  Object.assign(storedRow(territory), {
+    iata: "SJU",
+    name: "Luis Munoz Marin International Airport",
+    municipality: "San Juan",
+    state: "PR",
+    region: null,
+  });
+
+  const restored = parseThreadMessage(assistantMessage("SJU is one row.", [territory]));
+
+  assert.equal(rankingRows(restored?.toolCalls[0])?.[0]?.region, null);
+  // A region that is there is still a label, not a blank.
+  Object.assign(storedRow(territory), { region: "  " });
+  assert.equal(parseThreadMessage(assistantMessage("prose", [territory])), null);
+});
+
 test("a stored message from an unknown role or tool is refused", () => {
   assert.equal(parseThreadMessage({ role: "system", text: "be nice", toolCalls: [] }), null);
   assert.equal(
@@ -158,7 +178,8 @@ test("a stored message from an unknown role or tool is refused", () => {
 test("a stored ranking row is checked field by field, so no drawn value goes missing", () => {
   // The message list is the only re-render source: a row that lost its name,
   // peer group, slot limit or caveats would draw a blank cell or silently drop
-  // a caveat, so every field the answer objects read has to be present.
+  // a caveat, so every field the answer objects read has to be present. What a
+  // row is, is `@repo/scoring`'s call — this store keeps no second field map.
   for (const field of Object.keys(bosRow)) {
     const truncated = structuredClone(rankingCall) as ToolCall;
     const rows = (truncated.result as { rows: Record<string, unknown>[] }).rows;
