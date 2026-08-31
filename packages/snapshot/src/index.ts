@@ -7,9 +7,13 @@ export {
   censusDivisionOf,
   type CensusDivision,
 } from "./census-divisions.ts";
-export { SLOT_LIMITS, SLOT_LIMIT_VERIFIED_ON, slotLimitOf, type SlotLimit } from "./slot-limits.ts";
 export {
-  airportSchema,
+  SLOT_LIMITS,
+  SLOT_LIMIT_VERIFIED_ON,
+  slotLimitOf,
+  type SlotLimit,
+} from "./slot-limits.ts";
+export {
   airportSnapshotSchema,
   type AirportSnapshot,
   type Coverage,

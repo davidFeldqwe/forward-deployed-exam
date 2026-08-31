@@ -43,10 +43,6 @@ function readCentralDirectory(zip: Buffer): CentralEntry[] {
   return entries;
 }
 
-export function zipEntryNames(zip: Buffer): string[] {
-  return readCentralDirectory(zip).map((entry) => entry.name);
-}
-
 // Reads one archive member. Deflate and stored are the only methods BTS and FAA
 // use, so anything else is a source change worth failing on.
 export function readZipEntry(zip: Buffer, matches: (name: string) => boolean): Buffer {
