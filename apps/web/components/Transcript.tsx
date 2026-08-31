@@ -77,7 +77,7 @@ function Answer({
           <Prose text={message.text} />
           {/* Read aloud sits with the prose it speaks, under it and above the
               table it does not. */}
-          {spoken === null ? null : <ReadAloud text={spoken} />}
+          {spoken ? <ReadAloud text={spoken} /> : null}
         </div>
       ) : null}
       {rankings.map((view, index) => (

@@ -28,7 +28,11 @@ export const readAloud = {
  * no sentence, or a later answer wrote one.
  */
 export function spokenProse(messages: readonly ThreadMessage[], index: number): string | null {
-  return index === lastProseTurn(messages) ? (messages[index]?.text.trim() ?? null) : null;
+  const message = messages[index];
+  if (!message || index !== lastProseTurn(messages)) {
+    return null;
+  }
+  return message.text.trim();
 }
 
 /** The last assistant turn that wrote something to say, or -1 if none did. */

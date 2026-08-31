@@ -4,13 +4,13 @@ import { test } from "node:test";
 
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { readAloud, spokenProse } from "./read-aloud.ts";
-import {
-  assistantMessage,
-  userMessage,
-  rankingRows,
-  type ThreadMessage,
-  type ToolCall,
-} from "./thread-messages.ts";
+import { assistantMessage, userMessage, rankingRows, type ToolCall } from "./thread-messages.ts";
+
+const web = new URL("../", import.meta.url);
+
+function source(file: string): string {
+  return readFileSync(new URL(file, web), "utf8");
+}
 
 function call(args: Record<string, string | string[]>): ToolCall {
   return {
@@ -23,24 +23,21 @@ function call(args: Record<string, string | string[]>): ToolCall {
 
 const newEngland = call({ region: "New England" });
 
+const QUESTION = "Which airports in New England are renovation-investment candidates?";
 const ANSWER = "Four New England airports came back, ranked by composite.";
 const FOLLOW_UP = "Bradley's delay percentile is the reason it sits second.";
-
-function thread(...messages: ThreadMessage[]): ThreadMessage[] {
-  return messages;
-}
 
 // Story 37 / issue #28: the control reads the last assistant prose, and only the
 // prose. Everything else in an answer — the ranking table, the score vector, the
 // resolved set — is rendered from the tool payload and stays in the DOM for a
 // screen reader rather than being narrated over.
 test("the last assistant turn with prose is the one that speaks", () => {
-  const messages = thread(
-    userMessage("Which airports in New England are renovation-investment candidates?"),
+  const messages = [
+    userMessage(QUESTION),
     assistantMessage(ANSWER, [newEngland]),
     userMessage("Tell me more about the second one."),
     assistantMessage(FOLLOW_UP, [call({ iata: "BDL" })]),
-  );
+  ];
 
   assert.equal(spokenProse(messages, 3), FOLLOW_UP);
   // An earlier answer keeps its prose on screen; it does not keep a control.
@@ -50,11 +47,8 @@ test("the last assistant turn with prose is the one that speaks", () => {
 });
 
 test("what is spoken is the prose string, not the payload the table drew", () => {
-  const messages = thread(
-    userMessage("Which airports in New England are renovation-investment candidates?"),
-    assistantMessage(ANSWER, [newEngland]),
-  );
-  const spoken = spokenProse(messages, 1);
+  const messages = [userMessage(QUESTION), assistantMessage(ANSWER, [newEngland])];
+  const spoken = spokenProse(messages, 1) ?? "";
   const rows = rankingRows(newEngland) ?? [];
 
   assert.ok(rows.length > 1, "the fixture answer carries a ranking table");
@@ -62,20 +56,20 @@ test("what is spoken is the prose string, not the payload the table drew", () =>
   // Nothing the screen computed is read out: not a composite, not a percentile,
   // not a code from the resolved airport set.
   for (const row of rows) {
-    assert.doesNotMatch(spoken ?? "", new RegExp(row.iata));
-    assert.doesNotMatch(spoken ?? "", new RegExp(String(row.composite)));
+    assert.ok(!spoken.includes(row.iata), row.iata);
+    assert.ok(!spoken.includes(String(row.composite)), String(row.composite));
   }
 });
 
 test("an answer that is only a table has nothing to read aloud", () => {
   // The model returned rows and no sentence. There is no prose, so there is no
   // control — and the last answer that did have prose keeps its own.
-  const messages = thread(
-    userMessage("Which airports in New England are renovation-investment candidates?"),
+  const messages = [
+    userMessage(QUESTION),
     assistantMessage(ANSWER, [newEngland]),
     userMessage("And Bradley?"),
     assistantMessage("  ", [call({ iata: "BDL" })]),
-  );
+  ];
 
   assert.equal(spokenProse(messages, 3), null);
   assert.equal(spokenProse(messages, 1), ANSWER);
@@ -83,7 +77,7 @@ test("an answer that is only a table has nothing to read aloud", () => {
 
 test("an empty thread and an out-of-range turn speak nothing", () => {
   assert.equal(spokenProse([], 0), null);
-  assert.equal(spokenProse(thread(userMessage("hello")), 5), null);
+  assert.equal(spokenProse([userMessage("hello")], 5), null);
 });
 
 test("the control's copy says it is the browser reading the prose", () => {
@@ -94,12 +88,6 @@ test("the control's copy says it is the browser reading the prose", () => {
   // analyst to discover it by pressing the control.
   assert.match(readAloud.note, /table|score vector/i);
 });
-
-const web = new URL("../", import.meta.url);
-
-function source(file: string): string {
-  return readFileSync(new URL(file, web), "utf8");
-}
 
 test("the control speaks its prose prop through the browser speech API alone", () => {
   const control = source("components/answers/ReadAloud.tsx");
@@ -129,7 +117,9 @@ test("the transcript hands the control only the prose the thread last wrote", ()
 const clientSource = ["app", "components", "lib"]
   .flatMap((directory) =>
     readdirSync(new URL(`${directory}/`, web), { encoding: "utf8", recursive: true })
-      .filter((file) => (file.endsWith(".ts") || file.endsWith(".tsx")) && !file.endsWith(".test.ts"))
+      .filter(
+        (file) => (file.endsWith(".ts") || file.endsWith(".tsx")) && !file.endsWith(".test.ts"),
+      )
       .map((file) => source(`${directory}/${file}`)),
   )
   .join("\n");
@@ -148,10 +138,8 @@ test("no microphone, no voice input and no cloud speech vendor anywhere", () => 
   }
 });
 
-const repo = new URL("../../", web);
-
 test("PRD Out of Scope reopens browser read-aloud and still refuses voice input", () => {
-  const prd = readFileSync(new URL("PRD.md", repo), "utf8");
+  const prd = readFileSync(new URL("../../PRD.md", web), "utf8");
   const start = prd.indexOf("## Out of Scope");
   assert.notEqual(start, -1);
   // Just this section: the Further Notes under it are not the ban list.

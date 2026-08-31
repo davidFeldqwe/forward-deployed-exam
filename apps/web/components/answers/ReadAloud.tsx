@@ -17,7 +17,9 @@ export function ReadAloud({ text }: { text: string }) {
   // Asked after mount: the server has no speech API to ask, and a browser
   // without one should show no control rather than a button that does nothing.
   const [available, setAvailable] = useState(false);
-  useEffect(() => setAvailable("speechSynthesis" in window), []);
+  useEffect(() => {
+    setAvailable("speechSynthesis" in window);
+  }, []);
 
   // Leaving the thread — or this answer ceasing to be the last one with prose —
   // stops the voice, so speech never outlives the control that started it.
