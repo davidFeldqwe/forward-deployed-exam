@@ -15,3 +15,4 @@ apps/web/convex/_generated/
 .sandcastle/.env
 .sandcastle/logs/
 .sandcastle/worktrees/
+.cache
