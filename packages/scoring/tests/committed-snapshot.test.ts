@@ -137,3 +137,24 @@ test("the committed snapshot is fully covered, so partial rows need a fixture", 
   const withheld = scored.filter((row) => row.composite === null);
   assert.deepEqual(withheld, [], "no airport in the committed file is missing an input today");
 });
+
+test("the national rank mixes peer groups, and every row says so", () => {
+  const top = queryAirports(scored, { limit: MAX_LIMIT }).rows;
+  const groups = new Set(top.map((row) => row.peerGroup));
+  assert.ok(groups.size > 1, `the top ${MAX_LIMIT} spans peer groups, not just one: ${[...groups]}`);
+  // PVD is a small hub ranked above BOS, a large hub, on the same list. Neither
+  // number is a like-for-like reading of the other, so the caveat is on the row.
+  const pvd = byIata.get("PVD")!;
+  const bos = byIata.get("BOS")!;
+  assert.equal(pvd.peerGroup, "small");
+  assert.equal(bos.peerGroup, "large");
+  assert.ok(pvd.composite! > bos.composite!);
+  for (const row of [pvd, bos]) {
+    assert.ok(
+      row.assumptions.some(
+        (line) => line.includes("peer group") && line.includes("composite"),
+      ),
+      `${row.iata} carries the cross-peer-group caveat`,
+    );
+  }
+});

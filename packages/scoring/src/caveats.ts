@@ -13,7 +13,7 @@ export function sharedAssumptions(snapshot: AirportSnapshot): string[] {
   const { units, longHaulShare } = snapshot.methodology;
   return [
     `Comparison window is ${firstYear}-${secondYear}; every airport is measured on the same two calendar years.`,
-    "Percentiles are within the airport's FAA hub-size peer group, computed nationally: a medium-hub 74th percentile is not a large-hub 74th percentile. A place question filters these rows, it does not re-percentile them.",
+    "Percentiles, and the composite built from them, are within the airport's FAA hub-size peer group, computed nationally: a small-hub composite of 87 is a rank among small hubs, not a claim that it is under more pressure than a large hub at 50. A place question filters these rows, it does not re-percentile them.",
     `Weights are fixed: congestion ${WEIGHTS.congestion}, unmet flight demand ${WEIGHTS.unmetFlightDemand}, delay ${WEIGHTS.delay}, growth ${WEIGHTS.growth}.`,
     `Congestion is ${units.congestion}; unmet flight demand is ${units.unmetFlightDemand}; delay is ${units.delay}; growth is ${units.growth}.`,
     `Long-haul share is a lookup over ${longHaulShare.basis} beyond ${longHaulShare.thresholdMiles} miles, not a score-vector component.`,

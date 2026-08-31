@@ -223,3 +223,45 @@ test("scoring keeps the snapshot's row order and does not mutate it", () => {
   );
   assert.equal(FIXTURE.airports[4]!.inputs.delay.raw, null);
 });
+
+// PRD "Row payload": #19 asserts an HTTP body equals this object and #26 adds a
+// field to it, so the key set is pinned rather than left to drift silently.
+test("a row is exactly the locked payload, no more and no less", () => {
+  assert.deepEqual(Object.keys(row("LAX")), [
+    "iata",
+    "name",
+    "municipality",
+    "state",
+    "region",
+    "peerGroup",
+    "scoreVector",
+    "composite",
+    "candidateLamp",
+    "slotLimit",
+    "longHaulShare",
+    "assumptions",
+    "gaps",
+  ]);
+  assert.deepEqual(Object.keys(row("LAX").scoreVector), [...COMPONENTS]);
+  for (const component of COMPONENTS) {
+    assert.deepEqual(Object.keys(row("LAX").scoreVector[component]), [
+      "percentile",
+      "raw",
+      "coverage",
+    ]);
+  }
+});
+
+// A national rank sorts three peer groups' composites into one list, so a small
+// hub can outrank a large one. That is the locked design, and the row has to say
+// so: the composite is as peer-relative as the percentiles it is built from.
+test("the cross-peer-group caveat covers the composite, not just the percentiles", () => {
+  const peerRule = row("BOS").assumptions.find((line) => line.includes("peer group"));
+  assert.ok(peerRule, "a row names the peer-group rule");
+  assert.match(peerRule, /composite/i);
+
+  // ORH is a small hub at 50 and BOS a large hub at 50: the same number, ranked
+  // against different fields, which is why the caveat has to be on the row.
+  assert.equal(row("ORH").composite, row("BOS").composite);
+  assert.notEqual(row("ORH").peerGroup, row("BOS").peerGroup);
+});

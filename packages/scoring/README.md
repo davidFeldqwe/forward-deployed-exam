@@ -41,7 +41,10 @@ blank never moves its peers.
 **Composite** — the weighted mean of those four integer percentiles, rounded, so
 the vector an analyst expands is the vector the composite is built from. Santa
 Ana's 77th percentile is a medium-hub rank and Los Angeles's 89th is a large-hub
-rank; they are not comparable, and the module never pretends otherwise.
+rank; they are not comparable, and the module never pretends otherwise. The
+composite inherits that: a national ranking sorts three peer groups into one
+list, so small-hub PVD at 87 sits above large-hub BOS at 50 without claiming to
+be under more pressure. Every row carries that caveat in `assumptions`.
 
 ## Candidate lamp
 
@@ -67,13 +70,17 @@ itself.
   `peerGroup`. Matching ignores case and padding and nothing else — place
   phrases are resolved to snapshot values before the call, so the screen never
   geocodes a guess. ORD and MDW are two Chicago rows; there is no city market.
-- `sortBy`: `composite` (default) or one component's percentile. Withheld
-  composites sort last. Ties keep the snapshot's order, which is enplanements
-  descending.
+- `sortBy`: one of `SORT_KEYS` — `composite` (default) or one component's
+  percentile. Withheld composites sort last; ties keep the snapshot's order,
+  which is enplanements descending. An off-list key throws a `RangeError` naming
+  the accepted values rather than silently ranking on something else, because
+  `sortBy` arrives from a query string or from the model, where the TypeScript
+  type is no guard. Long-haul share is not a sort key.
 - `limit`: default 10, hard cap 25. Passing `iata` lifts the default to the cap,
   so a two-code compare returns both rows.
 - Returns `{ rows, matched, sortBy, limit }`; `matched` is the count before the
-  limit.
+  limit. The row payload's key set is pinned by `tests/score.test.ts`, so the
+  rank HTTP can assert its body equals the module output.
 
 Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,
