@@ -1,3 +1,5 @@
+import { clip } from "./text.ts";
+
 export const LOGIN_PATH = "/login";
 export const CHAT_PATH = "/chat";
 
@@ -68,5 +70,5 @@ export function carriedPrompt(value: QueryValue): string | null {
     return null;
   }
   const prompt = value.trim();
-  return prompt.length === 0 ? null : prompt.slice(0, PROMPT_MAX_LENGTH);
+  return prompt.length === 0 ? null : clip(prompt, PROMPT_MAX_LENGTH);
 }

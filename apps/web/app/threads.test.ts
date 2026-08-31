@@ -135,3 +135,15 @@ test("a message with neither text nor a tool payload has nothing to render, so i
   assert.notEqual(parseThreadMessage(assistantMessage("BOS leads at 79.")), null);
   assert.notEqual(parseThreadMessage(assistantMessage("", [rankingCall])), null);
 });
+
+test("a bounded title is cut between characters, so recents never shows half a symbol", () => {
+  // The bound used to count UTF-16 units, so a question whose emoji straddles
+  // the cut stored a lone surrogate: not valid UTF-8, drawn as “�” by every
+  // store that re-encodes it on the way out.
+  const kept = `Which airports ${"x".repeat(63)}`;
+  const title = threadTitle(`${kept}🛫 are renovation-investment candidates?`);
+
+  assert.equal(title, `${kept}🛫…`);
+  assert.equal(Buffer.from(title, "utf8").toString("utf8"), title);
+  assert.equal(Array.from(title).length, THREAD_TITLE_MAX_LENGTH);
+});

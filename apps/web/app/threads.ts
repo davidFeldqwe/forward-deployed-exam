@@ -13,6 +13,8 @@ import {
   type ScoredAirport,
 } from "@repo/scoring";
 
+import { clip } from "./text.ts";
+
 /** A recents entry is a title, not a paragraph. */
 export const THREAD_TITLE_MAX_LENGTH = 80;
 
@@ -50,10 +52,12 @@ export type ThreadMessage = {
 /** The first user question, as the recents list shows it. */
 export function threadTitle(question: string): string {
   const collapsed = question.replace(/\s+/g, " ").trim();
-  if (collapsed.length <= THREAD_TITLE_MAX_LENGTH) {
+  const bounded = clip(collapsed, THREAD_TITLE_MAX_LENGTH);
+  if (bounded === collapsed) {
     return collapsed;
   }
-  return `${collapsed.slice(0, THREAD_TITLE_MAX_LENGTH - 1).trimEnd()}…`;
+  // One character short, so the ellipsis that says "there was more" fits.
+  return `${clip(bounded, THREAD_TITLE_MAX_LENGTH - 1).trimEnd()}…`;
 }
 
 export function userMessage(text: string): ThreadMessage {
