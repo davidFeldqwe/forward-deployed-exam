@@ -110,3 +110,17 @@ test("a stored thread is a copy, so a caller cannot reach into the store", () =>
 test("an unknown thread id is not found rather than fabricated", () => {
   assert.equal(readThread("nobody@example.com", "nosuchthread"), null);
 });
+
+test("two copies of this module share one store, as Next's route bundles are", async () => {
+  // Next bundles the page graph and the server-action graph separately, so this
+  // module is instantiated more than once in one server. A question asked
+  // through the action must be readable by the page that renders the thread.
+  const asTheAction = await import("./threads.ts?bundle=action");
+  const asThePage = await import("./threads.ts?bundle=page");
+
+  const analyst = "twobundles@example.com";
+  const started = asTheAction.startThread(analyst, NEW_ENGLAND);
+
+  assert.equal(asThePage.readThread(analyst, started.id)?.title, NEW_ENGLAND);
+  assert.equal(asThePage.latestThreadId(analyst), started.id);
+});

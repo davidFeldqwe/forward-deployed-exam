@@ -4,6 +4,9 @@ export const chatCopy = {
   composerPlaceholder: "Ask about an airport…",
   sendLabel: "Send",
   signOutLabel: "Sign out",
+  recentsLabel: "Recents",
+  newThreadLabel: "New thread",
+  noRecentsLabel: "No threads yet — ask a question to start one.",
   chips: [
     "Which airports in New England are renovation-investment candidates?",
     "Compare congestion at Los Angeles and Santa Ana.",

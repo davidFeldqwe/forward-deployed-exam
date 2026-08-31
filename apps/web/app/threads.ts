@@ -201,16 +201,26 @@ export type ThreadSummary = {
   title: string;
 };
 
+type ThreadHost = { __aiiThreadStore?: Map<string, Thread> };
+
 /**
  * The Thread store seam. Convex owns Threads once a deployment exists (PRD:
  * Convex stores Auth and Threads only, never airports or scores); until then
  * this process holds them, so threads survive a refresh but not a restart.
  *
+ * It hangs off `globalThis` because Next bundles the page graph and the
+ * server-action graph separately: a module-level Map would give the action that
+ * writes a thread and the page that renders it a store each.
+ *
  * Insertion order is the recents order: a thread that gets a new message is
  * re-inserted at the end, which is what an index on (owner, updatedAt) will do
  * in Convex without depending on two writes landing in different milliseconds.
  */
-const threadsById = new Map<string, Thread>();
+function threadsById(): Map<string, Thread> {
+  const host = globalThis as unknown as ThreadHost;
+  host.__aiiThreadStore ??= new Map();
+  return host.__aiiThreadStore;
+}
 
 /** Sign-in normalizes the email; a thread owner is keyed the same way. */
 function ownerKey(email: string): string {
@@ -223,7 +233,7 @@ function newThreadId(): string {
 
 /** A thread the analyst can only read back through their own account. */
 function ownedThread(ownerEmail: string, threadId: string): Thread | null {
-  const thread = threadsById.get(threadId);
+  const thread = threadsById().get(threadId);
   return thread && thread.ownerEmail === ownerKey(ownerEmail) ? thread : null;
 }
 
@@ -243,7 +253,7 @@ export function startThread(ownerEmail: string, question: string): Thread {
     updatedAt: now,
     messages: [userMessage(question)],
   };
-  threadsById.set(thread.id, thread);
+  threadsById().set(thread.id, thread);
   return snapshotOf(thread);
 }
 
@@ -264,8 +274,8 @@ export function appendMessage(
   thread.messages.push(parsed);
   thread.updatedAt = Date.now();
   // Re-insert so the thread just spoken in is the most recent one.
-  threadsById.delete(thread.id);
-  threadsById.set(thread.id, thread);
+  threadsById().delete(thread.id);
+  threadsById().set(thread.id, thread);
   return snapshotOf(thread);
 }
 
@@ -278,7 +288,7 @@ export function readThread(ownerEmail: string, threadId: string): Thread | null 
 export function listThreads(ownerEmail: string): ThreadSummary[] {
   const owner = ownerKey(ownerEmail);
   const summaries: ThreadSummary[] = [];
-  for (const thread of threadsById.values()) {
+  for (const thread of threadsById().values()) {
     if (thread.ownerEmail === owner) {
       summaries.unshift({ id: thread.id, title: thread.title });
     }
