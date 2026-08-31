@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test app/**/*.test.ts"
   },
   "dependencies": {
     "@repo/scoring": "workspace:*",

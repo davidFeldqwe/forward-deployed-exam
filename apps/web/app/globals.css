@@ -1,0 +1,362 @@
+:root {
+  --canvas: #08090a;
+  --header: #0b0c0d;
+  --card: #0f1011;
+  --raised: #191a1b;
+  --text: #f7f8f8;
+  --body: #d0d6e0;
+  --meta: #8a8f98;
+  --accent: #5e6ad2;
+  --accent-hover: #828fff;
+  --border: rgba(255, 255, 255, 0.07);
+  --row-head: #141516;
+  --grid: rgba(255, 255, 255, 0.04);
+  --font-sans: var(--font-sans-face), system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv01", "ss03";
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+a:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(94, 106, 210, 0.4),
+    0 0 0 4px rgba(94, 106, 210, 0.2);
+}
+
+.landing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-header {
+  flex: none;
+  height: 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--header);
+}
+
+.landing-header-inner,
+.landing-column {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.landing-header-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.wordmark-mark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: 3px;
+}
+
+.wordmark-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-action {
+  flex: none;
+  font-size: 13px;
+  font-weight: 510;
+  color: var(--accent);
+}
+
+.header-action:hover {
+  color: var(--accent-hover);
+}
+
+.landing-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  position: relative;
+  padding: 72px 0 88px;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.hero-title {
+  margin: 0 0 16px;
+  font-size: 36px;
+  font-weight: 510;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.hero-subtitle {
+  margin: 0 0 28px;
+  max-width: 38rem;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--body);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 510;
+}
+
+.cta:hover {
+  background: var(--accent-hover);
+  color: var(--text);
+}
+
+.demo-slot {
+  margin-top: -48px;
+  margin-bottom: 56px;
+}
+
+.demo-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px 14px;
+}
+
+.demo-prompt {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.demo-prose {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--meta);
+}
+
+.demo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.demo-table th,
+.demo-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.demo-table th {
+  background: var(--row-head);
+  color: var(--meta);
+  font-weight: 510;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.demo-table td {
+  color: var(--body);
+}
+
+.demo-table .mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.built-on {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 18px;
+  margin-bottom: 48px;
+  color: var(--meta);
+  font-size: 12px;
+}
+
+.built-on-label {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.built-on-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--body);
+}
+
+.questions {
+  margin-bottom: 56px;
+}
+
+.questions-heading,
+.how-heading {
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 510;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant: all-small-caps;
+  color: var(--meta);
+}
+
+.question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.question-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.question-arrow {
+  flex: none;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.how {
+  margin-bottom: 56px;
+}
+
+.how-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.how-step {
+  display: flex;
+  flex-direction: column;
+}
+
+.how-box {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.how-arrow {
+  color: var(--meta);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 0;
+  text-align: center;
+}
+
+.how-caption {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--meta);
+}
+
+.privacy {
+  width: 100%;
+  background: var(--raised);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--body);
+}
+
+.privacy p {
+  margin: 0 auto;
+  max-width: 720px;
+}
+
+.landing-footer {
+  padding: 20px 24px 28px;
+  text-align: center;
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a,
+  .cta {
+    transition: none;
+  }
+}
