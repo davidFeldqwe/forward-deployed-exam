@@ -89,27 +89,34 @@ itself.
   resolves to nothing. Values of the wrong *type* stay the caller's problem: the
   tool schema and the query-string parser validate those (a `limit` of `"3"` is
   not a number and falls back to the default).
-- Returns `{ rows, matched, sortBy, limit, unknownIata, unknownPlace }`;
-  `matched` is the count before the limit. `unknownIata` lists requested codes
-  with no airport in the scored universe, in the order asked: "LAX vs ITH" comes
-  back as one row, and the caller has to be able to tell that from a compare that
-  returned both. `unknownPlace` does the same for a place filter, in
-  `PLACE_FIELDS` order: `state: "California"` matches nothing because the
-  snapshot spells a state as two letters, and an empty ranking with no other
+- Returns `{ rows, matched, resolvedIata, sortBy, limit, unknownIata,
+  unknownPlace }`. `resolvedIata` is every matched code in the order `rows` pages
+  — the resolved airport set the agent names before it ranks, so a twelve-airport
+  state does not come back as the ten `rows` held. `matched` is
+  `resolvedIata.length`, so the count and the set cannot disagree. `unknownIata`
+  lists requested codes with no airport in the scored universe, in the order
+  asked: "LAX vs ITH" comes back as one row, and the caller has to be able to tell
+  that from a compare that returned both. `unknownPlace` does the same for a place
+  filter, in `PLACE_FIELDS` order: `state: "California"` matches nothing because
+  the snapshot spells a state as two letters, and an empty ranking with no other
   signal reads as "no airport in California is a candidate" while LAX and SNA sit
   in the screen. Both mean *outside the universe*, not *filtered out* — New
-  England and CA are real places even though no airport is in both, and a code
-  the place filters excluded is not listed either. Neither refuses the query the
-  way an off-list `sortBy` does: an unresolved place legitimately has no
-  airports, so zero rows is the honest answer, it just has to be
-  distinguishable. `placeVocabulary(scored)` is the other half of that refusal:
-  the values each place filter accepts, sorted, derived from the universe rather
-  than kept by hand in the app, so "accepted phrases" cannot disagree with what
-  is filtered on. A blank is not offered — SJU has no Census division, and a
-  region ranking never returns it. Both key sets, the row's and the result's,
-  are pinned by tests, and so is the fact that the result survives
-  `JSON.parse(JSON.stringify(...))` unchanged, so the rank HTTP can assert its
-  body equals the module output.
+  England and CA are real places even though no airport is in both, and a code the
+  place filters excluded is not listed either. Neither refuses the query the way
+  an off-list `sortBy` does: an unresolved place legitimately has no airports, so
+  zero rows is the honest answer, it just has to be distinguishable.
+  `placeVocabulary(scored)` is the other half of that refusal: the values each
+  place filter accepts, sorted, derived from the universe rather than kept by hand
+  in the app, so "accepted phrases" cannot disagree with what is filtered on. A
+  blank is not offered — SJU has no Census division, and a region ranking never
+  returns it. Both key sets, the row's and the result's, are pinned by tests, and
+  so is the fact that the result survives `JSON.parse(JSON.stringify(...))`
+  unchanged, so the rank HTTP can assert its body equals the module output.
+
+`sharedAssumptions(snapshot)` is the snapshot-wide half of those caveats on its
+own, for the agent's `describeMethodology`: the tool that says how the screen
+works states it in the same sentences the rows carry, rather than a second
+wording of one screen that can drift from it.
 
 Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,

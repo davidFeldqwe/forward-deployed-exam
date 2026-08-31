@@ -51,10 +51,14 @@ function Answer({ message }: { message: ThreadMessage }) {
       ))}
       {message.text ? (
         <div className="flex flex-col gap-2">
-          <span className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-            AI explanation
-            <span aria-hidden className="h-px flex-1 bg-grid" />
-          </span>
+          {/* The label marks a boundary, so it is drawn only where there is
+              something on the other side of it to tell the prose apart from. */}
+          {rankings.length > 0 ? (
+            <span className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              AI explanation
+              <span aria-hidden className="h-px flex-1 bg-grid" />
+            </span>
+          ) : null}
           <Prose text={message.text} />
         </div>
       ) : null}
