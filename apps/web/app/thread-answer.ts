@@ -97,42 +97,34 @@ export function threadAnswer(
   const assumptions = mergedLines(views, "assumptions");
   const gaps = mergedLines(views, "gaps");
 
-  return [
-    ...message.toolCalls.map((call): ThreadAnswerPart => ({ tag: "tool", call })),
-    // Before the resolved set and the vector under it: how the follow-up
-    // reference was resolved comes before any number read for it.
-    ...(carried ? [{ tag: "carried", carried } as const] : []),
-    ...views.map(
-      (view): ThreadAnswerPart => ({
-        tag: "resolved",
-        resolved: view.resolved,
-        unknown: view.unknown,
-      }),
-    ),
-    ...(message.text.trim().length > 0
-      ? [
-          {
-            tag: "prose",
-            text: message.text,
-            heading: views.length > 0 ? PROSE_HEADING : null,
-            spoken: spokenProse(messages, index),
-          } as const,
-        ]
-      : []),
-    ...views
-      .filter((view) => view.rows.length > 0)
-      .map(
-        (view): ThreadAnswerPart => ({
-          tag: "ranking",
-          rows: view.rows,
-          lookup: view.lookup,
-          sortLabel: view.sortLabel,
-        }),
-      ),
-    ...(assumptions.length > 0 || gaps.length > 0
-      ? [{ tag: "caveats", assumptions, gaps } as const]
-      : []),
-  ];
+  // The locked order, one group per line, each one skipped where it is empty.
+  const parts: ThreadAnswerPart[] = [];
+  for (const call of message.toolCalls) {
+    parts.push({ tag: "tool", call });
+  }
+  // Before the resolved set and the vector under it: how the follow-up
+  // reference was resolved comes before any number read for it.
+  if (carried) {
+    parts.push({ tag: "carried", carried });
+  }
+  for (const view of views) {
+    parts.push({ tag: "resolved", resolved: view.resolved, unknown: view.unknown });
+  }
+  if (message.text.trim().length > 0) {
+    parts.push({
+      tag: "prose",
+      text: message.text,
+      heading: views.length > 0 ? PROSE_HEADING : null,
+      spoken: spokenProse(messages, index),
+    });
+  }
+  for (const view of views.filter((view) => view.rows.length > 0)) {
+    parts.push({ tag: "ranking", rows: view.rows, lookup: view.lookup, sortLabel: view.sortLabel });
+  }
+  if (assumptions.length > 0 || gaps.length > 0) {
+    parts.push({ tag: "caveats", assumptions, gaps });
+  }
+  return parts;
 }
 
 // One caveats block per answer, even when the answer ran two queries.
