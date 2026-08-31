@@ -167,6 +167,8 @@ const RANKING_ROW_CHECKS: {
   municipality: isString,
   state: isNonEmptyString,
   region: isNonEmptyString,
+  latitude: isDegrees(90),
+  longitude: isDegrees(180),
   peerGroup: isNonEmptyString,
   scoreVector: isScoreVector,
   composite: isNumberOrNull,
@@ -180,8 +182,29 @@ const RANKING_ROW_CHECKS: {
 function isRankingRow(row: unknown): boolean {
   return (
     isRecord(row) &&
-    Object.entries(RANKING_ROW_CHECKS).every(([field, check]) => check(row[field]))
+    Object.entries(RANKING_ROW_CHECKS).every(([field, check]) => check(row[field])) &&
+    isCoordinatePair(row)
   );
+}
+
+/**
+ * A coordinate the snapshot could carry: degrees, or none. The bound is checked
+ * because a stored row is JSON that has been outside this process — an off-world
+ * number would put a map marker somewhere the airport is not.
+ */
+function isDegrees(bound: number): (value: unknown) => boolean {
+  return (value) =>
+    value === null ||
+    (typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= bound);
+}
+
+/**
+ * The snapshot's rule, re-checked here because this is the store boundary: a
+ * coordinate is a pair, and half of one is not a point to draw. An airport the
+ * source does not locate keeps both nulls and still renders as a ranked row.
+ */
+function isCoordinatePair(row: Record<string, unknown>): boolean {
+  return (row.latitude === null) === (row.longitude === null);
 }
 
 function isScoreVector(value: unknown): boolean {

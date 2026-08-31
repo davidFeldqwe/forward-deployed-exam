@@ -30,24 +30,33 @@ const windowedCountSchema = z.strictObject({
   secondYear: z.number().nonnegative().nullable(),
 });
 
-export const airportSchema = z.strictObject({
-  iata: z.string().regex(/^[A-Z]{3}$/),
-  name: z.string().min(1),
-  municipality: z.string().min(1),
-  state: z.string().regex(/^[A-Z]{2}$/),
-  region: z.enum(CENSUS_DIVISIONS).nullable(),
-  peerGroup: peerGroupSchema,
-  runwayCount: z.number().int().positive().nullable(),
-  slotLimit: slotLimitSchema.nullable(),
-  enplanements: windowedCountSchema,
-  flights: windowedCountSchema,
-  inputs: scoreInputsSchema,
-  longHaulShare: z.strictObject({
-    share: z.number().min(0).max(1).nullable(),
-    longHaulFlights: z.number().int().nonnegative().nullable(),
-    coverage: coverageSchema,
-  }),
-});
+export const airportSchema = z
+  .strictObject({
+    iata: z.string().regex(/^[A-Z]{3}$/),
+    name: z.string().min(1),
+    municipality: z.string().min(1),
+    state: z.string().regex(/^[A-Z]{2}$/),
+    region: z.enum(CENSUS_DIVISIONS).nullable(),
+    // OurAirports degrees, carried so the thread can place a resolved airport set
+    // without a second lookup at query time. Nullable as a pair, checked below: a
+    // source that does not locate an airport is not an airport at 0, 0.
+    latitude: z.number().min(-90).max(90).nullable(),
+    longitude: z.number().min(-180).max(180).nullable(),
+    peerGroup: peerGroupSchema,
+    runwayCount: z.number().int().positive().nullable(),
+    slotLimit: slotLimitSchema.nullable(),
+    enplanements: windowedCountSchema,
+    flights: windowedCountSchema,
+    inputs: scoreInputsSchema,
+    longHaulShare: z.strictObject({
+      share: z.number().min(0).max(1).nullable(),
+      longHaulFlights: z.number().int().nonnegative().nullable(),
+      coverage: coverageSchema,
+    }),
+  })
+  .refine((airport) => (airport.latitude === null) === (airport.longitude === null), {
+    message: "a coordinate is a pair: half of one is not a point on a map",
+  });
 
 const yearSchema = z.number().int().min(2000).max(2100);
 

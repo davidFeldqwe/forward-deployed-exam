@@ -35,6 +35,8 @@ const bosRow: ScoredAirport = {
   municipality: "Boston",
   state: "MA",
   region: "New England",
+  latitude: 42.3643,
+  longitude: -71.0052,
   peerGroup: "large",
   scoreVector: {
     congestion: { percentile: 88, raw: 12_400_000, coverage: "present" },
@@ -56,6 +58,11 @@ const rankingCall: ToolCall = {
   result: { rows: [bosRow] },
   durationMs: 318,
 };
+
+/** The one stored row inside a call, as the loose JSON a store hands back. */
+function storedRow(call: ToolCall): Record<string, unknown> {
+  return (call.result as { rows: Record<string, unknown>[] }).rows[0]!;
+}
 
 test("an assistant message carries the tool payload a ranking, score vector and lamp re-render from", () => {
   const message = assistantMessage("One airport clears the threshold: BOS at 79.", [rankingCall]);
@@ -86,15 +93,52 @@ test("a user message is text with no tool payload", () => {
 });
 
 test("a stored ranking payload that lost its lamp or score vector is refused", () => {
-  const withoutLamp = structuredClone(rankingCall) as ToolCall;
-  delete (withoutLamp.result as { rows: Record<string, unknown>[] }).rows[0]!.candidateLamp;
+  const withoutLamp = structuredClone(rankingCall);
+  delete storedRow(withoutLamp).candidateLamp;
 
-  const withoutVector = structuredClone(rankingCall) as ToolCall;
-  delete (withoutVector.result as { rows: Record<string, unknown>[] }).rows[0]!.scoreVector;
+  const withoutVector = structuredClone(rankingCall);
+  delete storedRow(withoutVector).scoreVector;
 
   for (const broken of [withoutLamp, withoutVector]) {
     assert.equal(parseThreadMessage(assistantMessage("prose", [broken])), null);
   }
+});
+
+// #26: the stored payload is the only re-render source, so the coordinates a map
+// is drawn from have to survive the store — and be refused when they are not a
+// point, rather than placing a marker in the sea.
+test("a stored ranking row keeps the coordinates a map is drawn from", () => {
+  const restored = parseThreadMessage(
+    JSON.parse(JSON.stringify(assistantMessage("BOS at 79.", [rankingCall]))),
+  );
+  const [row] = rankingRows(restored?.toolCalls[0]) ?? [];
+
+  assert.equal(row?.latitude, 42.3643);
+  assert.equal(row?.longitude, -71.0052);
+});
+
+test("a stored row with half a coordinate, or one off the world, is refused", () => {
+  const brokenPairs = [
+    { latitude: 42.3643, longitude: null },
+    { latitude: null, longitude: -71.0052 },
+    { latitude: 91, longitude: -71.0052 },
+    { latitude: 42.3643, longitude: -181 },
+    { latitude: "42.3643", longitude: "-71.0052" },
+  ];
+  for (const pair of brokenPairs) {
+    const broken = structuredClone(rankingCall);
+    Object.assign(storedRow(broken), pair);
+    assert.equal(
+      parseThreadMessage(assistantMessage("prose", [broken])),
+      null,
+      JSON.stringify(pair),
+    );
+  }
+
+  // An airport the source does not locate is a whole row: both nulls stay.
+  const unlocated = structuredClone(rankingCall);
+  Object.assign(storedRow(unlocated), { latitude: null, longitude: null });
+  assert.notEqual(parseThreadMessage(assistantMessage("prose", [unlocated])), null);
 });
 
 test("a stored message from an unknown role or tool is refused", () => {

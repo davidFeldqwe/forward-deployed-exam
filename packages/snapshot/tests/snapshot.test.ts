@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { CENSUS_DIVISIONS, SLOT_LIMITS, loadSnapshot } from "../src/index.ts";
+import {
+  CENSUS_DIVISIONS,
+  SLOT_LIMITS,
+  airportSnapshotSchema,
+  loadSnapshot,
+} from "../src/index.ts";
 
 const snapshot = loadSnapshot();
 const byIata = new Map(snapshot.airports.map((airport) => [airport.iata, airport]));
@@ -111,6 +116,40 @@ test("long-haul share and runway count are lookups carried alongside the vector"
   assert.ok((lax.longHaulShare.share ?? 0) > 0);
   assert.ok((lax.runwayCount ?? 0) >= 4);
   assert.equal(snapshot.methodology.longHaulShare.thresholdMiles, 2000);
+});
+
+test("every airport carries the OurAirports coordinate pair the map is drawn from", () => {
+  for (const { iata, latitude, longitude } of snapshot.airports) {
+    assert.ok(
+      typeof latitude === "number" && Math.abs(latitude) <= 90,
+      `${iata} latitude ${latitude} is degrees, so the resolved set can be placed`,
+    );
+    assert.ok(
+      typeof longitude === "number" && Math.abs(longitude) <= 180,
+      `${iata} longitude ${longitude} is degrees`,
+    );
+    // Every airport in today's universe is west of Greenwich, San Juan included.
+    // A Pacific territory entering the top 100 would fail this line, which is the
+    // point: someone then checks the sign rather than shipping a mirrored map.
+    assert.ok(longitude < 0, `${iata} is in the western hemisphere`);
+  }
+
+  // Pinned against OurAirports: Logan is on Boston harbour, and the sign is the
+  // one thing a coordinate can lose silently — a positive longitude would put
+  // New England in Kazakhstan.
+  const bos = byIata.get("BOS");
+  assert.ok(
+    typeof bos?.latitude === "number" && typeof bos.longitude === "number",
+    "BOS is a located row",
+  );
+  assert.ok(Math.abs(bos.latitude - 42.3643) < 0.01, `BOS latitude ${bos.latitude}`);
+  assert.ok(Math.abs(bos.longitude - -71.0052) < 0.01, `BOS longitude ${bos.longitude}`);
+});
+
+test("half a coordinate is refused, so a marker is never drawn on one axis", () => {
+  const halved = structuredClone(snapshot) as { airports: { longitude: number | null }[] };
+  halved.airports[0]!.longitude = null;
+  assert.throws(() => airportSnapshotSchema.parse(halved), /pair/);
 });
 
 test("the snapshot names its sources and gaps", () => {

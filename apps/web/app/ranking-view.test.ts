@@ -13,6 +13,8 @@ const bos: ScoredAirport = {
   municipality: "Boston",
   state: "MA",
   region: "New England",
+  latitude: 42.3643,
+  longitude: -71.0052,
   peerGroup: "large",
   scoreVector: {
     congestion: { percentile: 88, raw: 12_400_000, coverage: "present" },
@@ -33,6 +35,8 @@ const hya: ScoredAirport = {
   iata: "HYA",
   name: "Hyannis / Barnstable Muni",
   municipality: "Hyannis",
+  latitude: 41.6693,
+  longitude: -70.2804,
   peerGroup: "small",
   scoreVector: {
     ...bos.scoreVector,

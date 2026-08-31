@@ -240,6 +240,8 @@ test("a row is exactly the locked payload, no more and no less", () => {
     "municipality",
     "state",
     "region",
+    "latitude",
+    "longitude",
     "peerGroup",
     "scoreVector",
     "composite",
@@ -257,6 +259,25 @@ test("a row is exactly the locked payload, no more and no less", () => {
       "coverage",
     ]);
   }
+});
+
+// #26: the thread places a resolved airport set from these rows, so the pair has
+// to be the snapshot's own — a coordinate this module rounded, defaulted or
+// dropped would move a marker away from the airport the row is about.
+test("a scored row carries the snapshot's coordinates, unrounded and unfilled", () => {
+  for (const airport of FIXTURE.airports) {
+    const scoredRow = row(airport.iata);
+    assert.equal(scoredRow.latitude, airport.latitude, `${airport.iata} latitude`);
+    assert.equal(scoredRow.longitude, airport.longitude, `${airport.iata} longitude`);
+  }
+  assert.equal(row("BOS").latitude, 42.3643);
+  assert.equal(row("BOS").longitude, -71.0052);
+
+  // An airport the source does not locate keeps both nulls and is still scored:
+  // a missing coordinate is not a missing airport, and it is never 0, 0.
+  assert.equal(row("HYA").latitude, null);
+  assert.equal(row("HYA").longitude, null);
+  assert.equal(row("HYA").candidateLamp, "No data");
 });
 
 // A national rank sorts three peer groups' composites into one list, so a small

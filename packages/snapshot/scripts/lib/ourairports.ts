@@ -3,6 +3,16 @@ export type Place = {
   name: string;
   municipality: string;
   state: string;
+} & Coordinates;
+
+/**
+ * Where the airport is, in degrees, or nowhere. Both or neither: half a pair is
+ * not a point, and 0 is a real coordinate off the Gulf of Guinea, so a blank
+ * never becomes one.
+ */
+export type Coordinates = {
+  latitude: number | null;
+  longitude: number | null;
 };
 
 // OurAirports files Palm Beach International under the post-rename code DJT
@@ -54,4 +64,34 @@ export function placeFor(
     );
   }
   return place;
+}
+
+/**
+ * The OurAirports coordinate pair for one airport, as degrees. The snapshot
+ * carries these so the thread can place a resolved airport set without a second
+ * source; scoring passes them through and never computes on them.
+ *
+ * A blank half means the source does not locate this airport, which is reported
+ * as no point at all. A value that is present but not a coordinate is a changed
+ * file rather than a missing airport, so it fails the ingest instead of shipping
+ * a marker in the wrong hemisphere.
+ */
+export function coordinatesOf(ident: string, latitude: string, longitude: string): Coordinates {
+  const latitudeText = latitude.trim();
+  const longitudeText = longitude.trim();
+  if (latitudeText === "" || longitudeText === "") {
+    return { latitude: null, longitude: null };
+  }
+  return {
+    latitude: degrees(ident, "latitude", latitudeText, 90),
+    longitude: degrees(ident, "longitude", longitudeText, 180),
+  };
+}
+
+function degrees(ident: string, axis: string, value: string, bound: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || Math.abs(parsed) > bound) {
+    throw new Error(`${ident} has an OurAirports ${axis} outside degrees: ${value}`);
+  }
+  return parsed;
 }

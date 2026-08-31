@@ -118,6 +118,12 @@ own, for the agent's `describeMethodology`: the tool that says how the screen
 works states it in the same sentences the rows carry, rather than a second
 wording of one screen that can drift from it.
 
+Every row also carries the snapshot's `latitude` and `longitude`: the OurAirports
+pair, passed through untouched so a thread can place a resolved airport set
+without a second lookup at query time. This module never computes on them — a
+coordinate is not a score — and they are null only as a pair, so an airport the
+source does not locate is still ranked rather than placed at 0, 0.
+
 Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,
 not in a global footer.

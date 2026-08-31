@@ -146,7 +146,7 @@ Row payload (every `queryAirports` row):
 
 ```
 {
-  iata, name, municipality, state, region, peerGroup,
+  iata, name, municipality, state, region, latitude, longitude, peerGroup,
   scoreVector: {
     congestion, unmetFlightDemand, delay, growth
     // each: { percentile, raw, coverage: "present" | "missing" }
@@ -160,7 +160,10 @@ Row payload (every `queryAirports` row):
 }
 ```
 
-Long-haul share is a lookup, not a score-vector slot.
+Long-haul share is a lookup, not a score-vector slot. `latitude` and `longitude`
+are the snapshot's OurAirports degrees, passed through so a thread can place a
+resolved airport set without a second lookup; they are null only as a pair, and
+the screen never computes on them.
 
 ### Agent tools (two — do not expand)
 
