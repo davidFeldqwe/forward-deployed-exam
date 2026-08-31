@@ -10,7 +10,7 @@ import {
   loginRedirect,
 } from "@/app/auth-gate";
 import { currentSession } from "@/app/auth-session";
-import { appendMessage, startThread, userMessage } from "@/app/threads";
+import { recordQuestion } from "@/app/threads";
 
 function textField(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -19,8 +19,9 @@ function textField(formData: FormData, name: string): string {
 
 /**
  * Persists a question and shows the Thread it belongs to. A question with no
- * thread starts one, titled with that question; a question in an open thread is
- * appended, so a follow-up keeps the ranking it is following up on.
+ * open thread starts one, titled with that question; a question in an open
+ * thread is appended, so a follow-up keeps the ranking it is following up on
+ * (`recordQuestion` decides which, and never discards the question).
  */
 export async function askQuestion(formData: FormData): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));
@@ -33,11 +34,11 @@ export async function askQuestion(formData: FormData): Promise<void> {
     return;
   }
 
-  const openThreadId = textField(formData, "threadId");
-  const thread = openThreadId
-    ? appendMessage(session.email, openThreadId, userMessage(question))
-    : startThread(session.email, question);
+  const thread = recordQuestion(
+    session.email,
+    textField(formData, "threadId") || null,
+    question,
+  );
 
-  // A thread this account does not own is simply not there.
-  redirect(thread ? chatDestination(thread.id) : CHAT_PATH);
+  redirect(chatDestination(thread?.id ?? null));
 }

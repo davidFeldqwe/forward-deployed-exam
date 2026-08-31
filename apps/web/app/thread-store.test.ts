@@ -8,6 +8,7 @@ import {
   latestThreadId,
   listThreads,
   readThread,
+  recordQuestion,
   startThread,
   userMessage,
 } from "./threads.ts";
@@ -150,4 +151,56 @@ test("a thread needs a first question: a blank one is refused, not stored untitl
   assert.equal(startThread(analyst, "   \n\t "), null);
   assert.deepEqual(listThreads(analyst), []);
   assert.equal(latestThreadId(analyst), null);
+});
+
+test("a question sent to a thread that is gone opens a new one instead of vanishing", () => {
+  // The composer posts the open thread id in a hidden field, so a thread this
+  // process no longer holds — every restart, until Convex owns them — used to
+  // send the analyst to an empty chat with their question dropped on the floor.
+  const analyst = "restarted@example.com";
+
+  const thread = recordQuestion(analyst, "athreadthatisgone", NEW_ENGLAND);
+
+  assert.notEqual(thread, null);
+  assert.equal(thread?.title, NEW_ENGLAND);
+  assert.deepEqual(thread?.messages, [userMessage(NEW_ENGLAND)]);
+  assert.equal(latestThreadId(analyst), thread?.id);
+});
+
+test("a question with an open thread the analyst owns is appended to it", () => {
+  const analyst = "followup@example.com";
+  const thread = startThread(analyst, NEW_ENGLAND)!;
+
+  const same = recordQuestion(analyst, thread.id, "And the second one?");
+
+  assert.equal(same?.id, thread.id);
+  assert.equal(same?.title, NEW_ENGLAND);
+  assert.deepEqual(same?.messages, [
+    userMessage(NEW_ENGLAND),
+    userMessage("And the second one?"),
+  ]);
+  assert.deepEqual(listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
+});
+
+test("a question aimed at someone else's thread opens the asker's own, leaving theirs alone", () => {
+  const owner = "owner-untouched@example.com";
+  const other = "forger@example.com";
+  const theirs = startThread(owner, NEW_ENGLAND)!;
+
+  const mine = recordQuestion(other, theirs.id, "What is long-haul share out of Anchorage?");
+
+  assert.notEqual(mine?.id, theirs.id);
+  assert.equal(mine?.title, "What is long-haul share out of Anchorage?");
+  assert.deepEqual(readThread(owner, theirs.id)?.messages, [userMessage(NEW_ENGLAND)]);
+  assert.deepEqual(listThreads(owner), [{ id: theirs.id, title: NEW_ENGLAND }]);
+});
+
+test("a blank question is refused whether or not a thread is open", () => {
+  const analyst = "blankask@example.com";
+  const thread = startThread(analyst, NEW_ENGLAND)!;
+
+  assert.equal(recordQuestion(analyst, thread.id, "  \n "), null);
+  assert.equal(recordQuestion(analyst, null, ""), null);
+  assert.equal(readThread(analyst, thread.id)?.messages.length, 1);
+  assert.deepEqual(listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
 });

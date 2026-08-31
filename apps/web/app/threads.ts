@@ -352,6 +352,25 @@ export function appendMessage(
   return snapshotOf(thread);
 }
 
+/**
+ * A question from the composer, landed in the thread it belongs to. An open
+ * thread the analyst owns takes the question as a follow-up; anything else —
+ * no thread yet, someone else's id from a forged form, or a thread this
+ * process no longer holds after a restart — opens a new one, because a
+ * question that was typed and sent must not be dropped on the floor. Only a
+ * question with nothing in it is refused.
+ */
+export function recordQuestion(
+  ownerEmail: string,
+  openThreadId: string | null,
+  question: string,
+): Thread | null {
+  const followUp = openThreadId
+    ? appendMessage(ownerEmail, openThreadId, userMessage(question))
+    : null;
+  return followUp ?? startThread(ownerEmail, question);
+}
+
 export function readThread(ownerEmail: string, threadId: string): Thread | null {
   const thread = ownedThread(ownerEmail, threadId);
   return thread ? snapshotOf(thread) : null;
