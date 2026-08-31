@@ -26,6 +26,32 @@ export function isScoredAirport(value: unknown): value is ScoredAirport {
 }
 
 /**
+ * A check for one of a closed set of labels, spelled as every label of the type
+ * it closes over: a fourth FAA hub size or a third slot level fails this
+ * typecheck rather than being refused at a store boundary that never heard of
+ * it. The sets are written out here because this module reads `@repo/snapshot`
+ * for types only — nothing of it loads at runtime.
+ */
+function isLabelIn<Label extends string>(
+  labels: Readonly<Record<Label, true>>,
+): (value: unknown) => boolean {
+  return (value) => typeof value === "string" && Object.hasOwn(labels, value);
+}
+
+const isPeerGroup = isLabelIn<ScoredAirport["peerGroup"]>({
+  large: true,
+  medium: true,
+  small: true,
+});
+
+const isSlotLevel = isLabelIn<NonNullable<ScoredAirport["slotLimit"]>>({
+  "Level 2": true,
+  "Level 3": true,
+});
+
+const isCoverage = isLabelIn<Coverage>({ present: true, missing: true });
+
+/**
  * Every field of a scored row, with the check it has to pass. The map is typed
  * over `keyof ScoredAirport`, so a field added to the row fails this typecheck
  * until someone says how it is checked: a value the answer objects draw that
@@ -56,37 +82,9 @@ const FIELD_CHECKS: {
   gaps: isStringArray,
 };
 
-/**
- * The closed sets a row's labels are drawn from, each keyed by the type it
- * closes over: a fourth FAA hub size or a third slot level fails this typecheck
- * rather than being refused at a store boundary that never heard of it.
- */
-const PEER_GROUPS = { large: true, medium: true, small: true } as const satisfies Record<
-  ScoredAirport["peerGroup"],
-  true
->;
-
-const SLOT_LEVELS = { "Level 2": true, "Level 3": true } as const satisfies Record<
-  NonNullable<ScoredAirport["slotLimit"]>,
-  true
->;
-
-const COVERAGE_STATES = { present: true, missing: true } as const satisfies Record<
-  Coverage,
-  true
->;
-
-function isLabelIn(labels: Readonly<Record<string, true>>, value: unknown): boolean {
-  return typeof value === "string" && Object.hasOwn(labels, value);
-}
-
-function isPeerGroup(value: unknown): boolean {
-  return isLabelIn(PEER_GROUPS, value);
-}
-
 /** A slot limit, or none: an airport under no FAA schedule constraint. */
 function isSlotLimit(value: unknown): boolean {
-  return value === null || isLabelIn(SLOT_LEVELS, value);
+  return value === null || isSlotLevel(value);
 }
 
 /** A Census division, or none: the Bureau files no territory under one. */
@@ -130,7 +128,7 @@ function isScoreComponent(value: unknown): boolean {
     isRecord(value) &&
     isNumberOrNull(value.percentile) &&
     isNumberOrNull(value.raw) &&
-    isLabelIn(COVERAGE_STATES, value.coverage)
+    isCoverage(value.coverage)
   );
 }
 

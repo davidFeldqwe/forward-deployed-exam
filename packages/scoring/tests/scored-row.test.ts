@@ -9,6 +9,8 @@ import { rowLookup } from "./rows.ts";
 
 const scored = scoreUniverse(loadSnapshot());
 const row = rowLookup(scored);
+const fixtureScored = scoreUniverse(FIXTURE);
+const fixtureRow = rowLookup(fixtureScored);
 
 /** A row as a store hands it back: JSON that has been outside this process. */
 function stored(value: ScoredAirport): Record<string, unknown> {
@@ -16,7 +18,7 @@ function stored(value: ScoredAirport): Record<string, unknown> {
 }
 
 test("every row this module scores is a scored row after a store's round trip", () => {
-  for (const airport of [...scored, ...scoreUniverse(FIXTURE)]) {
+  for (const airport of [...scored, ...fixtureScored]) {
     assert.ok(isScoredAirport(stored(airport)), `${airport.iata} did not survive the store`);
   }
 });
@@ -32,7 +34,6 @@ test("a territory airport has no Census division, and is a scored row anyway", (
 
 test("a coverage state the screen shows is a scored row: Partial inputs withholds its composite", () => {
   // MDW has no delay in the fixture, HYA has no inputs at all.
-  const fixtureRow = rowLookup(scoreUniverse(FIXTURE));
   const partial = stored(fixtureRow("MDW"));
   const noData = stored(fixtureRow("HYA"));
 
@@ -74,12 +75,18 @@ test("a coordinate is a pair: half of one, or one off the world, is not a scored
 
 test("a lamp, coverage state, hub size or slot level off the screen's lists is not a scored row", () => {
   const bos = stored(row("BOS"));
+  const vector = bos.scoreVector as Record<string, unknown>;
   const off: Record<string, unknown>[] = [
     { candidateLamp: "Great candidate" },
     { peerGroup: "enormous" },
     { slotLimit: "Level 9" },
-    { scoreVector: { ...(bos.scoreVector as object), delay: { percentile: null, raw: null, coverage: "unknown" } } },
-    { scoreVector: { ...(bos.scoreVector as object), delay: undefined } },
+    {
+      scoreVector: {
+        ...vector,
+        delay: { percentile: null, raw: null, coverage: "unknown" },
+      },
+    },
+    { scoreVector: { ...vector, delay: undefined } },
     { assumptions: "one caveat, not a list" },
   ];
   for (const field of off) {

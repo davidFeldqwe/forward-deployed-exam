@@ -136,7 +136,7 @@ test("a stored thread is a copy, so a caller cannot reach into the store", () =>
 test("a territory airport's answer stores on the thread and draws again as a ranking row", () => {
   const analyst = "territory@example.com";
   const args = { iata: "SJU" };
-  const thread = startThread(analyst, "Is San Juan a renovation-investment candidate?")!;
+  const thread = startThread(analyst, "Is San Juan a renovation-investment candidate?");
   const call: ToolCall = {
     tool: "queryAirports",
     args,

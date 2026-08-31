@@ -90,7 +90,7 @@ function scoredRows(result: unknown): ScoredAirport[] | null {
   if (!isRecord(result)) {
     return null;
   }
-  const rows: unknown = result.rows;
+  const { rows } = result;
   return Array.isArray(rows) && rows.every(isScoredAirport) ? rows : null;
 }
 
