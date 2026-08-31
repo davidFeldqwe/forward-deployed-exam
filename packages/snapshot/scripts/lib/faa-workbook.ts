@@ -7,10 +7,14 @@ export type FaaUniverseRow = {
   enplanements: { firstYear: number; secondYear: number };
 };
 
+// The FAA's four hub sizes for a primary commercial airport. N is the fourth:
+// a nonhub primary, under 0.05% of national enplanements and still scheduled
+// service, so the row is read rather than refused.
 const PEER_GROUP_BY_FAA_HUB: Record<string, PeerGroup> = {
   L: "large",
   M: "medium",
   S: "small",
+  N: "nonhub",
 };
 
 type Columns = {

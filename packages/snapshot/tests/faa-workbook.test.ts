@@ -74,9 +74,23 @@ test("rows that are not ranked IATA airports drop out of the universe", () => {
   assert.deepEqual(universe.map((row) => row.iata), ["ATL", "DFW"]);
 });
 
+// #70: N is the FAA's fourth hub size for a primary commercial airport, so the
+// reader stores it as the `nonhub` peer group rather than throwing on the row.
+test("hub N is read as the nonhub peer group, the fourth FAA hub size", () => {
+  const bgr = ["2", "NE", "ME", "BGR", "Bangor", "Bangor Intl", "P", "N", "140400", "130000", "0.08"];
+  const universe = readFaaUniverse(sheet(HEADER, [ATL, bgr]), WINDOW, 2);
+  assert.deepEqual(
+    universe.map((row) => [row.iata, row.peerGroup]),
+    [
+      ["ATL", "large"],
+      ["BGR", "nonhub"],
+    ],
+  );
+});
+
 test("an unreadable hub size and a short universe both fail loudly", () => {
-  const noHub = [...DFW];
-  noHub[7] = "N";
-  assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL, noHub]), WINDOW, 2), /hub size/i);
+  const unknownHub = [...DFW];
+  unknownHub[7] = "X";
+  assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL, unknownHub]), WINDOW, 2), /hub size/i);
   assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL]), WINDOW, 2), /expected 2/);
 });
