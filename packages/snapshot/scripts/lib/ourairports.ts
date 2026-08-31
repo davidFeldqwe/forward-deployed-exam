@@ -77,14 +77,14 @@ export function placeFor(
  * a marker in the wrong hemisphere.
  */
 export function coordinatesOf(ident: string, latitude: string, longitude: string): Coordinates {
-  const north = latitude.trim();
-  const east = longitude.trim();
-  if (north === "" || east === "") {
+  const latitudeText = latitude.trim();
+  const longitudeText = longitude.trim();
+  if (latitudeText === "" || longitudeText === "") {
     return { latitude: null, longitude: null };
   }
   return {
-    latitude: degrees(ident, "latitude", north, 90),
-    longitude: degrees(ident, "longitude", east, 180),
+    latitude: degrees(ident, "latitude", latitudeText, 90),
+    longitude: degrees(ident, "longitude", longitudeText, 180),
   };
 }
 

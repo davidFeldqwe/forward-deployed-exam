@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { CENSUS_DIVISIONS, SLOT_LIMITS, airportSnapshotSchema, loadSnapshot } from "../src/index.ts";
+import {
+  CENSUS_DIVISIONS,
+  SLOT_LIMITS,
+  airportSnapshotSchema,
+  loadSnapshot,
+} from "../src/index.ts";
 
 const snapshot = loadSnapshot();
 const byIata = new Map(snapshot.airports.map((airport) => [airport.iata, airport]));
@@ -114,36 +119,31 @@ test("long-haul share and runway count are lookups carried alongside the vector"
 });
 
 test("every airport carries the OurAirports coordinate pair the map is drawn from", () => {
-  for (const airport of snapshot.airports) {
-    assert.equal(
-      typeof airport.latitude,
-      "number",
-      `${airport.iata} has a latitude, so the resolved set can be placed`,
-    );
-    assert.equal(typeof airport.longitude, "number", `${airport.iata} has a longitude`);
+  for (const { iata, latitude, longitude } of snapshot.airports) {
     assert.ok(
-      airport.latitude! >= -90 && airport.latitude! <= 90,
-      `${airport.iata} latitude ${airport.latitude} is degrees`,
+      typeof latitude === "number" && Math.abs(latitude) <= 90,
+      `${iata} latitude ${latitude} is degrees, so the resolved set can be placed`,
     );
     assert.ok(
-      airport.longitude! >= -180 && airport.longitude! <= 180,
-      `${airport.iata} longitude ${airport.longitude} is degrees`,
+      typeof longitude === "number" && Math.abs(longitude) <= 180,
+      `${iata} longitude ${longitude} is degrees`,
     );
+    // Every airport in today's universe is west of Greenwich, San Juan included.
+    // A Pacific territory entering the top 100 would fail this line, which is the
+    // point: someone then checks the sign rather than shipping a mirrored map.
+    assert.ok(longitude < 0, `${iata} is in the western hemisphere`);
   }
 
   // Pinned against OurAirports: Logan is on Boston harbour, and the sign is the
   // one thing a coordinate can lose silently — a positive longitude would put
   // New England in Kazakhstan.
   const bos = byIata.get("BOS");
-  assert.ok(bos);
-  assert.ok(Math.abs(bos.latitude! - 42.3643) < 0.01, `BOS latitude ${bos.latitude}`);
-  assert.ok(Math.abs(bos.longitude! - -71.0052) < 0.01, `BOS longitude ${bos.longitude}`);
-  // Every airport in today's universe is west of Greenwich, San Juan included.
-  // A Pacific territory entering the top 100 would fail this line, which is the
-  // point: someone then checks the sign rather than shipping a mirrored map.
-  for (const airport of snapshot.airports) {
-    assert.ok(airport.longitude! < 0, `${airport.iata} is in the western hemisphere`);
-  }
+  assert.ok(
+    typeof bos?.latitude === "number" && typeof bos.longitude === "number",
+    "BOS is a located row",
+  );
+  assert.ok(Math.abs(bos.latitude - 42.3643) < 0.01, `BOS latitude ${bos.latitude}`);
+  assert.ok(Math.abs(bos.longitude - -71.0052) < 0.01, `BOS longitude ${bos.longitude}`);
 });
 
 test("half a coordinate is refused, so a marker is never drawn on one axis", () => {
