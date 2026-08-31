@@ -55,8 +55,12 @@ const scriptsByPackage = new Map<string, string[]>([
 
 /** What the example offers, and whether a clone has to fill it in. */
 const exampleEntries = [...envExample.matchAll(EXAMPLE_ASSIGNMENT)].map(
-  ([, hash, name, value]) => ({ name, optional: hash === "#", value }),
+  ([, comment, name, value]) => ({ name, optional: comment === "#", value }),
 );
+
+/** The example's blanks a clone fills in, and the overrides it leaves commented out. */
+const requiredNames = exampleEntries.filter((entry) => !entry.optional).map((entry) => entry.name);
+const optionalNames = exampleEntries.filter((entry) => entry.optional).map((entry) => entry.name);
 
 /** Every `pnpm …` line a reader would copy out of a fenced shell block. */
 const pnpmCommands = [...readme.matchAll(/```sh\n([\s\S]*?)```/g)]
@@ -121,25 +125,19 @@ test("every environment variable the README documents is one this repo reads", (
   }
 });
 
-test("a clone can fill in the example: the table's variables, and no value", () => {
-  const table = [...readme.matchAll(TABLE_VARIABLE)].map(([, name]) => name);
-  assert.ok(table.includes(ANTHROPIC_KEY), "the README's table names the Anthropic key");
+test("the example offers a blank for every variable the README's table names", () => {
+  const tableVariables = [...readme.matchAll(TABLE_VARIABLE)].map(([, name]) => name);
+  assert.ok(tableVariables.includes(ANTHROPIC_KEY), "the README's table names the Anthropic key");
   assert.ok(readme.includes(".env.example"), "the README points a clone at the example");
-  const required = exampleEntries.filter((entry) => !entry.optional).map((entry) => entry.name);
-  assert.deepEqual(required.toSorted(), table.toSorted());
-  for (const { name, value } of exampleEntries) {
-    assert.equal(value, "", `${name} carries a value in .env.example`);
-  }
-});
-
-test("every variable the example offers is one this repo reads", () => {
+  assert.deepEqual(requiredNames.toSorted(), tableVariables.toSorted());
   // Issue #59: the ingest cache directory is an override for a manual rebuild,
   // so it is offered commented out rather than as a blank a clone must fill.
-  assert.deepEqual(
-    exampleEntries.filter((entry) => entry.optional).map((entry) => entry.name),
-    ["INGEST_CACHE_DIR"],
-  );
-  for (const { name } of exampleEntries) {
+  assert.deepEqual(optionalNames, ["INGEST_CACHE_DIR"]);
+});
+
+test("every variable the example offers is an empty placeholder this repo reads", () => {
+  for (const { name, value } of exampleEntries) {
+    assert.equal(value, "", `${name} carries a value in .env.example`);
     assert.ok(sourceText.includes(name), `.env.example offers ${name}, which nothing here reads`);
   }
 });
