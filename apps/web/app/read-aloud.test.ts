@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { readAloud, spokenProse } from "./read-aloud.ts";
+import { threadAnswer } from "./thread-answer.ts";
 import { assistantMessage, userMessage, rankingRows, type ToolCall } from "./thread-messages.ts";
 
 const web = new URL("../", import.meta.url);
@@ -106,11 +107,21 @@ test("the control speaks its prose prop through the browser speech API alone", (
   assert.match(control, /type="button"/);
 });
 
-test("the transcript hands the control only the prose the thread last wrote", () => {
-  const transcript = source("components/Transcript.tsx");
+test("the control rides on the prose tag, and speaks the string that tag carries", () => {
+  const messages = [
+    userMessage(QUESTION),
+    assistantMessage(ANSWER, [newEngland]),
+    userMessage("Tell me more about the second one."),
+    assistantMessage(FOLLOW_UP, [call({ iata: "BDL" })]),
+  ];
+  const spoken = (at: number) =>
+    threadAnswer(messages, at).find((part) => part.tag === "prose")?.spoken;
 
-  assert.match(transcript, /spokenProse\(messages, index\)/);
-  assert.match(transcript, /<ReadAloud text=\{/);
+  // The Thread answer decides which turn keeps a control; the tag it hangs on
+  // is the prose, so the control can never be handed a table.
+  assert.equal(spoken(3), FOLLOW_UP);
+  assert.equal(spoken(1), null);
+  assert.match(source("components/answers/ThreadAnswer.tsx"), /<ReadAloud text=\{part\.spoken\}/);
 });
 
 /** Every module the browser bundle is built from, as one haystack. */

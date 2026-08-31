@@ -1,0 +1,199 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+
+import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
+import { pendingAnswer } from "./pending-answer.ts";
+import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
+import {
+  PENDING_THREAD_ANSWER,
+  PROSE_HEADING,
+  THREAD_ANSWER_TAGS,
+  threadAnswer,
+  type ThreadAnswerPart,
+  type ThreadAnswerTag,
+} from "./thread-answer.ts";
+import {
+  assistantMessage,
+  userMessage,
+  type ThreadMessage,
+  type ToolCall,
+} from "./thread-messages.ts";
+
+function query(args: Record<string, string | string[]>): ToolCall {
+  return {
+    tool: "queryAirports",
+    args,
+    result: toolPayloadJson(runAgentTool("queryAirports", args)),
+    durationMs: 8,
+  };
+}
+
+const methodology: ToolCall = {
+  tool: "describeMethodology",
+  args: {},
+  result: toolPayloadJson(runAgentTool("describeMethodology", {})),
+  durationMs: 3,
+};
+
+const newEngland = query({ region: "New England" });
+
+function tags(parts: readonly ThreadAnswerPart[]): ThreadAnswerTag[] {
+  return parts.map((part) => part.tag);
+}
+
+// The locked grouped order (issue #35), asserted on the list the transcript
+// draws rather than on the order components happen to be written in.
+test("a stored ranking turn is one list: tool, resolved set, prose, table, caveats", () => {
+  const messages = [
+    userMessage("Which airports in New England are renovation-investment candidates?"),
+    assistantMessage("PVD leads the set.", [newEngland]),
+  ];
+
+  assert.deepEqual(tags(threadAnswer(messages, 1)), [
+    "tool",
+    "resolved",
+    "prose",
+    "ranking",
+    "caveats",
+  ]);
+});
+
+test("carried context sits before the resolved airport set and the table", () => {
+  const messages = [
+    userMessage("Which airports in New England are renovation-investment candidates?"),
+    assistantMessage("PVD leads the set.", [newEngland]),
+    userMessage("Tell me more about the second one."),
+    assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
+  ];
+  const list = tags(threadAnswer(messages, 3));
+
+  assert.deepEqual(list, ["tool", "carried", "resolved", "prose", "ranking", "caveats"]);
+  assert.ok(list.indexOf("carried") < list.indexOf("resolved"));
+  assert.ok(list.indexOf("carried") < list.indexOf("ranking"));
+});
+
+// Two calls in one turn are grouped by tag, not interleaved per call: every
+// resolved set, then the one prose, then every table, then one caveats block.
+test("two queryAirports calls group all sets, then prose, then all tables, then one caveats", () => {
+  const pacific = query({ region: "Pacific" });
+  const messages = [
+    userMessage("Compare New England and the Pacific division."),
+    assistantMessage("Both sets are led by a large hub.", [newEngland, pacific]),
+  ];
+  const parts = threadAnswer(messages, 1);
+
+  assert.deepEqual(tags(parts), [
+    "tool",
+    "tool",
+    "resolved",
+    "resolved",
+    "prose",
+    "ranking",
+    "ranking",
+    "caveats",
+  ]);
+
+  const caveats = parts.filter((part) => part.tag === "caveats");
+  assert.equal(caveats.length, 1);
+  // One block, so a line both queries carry is printed once.
+  const lines = [...caveats[0]!.assumptions, ...caveats[0]!.gaps];
+  assert.equal(new Set(lines).size, lines.length);
+  assert.ok(lines.length > 0);
+});
+
+test("a methodology-only turn is tool and prose, and nothing it has no rows for", () => {
+  const messages = [
+    userMessage("How is the composite weighted?"),
+    assistantMessage("Congestion and unmet flight demand carry 35 each.", [methodology]),
+  ];
+
+  assert.deepEqual(tags(threadAnswer(messages, 1)), ["tool", "prose"]);
+});
+
+test("an empty tag is omitted: no rows is no table and no caveats", () => {
+  const empty: ToolCall = {
+    tool: "queryAirports",
+    args: { region: "New England" },
+    result: { rows: [], matched: 0, resolvedIata: [], sortBy: "composite", limit: 10 },
+    durationMs: 4,
+  };
+  const messages = [userMessage("Anything in Nunavut?"), assistantMessage("Nothing matched.", [empty])];
+
+  // The resolved set still speaks — it is what says nothing matched.
+  assert.deepEqual(tags(threadAnswer(messages, 1)), ["tool", "resolved", "prose"]);
+
+  // Prose with no tool call at all is one tag.
+  const proseOnly = [userMessage("Hello."), assistantMessage("Ask about an airport.")];
+  assert.deepEqual(tags(threadAnswer(proseOnly, 1)), ["prose"]);
+});
+
+test("the prose heading is drawn only where a table sits under it", () => {
+  const withTable = threadAnswer(
+    [userMessage("New England?"), assistantMessage("PVD leads.", [newEngland])],
+    1,
+  );
+  const alone = threadAnswer(
+    [userMessage("Weights?"), assistantMessage("Congestion is 35.", [methodology])],
+    1,
+  );
+
+  assert.equal(withTable.find((part) => part.tag === "prose")?.heading, PROSE_HEADING);
+  assert.equal(alone.find((part) => part.tag === "prose")?.heading, null);
+});
+
+test("read aloud rides on the prose tag of the last speaking turn only", () => {
+  const messages: ThreadMessage[] = [
+    userMessage("New England?"),
+    assistantMessage("PVD leads.", [newEngland]),
+    userMessage("And the second one?"),
+    assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
+  ];
+
+  assert.equal(threadAnswer(messages, 1).find((part) => part.tag === "prose")?.spoken, null);
+  assert.equal(
+    threadAnswer(messages, 3).find((part) => part.tag === "prose")?.spoken,
+    "Bradley's delay percentile is the reason.",
+  );
+});
+
+test("only an assistant turn has a Thread answer", () => {
+  const messages = [userMessage("New England?"), assistantMessage("PVD leads.", [newEngland])];
+
+  assert.deepEqual(threadAnswer(messages, 0), []);
+  assert.deepEqual(threadAnswer(messages, 9), []);
+});
+
+// Story 35: after Send there is a row and no scores in it. The claim is on the
+// list, so a pending answer cannot acquire a table by someone editing JSX.
+test("the pending Thread answer is one pending row and nothing else", () => {
+  assert.deepEqual(tags(PENDING_THREAD_ANSWER), ["pending"]);
+
+  const [row] = PENDING_THREAD_ANSWER;
+  assert.ok(row);
+  // It holds the copy it draws and no field a score could arrive in — no
+  // composite, no candidate lamp, no score vector, no rows.
+  assert.deepEqual(Object.keys(row).sort(), [
+    "airportLabel",
+    "label",
+    "note",
+    "rowLabel",
+    "tag",
+  ]);
+  assert.equal(row.rowLabel, pendingAnswer.rowLabel);
+  // Not a withheld composite either: the screen has not run.
+  assert.doesNotMatch(JSON.stringify(row), new RegExp(WITHHELD_COMPOSITE));
+});
+
+// The transcript draws tags. It cannot draw one it has no case for, and the
+// list is free to hand it any of them, so the two are pinned to each other.
+test("every tag a Thread answer may hold is drawn by the component", () => {
+  const component = readFileSync(
+    new URL("../components/answers/ThreadAnswer.tsx", import.meta.url),
+    "utf8",
+  );
+
+  for (const tag of THREAD_ANSWER_TAGS) {
+    assert.match(component, new RegExp(`case "${tag}":`), tag);
+  }
+});

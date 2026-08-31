@@ -103,3 +103,7 @@ _Avoid_: candidate signal, traffic light, grade, RAG
 **Carried context**:
 How this thread resolved a follow-up reference (for example “the second one”). It is shown before the follow-up answer.
 _Avoid_: guess, inferred airport
+
+**Thread answer**:
+One assistant turn, as an ordered list of blocks: tool rows, carried context, every resolved airport set, the model’s prose, every ranking or lookup table, then one caveats block for the whole turn. Empty blocks are omitted, so a methodology answer is a tool row and prose. A question in flight is a pending row with no composite score, candidate lamp or score vector in it.
+_Avoid_: message, bubble, answer card

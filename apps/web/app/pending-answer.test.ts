@@ -26,15 +26,16 @@ test("the pending state carries no number, so none can be read as a score", () =
 });
 
 test("the pending row draws no composite, no lamp pill and no hue", () => {
-  const pending = source("components/answers/PendingAnswer.tsx");
+  const row = source("components/answers/PendingRow.tsx");
 
   // A lamp is a screen result; a pending row has none, so it neither imports the
   // pill map nor writes a hue class of its own.
-  assert.doesNotMatch(pending, /lampPill|lamp-(?:strong|mixed|weak)/);
-  assert.doesNotMatch(pending, /composite:|\/100/);
-  // Only the copy module writes its words, so a number cannot be typed in here.
-  assert.match(pending, /pendingAnswer\.rowLabel/);
-  assert.match(pending, /useFormStatus/);
+  assert.doesNotMatch(row, /lampPill|lamp-(?:strong|mixed|weak)/);
+  assert.doesNotMatch(row, /composite:|\/100/);
+  // Every word on it comes from the pending tag it is handed, so a number cannot
+  // be typed in here, and no answer object is in reach to read one from.
+  assert.match(row, /row\.rowLabel/);
+  assert.doesNotMatch(row, /ranking-view|scoreVector/);
 });
 
 test("the composer's form is what the pending answer is drawn inside", () => {
@@ -47,4 +48,6 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   // the composer that submits it are inside the one form.
   assert.ok(form > 0 && pending > form, "the pending answer is inside the composer's form");
   assert.ok(composer > pending, "the transcript's pending row is drawn above the composer");
+  // Chat decides the form is in flight; nothing under the Thread answer does.
+  assert.match(source("components/answers/PendingAnswer.tsx"), /useFormStatus/);
 });
