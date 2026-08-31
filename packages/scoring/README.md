@@ -42,7 +42,7 @@ blank never moves its peers.
 the vector an analyst expands is the vector the composite is built from. Santa
 Ana's 77th percentile is a medium-hub rank and Los Angeles's 89th is a large-hub
 rank; they are not comparable, and the module never pretends otherwise. The
-composite inherits that: a national ranking sorts three peer groups into one
+composite inherits that: a national ranking sorts four peer groups into one
 list, so small-hub PVD at 87 sits above large-hub BOS at 50 without claiming to
 be under more pressure. Every row carries that caveat in `assumptions`.
 

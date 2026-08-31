@@ -359,7 +359,7 @@ test("a scored row carries the snapshot's coordinates, unrounded and unfilled", 
   assert.equal(row("HYA").candidateLamp, "No data");
 });
 
-// A national rank sorts three peer groups' composites into one list, so a small
+// A national rank sorts four peer groups' composites into one list, so a small
 // hub can outrank a large one. That is the locked design, and the row has to say
 // so: the composite is as peer-relative as the percentiles it is built from.
 test("the cross-peer-group caveat covers the composite, not just the percentiles", () => {
