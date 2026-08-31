@@ -90,7 +90,7 @@ test("hub N is read as the nonhub peer group, the fourth FAA hub size", () => {
 
 test("an unreadable hub size and a short universe both fail loudly", () => {
   const unknownHub = [...DFW];
-  unknownHub[7] = "X";
+  unknownHub[HEADER.indexOf("Hub")] = "X";
   assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL, unknownHub]), WINDOW, 2), /hub size/i);
   assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL]), WINDOW, 2), /expected 2/);
 });

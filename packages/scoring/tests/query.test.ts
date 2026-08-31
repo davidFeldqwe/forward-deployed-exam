@@ -94,12 +94,7 @@ test("nonhub is an accepted peerGroup phrase exactly when the universe carries o
     queryAirports(withNonhub, { peerGroup: " NONHUB " }).rows.map((row) => row.iata),
     ["ITH", "MVY", "BGR"], // 55, 42, and BGR's withheld composite last
   );
-  assert.deepEqual(placeVocabulary(withNonhub).peerGroup, [
-    "large",
-    "medium",
-    "nonhub",
-    "small",
-  ]);
+  assert.deepEqual(placeVocabulary(withNonhub).peerGroup, ["large", "medium", "nonhub", "small"]);
 
   const absent = queryAirports(scored, { peerGroup: "nonhub" });
   assert.equal(absent.matched, 0);

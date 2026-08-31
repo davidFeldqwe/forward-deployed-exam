@@ -8,15 +8,14 @@ import { scoreUniverse } from "../src/index.ts";
 import { rowLookup } from "./rows.ts";
 
 /**
- * Issue #70 / #68 story 52: `CONTEXT.md` is the vocabulary the product speaks and
- * `DESIGN.md` the writeup a reviewer reads instead of the source. A hub size this
- * module ranks in and the glossary does not name is a word an analyst meets on a
- * row and cannot look up, so both entries are pinned to the snapshot's own enum
- * rather than kept by hand.
+ * Issue #70 / #68 story 52: `CONTEXT.md` is the vocabulary the product speaks. A
+ * hub size this module ranks in and the glossary does not name is a word an
+ * analyst meets on a row and cannot look up, so the entry is pinned to the
+ * snapshot's own enum rather than kept by hand. The same list in `DESIGN.md` is
+ * pinned beside the writeup's other facts, in `design-doc.test.ts`.
  */
 const repo = new URL("../../../", import.meta.url);
 const context = readFileSync(new URL("CONTEXT.md", repo), "utf8");
-const design = readFileSync(new URL("DESIGN.md", repo), "utf8");
 
 /** The four FAA hub sizes, in the order the schema accepts them. */
 const HUB_SIZES = peerGroupSchema.options;
@@ -30,15 +29,15 @@ function glossaryEntry(term: string): string {
   return end === -1 ? rest : rest.slice(0, end);
 }
 
-const peerGroup = glossaryEntry("Peer group");
+const peerGroupEntry = glossaryEntry("Peer group");
 
 test("the glossary's peer group is every hub size the snapshot accepts", () => {
   assert.deepEqual(HUB_SIZES, ["large", "medium", "small", "nonhub"]);
   for (const hubSize of HUB_SIZES) {
-    assert.ok(peerGroup.includes(hubSize), `the entry names ${hubSize}: ${peerGroup}`);
+    assert.ok(peerGroupEntry.includes(hubSize), `the entry names ${hubSize}: ${peerGroupEntry}`);
   }
   // The synonyms the entry refuses are still refused, nonhub or not.
-  assert.match(peerGroup, /_Avoid_:.*city/);
+  assert.match(peerGroupEntry, /_Avoid_:.*city/);
 });
 
 // The example is what makes the entry a rule rather than a definition: two
@@ -50,14 +49,7 @@ test("the glossary's Santa Ana versus Los Angeles example is the committed snaps
     { iata: "LAX", municipality: "Los Angeles" },
   ]) {
     assert.equal(row(iata).municipality, municipality);
-    assert.ok(peerGroup.includes(municipality), `the entry names ${municipality}`);
+    assert.ok(peerGroupEntry.includes(municipality), `the entry names ${municipality}`);
   }
   assert.notEqual(row("SNA").peerGroup, row("LAX").peerGroup);
-});
-
-test("the writeup's peer-group parenthetical is the same list of hub sizes", () => {
-  assert.ok(
-    design.includes(HUB_SIZES.join(" / ")),
-    `DESIGN.md names the hub sizes as ${HUB_SIZES.join(" / ")}`,
-  );
 });

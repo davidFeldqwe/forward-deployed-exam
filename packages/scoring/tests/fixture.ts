@@ -257,9 +257,7 @@ export const FIXTURE: AirportSnapshot = airportSnapshotSchema.parse({
 // even where BGR's BTS delay hole leaves it out — which is also why BGR is
 // Partial inputs: the fourth hub size does not get a 3-of-4 composite either.
 //
-// The numbers stay internally coherent the same way the slice's do: congestion is
-// enplanements per open runway, growth is the window change in enplanements, and
-// unmet flight demand is that growth minus the departure growth `flights` implies.
+// The numbers are internally coherent in the same way the slice above is.
 export const NONHUB_FIXTURE: AirportSnapshot = airportSnapshotSchema.parse({
   ...FIXTURE,
   gaps: ["Fixture gap: this slice is thirteen airports, not the top 100."],

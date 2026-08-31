@@ -17,26 +17,23 @@ const row = rowLookup(scored);
 // The nonhub rows rank in a snapshot of their own, so both universes are scored.
 const nonhubRow = rowLookup(scoreUniverse(NONHUB_FIXTURE));
 
-/** The four percentiles of one row in a scored universe, as one object. */
-function percentilesIn(lookup: (iata: string) => ScoredAirport) {
-  return (iata: string) => {
-    const { scoreVector } = lookup(iata);
-    return {
-      congestion: scoreVector.congestion.percentile,
-      unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
-      delay: scoreVector.delay.percentile,
-      growth: scoreVector.growth.percentile,
-    };
+/** The four percentiles of one scored row, as one object. */
+function percentiles({ scoreVector }: ScoredAirport) {
+  return {
+    congestion: scoreVector.congestion.percentile,
+    unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
+    delay: scoreVector.delay.percentile,
+    growth: scoreVector.growth.percentile,
   };
 }
 
-const percentiles = percentilesIn(row);
-const nonhubPercentiles = percentilesIn(nonhubRow);
-
 /** The numbers scoring computes for one row, apart from the snapshot it read. */
-function scoredNumbers(scoredRow: ScoredAirport) {
-  const { scoreVector, composite, candidateLamp: lamp } = scoredRow;
-  return { scoreVector, composite, candidateLamp: lamp };
+function scoredNumbers(airport: ScoredAirport) {
+  return {
+    scoreVector: airport.scoreVector,
+    composite: airport.composite,
+    candidateLamp: airport.candidateLamp,
+  };
 }
 
 test("the weights are the locked 35/35/20/10 and sum to 100", () => {
@@ -55,25 +52,25 @@ test("the weights are the locked 35/35/20/10 and sum to 100", () => {
 // Five large hubs, so a distinct value lands on one of 90/70/50/30/10:
 // percentile = 100 * (peers below + half the ties, self included) / peers scored.
 test("percentiles are hand-checkable ranks inside the large-hub peer group", () => {
-  assert.deepEqual(percentiles("ATL"), {
+  assert.deepEqual(percentiles(row("ATL")), {
     congestion: 90, // 10,400,000 pax/runway — highest of five
     unmetFlightDemand: 70, // +2.0 pp — second of five
     delay: 63, // 13.5 min — second of the four large hubs with delay data
     growth: 70, // +3.0% — second of five
   });
-  assert.deepEqual(percentiles("ORD"), {
+  assert.deepEqual(percentiles(row("ORD")), {
     congestion: 50,
     unmetFlightDemand: 30,
     delay: 88, // 16.5 min — highest of four scored
     growth: 90,
   });
-  assert.deepEqual(percentiles("LAX"), {
+  assert.deepEqual(percentiles(row("LAX")), {
     congestion: 70,
     unmetFlightDemand: 10,
     delay: 38,
     growth: 10,
   });
-  assert.deepEqual(percentiles("BOS"), {
+  assert.deepEqual(percentiles(row("BOS")), {
     congestion: 30,
     unmetFlightDemand: 90,
     delay: 13,
@@ -110,7 +107,7 @@ test("percentiles are peer-group-relative, so SNA outranks ORD on a smaller raw"
 });
 
 test("a peer group of one is the median of itself, not the top of the country", () => {
-  assert.deepEqual(percentiles("ORH"), {
+  assert.deepEqual(percentiles(row("ORH")), {
     congestion: 50,
     unmetFlightDemand: 50,
     delay: 50,
@@ -127,19 +124,19 @@ test("a nonhub airport's percentiles are ranks among nonhub peers, not national 
   for (const iata of ["BGR", "ITH", "MVY"]) {
     assert.equal(nonhubRow(iata).peerGroup, "nonhub");
   }
-  assert.deepEqual(nonhubPercentiles("BGR"), {
+  assert.deepEqual(percentiles(nonhubRow("BGR")), {
     congestion: 83, // 140,400 pax/runway — highest of three nonhub airports
     unmetFlightDemand: 17, // -2.0 pp — lowest of the three
     delay: null, // a BTS delay hole, so BGR is not in the nonhub delay field
     growth: 83, // +8.0% — highest of the three
   });
-  assert.deepEqual(nonhubPercentiles("ITH"), {
+  assert.deepEqual(percentiles(nonhubRow("ITH")), {
     congestion: 50,
     unmetFlightDemand: 50,
     delay: 75, // 14.0 min — higher of the two nonhub airports with delay data
     growth: 50,
   });
-  assert.deepEqual(nonhubPercentiles("MVY"), {
+  assert.deepEqual(percentiles(nonhubRow("MVY")), {
     congestion: 17,
     unmetFlightDemand: 83,
     delay: 25,
