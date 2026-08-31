@@ -23,6 +23,11 @@ export type ScoreComponentName = (typeof SCORE_COMPONENTS)[number];
 
 export type SortBy = "composite" | ScoreComponentName;
 
+/** FAA schedule constraint levels. No level at all is the common case. */
+export const SLOT_LIMIT_LEVELS = ["Level 2", "Level 3"] as const;
+
+export type SlotLimit = (typeof SLOT_LIMIT_LEVELS)[number];
+
 export type ScoreComponent = {
   percentile: number | null;
   raw: number | null;
@@ -41,7 +46,7 @@ export type ScoredAirport = {
   scoreVector: ScoreVector;
   composite: number | null;
   candidateLamp: CandidateLamp;
-  slotLimit: "Level 2" | "Level 3" | null;
+  slotLimit: SlotLimit | null;
   longHaulShare: number | null;
   assumptions: string[];
   gaps: string[];

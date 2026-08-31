@@ -10,18 +10,13 @@ import {
   loginRedirect,
 } from "@/app/auth-gate";
 import { currentSession } from "@/app/auth-session";
+import { textField } from "@/app/form-fields";
 import { recordQuestion } from "@/app/threads";
 
-function textField(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
-}
-
 /**
- * Persists a question and shows the Thread it belongs to. A question with no
- * open thread starts one, titled with that question; a question in an open
- * thread is appended, so a follow-up keeps the ranking it is following up on
- * (`recordQuestion` decides which, and never discards the question).
+ * Persists a question from the composer and shows the Thread it landed in —
+ * `recordQuestion` decides whether that is a new thread or a follow-up, and
+ * never discards the question. A blank question leaves the page as it stands.
  */
 export async function askQuestion(formData: FormData): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));

@@ -9,6 +9,7 @@ import { randomBytes } from "node:crypto";
 import {
   CANDIDATE_LAMPS,
   SCORE_COMPONENTS,
+  SLOT_LIMIT_LEVELS,
   type ScoredAirport,
 } from "@repo/scoring";
 
@@ -74,11 +75,11 @@ export function assistantMessage(
  * matched count, the sort key — is stored verbatim.
  */
 export function rankingRows(call: ToolCall | undefined): ScoredAirport[] | null {
-  if (!call || call.tool !== "queryAirports") {
+  if (!call || call.tool !== "queryAirports" || !isRecord(call.result)) {
     return null;
   }
-  const rows = (call.result as { rows?: JsonValue }).rows;
-  return Array.isArray(rows) ? (rows as unknown as ScoredAirport[]) : null;
+  const { rows } = call.result;
+  return Array.isArray(rows) ? (rows as ScoredAirport[]) : null;
 }
 
 /**
@@ -95,22 +96,31 @@ export function parseThreadMessage(value: unknown): ThreadMessage | null {
   if (role !== "user" && role !== "assistant") {
     return null;
   }
-  if (!Array.isArray(value.toolCalls)) {
+  const toolCalls = parseToolCalls(value.toolCalls);
+  if (!toolCalls) {
     return null;
-  }
-  const toolCalls: ToolCall[] = [];
-  for (const call of value.toolCalls) {
-    const parsed = parseToolCall(call);
-    if (!parsed) {
-      return null;
-    }
-    toolCalls.push(parsed);
   }
   // A message with no prose and no tool payload would draw a bare role label.
   if (value.text.trim().length === 0 && toolCalls.length === 0) {
     return null;
   }
   return { role, text: value.text, toolCalls };
+}
+
+/** All of a message's tool calls, or null if any one of them is unusable. */
+function parseToolCalls(value: unknown): ToolCall[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const calls: ToolCall[] = [];
+  for (const call of value) {
+    const parsed = parseToolCall(call);
+    if (!parsed) {
+      return null;
+    }
+    calls.push(parsed);
+  }
+  return calls;
 }
 
 function parseToolCall(value: unknown): ToolCall | null {
@@ -187,16 +197,9 @@ function isScoreComponent(value: unknown): boolean {
   );
 }
 
-/** The FAA schedule constraints, exhaustive over scoring's own union. */
-const SLOT_LIMITS: Record<NonNullable<ScoredAirport["slotLimit"]>, true> = {
-  "Level 2": true,
-  "Level 3": true,
-};
-
+/** A slot limit, or none: an airport under no FAA schedule constraint. */
 function isSlotLimit(value: unknown): boolean {
-  return (
-    value === null || (typeof value === "string" && Object.hasOwn(SLOT_LIMITS, value))
-  );
+  return value === null || SLOT_LIMIT_LEVELS.some((level) => level === value);
 }
 
 function isString(value: unknown): boolean {
@@ -271,14 +274,6 @@ type ThreadHost = { __aiiThreadStore?: Map<string, Thread> };
  * It hangs off `globalThis` because Next bundles the page graph and the
  * server-action graph separately: a module-level Map would give the action that
  * writes a thread and the page that renders it a store each.
- *
- * Insertion order is the recents order: a thread that gets a new message is
- * re-inserted at the end, which is what an index on (owner, updatedAt) will do
- * in Convex without depending on two writes landing in different milliseconds.
- *
- * Reads here are unparsed because every write went through
- * `parseThreadMessage`. A Convex-backed `readThread` hands over a document this
- * process never validated, so it has to run the messages back through it.
  */
 function threadsById(): Map<string, Thread> {
   const host = globalThis as unknown as ThreadHost;
@@ -371,12 +366,23 @@ export function recordQuestion(
   return followUp ?? startThread(ownerEmail, question);
 }
 
+/**
+ * A thread the analyst owns. Its messages are handed back without re-parsing
+ * because every write went through `parseThreadMessage`. A Convex-backed read
+ * hands over a document this process never validated, so it has to run the
+ * messages back through it.
+ */
 export function readThread(ownerEmail: string, threadId: string): Thread | null {
   const thread = ownedThread(ownerEmail, threadId);
   return thread ? snapshotOf(thread) : null;
 }
 
-/** The analyst's threads for the header recents control, most recent first. */
+/**
+ * The analyst's threads for the header recents control, most recent first.
+ * Insertion order is the recents order — `appendMessage` re-inserts the thread
+ * just spoken in — which is what an index on (owner, updatedAt) will do in
+ * Convex without depending on two writes landing in different milliseconds.
+ */
 export function listThreads(ownerEmail: string): ThreadSummary[] {
   const owner = ownerKey(ownerEmail);
   return [...threadsById().values()]
