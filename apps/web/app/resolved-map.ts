@@ -2,7 +2,7 @@
  * The resolved airport set as a picture (issue #29 / PRD stories 11-25): an
  * inline SVG of the rows this answer ranked, cropped to their own bounding box.
  *
- * The gate is data, never model text. A map is drawn only when all three of
+ * The gate is data, never model text. A map is drawn only when all four of
  * these hold, so the picture cannot claim a geography the answer does not have:
  *
  *   (a) *this* message names a US state or one of the nine Census regions, out
@@ -157,42 +157,44 @@ function filtersByStateOrRegion(args: JsonObject): boolean {
   });
 }
 
-/** A row the snapshot locates. A coordinate is a pair; half of one is no point. */
-function isLocated(row: ScoredAirport): row is ScoredAirport & { latitude: number; longitude: number } {
+/** A ranked row the snapshot puts somewhere. */
+type Located = ScoredAirport & { latitude: number; longitude: number };
+
+/** A coordinate is a pair; half of one is not a point to draw. */
+function isLocated(row: ScoredAirport): row is Located {
   return row.latitude !== null && row.longitude !== null;
 }
 
 /**
- * The rows placed in the drawing box: an equirectangular projection with the
- * longitudes narrowed by the set's own mid-latitude, then the set's bounding box
- * scaled to fill the box on its longer axis. One scale for both axes, so a
- * ninety-mile hop reads as a ninety-mile hop and the shape of New England is not
- * stretched into the card.
+ * The rows placed in the drawing box: an equirectangular projection, then the
+ * set's own bounding box scaled to fill the drawing on its longer axis. That
+ * crop is the whole map — there is no frame around it to be wrong about, and no
+ * coastline the snapshot did not ship.
  */
-function project(rows: readonly (ScoredAirport & { latitude: number; longitude: number })[]): MapMarker[] {
-  const latitudes = rows.map((row) => row.latitude);
-  const midLatitude = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
-  const narrowing = Math.cos((midLatitude * Math.PI) / 180);
+function project(rows: readonly Located[]): MapMarker[] {
+  // Degrees of longitude are shorter than degrees of latitude away from the
+  // equator, and this set's own mid-latitude is the honest amount to narrow
+  // them by: it is the only latitude the drawing has to be true at.
+  const narrowing = Math.cos((extent(rows.map((row) => row.latitude)).middle * Math.PI) / 180);
   // North is up, so latitude runs the other way from the SVG's y axis.
-  const points = rows.map((row) => ({ x: row.longitude * narrowing, y: -row.latitude }));
+  const points = rows.map((row) => ({ row, x: row.longitude * narrowing, y: -row.latitude }));
 
-  const horizontal = extent(points.map((point) => point.x));
-  const vertical = extent(points.map((point) => point.y));
+  const across = extent(points.map((point) => point.x));
+  const down = extent(points.map((point) => point.y));
+  // One scale for both axes: a ninety-mile hop reads as a ninety-mile hop, and
+  // the shape of New England is not stretched to fill the card.
   const scale = Math.min(
-    (MAP_WIDTH - 2 * MAP_PADDING) / horizontal.span,
-    (MAP_HEIGHT - 2 * MAP_PADDING) / vertical.span,
+    (MAP_WIDTH - 2 * MAP_PADDING) / across.span,
+    (MAP_HEIGHT - 2 * MAP_PADDING) / down.span,
   );
 
-  return rows.map((row, index) => {
-    const point = points[index]!;
-    return {
-      iata: row.iata,
-      name: row.name,
-      lamp: row.candidateLamp,
-      x: round((point.x - horizontal.middle) * scale + MAP_WIDTH / 2),
-      y: round((point.y - vertical.middle) * scale + MAP_HEIGHT / 2),
-    };
-  });
+  return points.map(({ row, x, y }) => ({
+    iata: row.iata,
+    name: row.name,
+    lamp: row.candidateLamp,
+    x: round((x - across.middle) * scale + MAP_WIDTH / 2),
+    y: round((y - down.middle) * scale + MAP_HEIGHT / 2),
+  }));
 }
 
 /**
@@ -214,14 +216,24 @@ function round(value: number): number {
 
 /**
  * What the map is of, under it. It names the rows it could not place rather
- * than quietly drawing fewer pins than the table has rows.
+ * than quietly drawing fewer pins than the table has rows, and it says which of
+ * the two objects to believe.
  */
 function captionOf(place: string, placed: number, unplaced: readonly string[]): string {
-  const drawn = `${placed} of this answer's ranked airports, placed from the snapshot's own coordinates for ${place}`;
+  return [
+    `${placed} of this answer's ranked airports, placed from the snapshot's own coordinates for ${place}.`,
+    unplacedNote(unplaced),
+    "The ranking table above is the source of truth.",
+  ]
+    .filter((line) => line !== null)
+    .join(" ");
+}
+
+function unplacedNote(unplaced: readonly string[]): string | null {
   if (unplaced.length === 0) {
-    return `${drawn}. The ranking table above is the source of truth.`;
+    return null;
   }
-  const missing = unplaced.join(", ");
-  const carries = unplaced.length === 1 ? "carries" : "carry";
-  return `${drawn}. ${missing} ${carries} no coordinate in the snapshot and ${unplaced.length === 1 ? "is" : "are"} not drawn. The ranking table above is the source of truth.`;
+  return unplaced.length === 1
+    ? `${unplaced[0]} carries no coordinate in the snapshot and is not drawn.`
+    : `${unplaced.join(", ")} carry no coordinates in the snapshot and are not drawn.`;
 }
