@@ -10,6 +10,7 @@ export default defineConfig(
       "**/*.config.{js,mjs,ts,mts}",
       "**/dist/**",
       ".next/**",
+      "**/next-env.d.ts",
       "convex/_generated/**",
     ],
   },

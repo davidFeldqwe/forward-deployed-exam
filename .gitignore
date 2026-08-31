@@ -12,4 +12,6 @@ dist
 .vercel
 .convex
 apps/web/convex/_generated/
-.sandcastle/
+.sandcastle/.env
+.sandcastle/logs/
+.sandcastle/worktrees/
