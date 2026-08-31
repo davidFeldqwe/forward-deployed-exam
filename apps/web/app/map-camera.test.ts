@@ -2,18 +2,71 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
+import * as THREE from "three";
+
+import { scoreUniverse } from "@repo/scoring";
+import { loadSnapshot } from "@repo/snapshot";
+
 import {
+  CONUS_HALF_WIDTH,
   CONUS_VIEW,
+  FIELD_OF_VIEW,
   MAX_DISTANCE,
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
   MIN_POLAR_ANGLE,
   easeOut,
   introEase,
+  openingPosition,
   type ScenePoint,
 } from "./map-camera.ts";
+import { mapMarks } from "./map-view.ts";
+import { groundOutlines } from "./us-ground.ts";
 
 const web = new URL("../", import.meta.url);
+
+/**
+ * The shapes the canvas pane comes in, from an ultrawide desktop down to the
+ * tall sliver a phone leaves between the bar and the key.
+ */
+const ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5];
+
+/**
+ * Alaska, Hawaii and Puerto Rico. The opening frame is the contiguous states —
+ * the inset viewports that would carry the rest are #68's follow-on — so those
+ * three are outside it by design, and reachable by orbiting out to them.
+ */
+const OFF_FRAME = new Set(["AK", "HI", "PR"]);
+
+/**
+ * Everything the opening frame is supposed to hold: the country's own outline,
+ * and the top of every column standing on it. A column's height is what a
+ * frame chosen from the ground alone would clip first.
+ */
+function contiguousPoints(): THREE.Vector3[] {
+  const points: THREE.Vector3[] = [];
+  for (const outline of groundOutlines()) {
+    if (OFF_FRAME.has(outline.state)) continue;
+    for (const ring of outline.rings) {
+      for (const point of ring) points.push(new THREE.Vector3(point.x, 0, point.z));
+    }
+  }
+  const rows = scoreUniverse(loadSnapshot()).filter((row) => !OFF_FRAME.has(row.state ?? ""));
+  for (const mark of mapMarks(rows)) {
+    points.push(new THREE.Vector3(mark.x, mark.height, mark.z));
+  }
+  return points;
+}
+
+/** The camera as the scene builds it, in the frame this module opens on. */
+function openingCamera(aspect: number): THREE.PerspectiveCamera {
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, 400);
+  const { x, y, z } = openingPosition(aspect);
+  camera.position.set(x, y, z);
+  camera.lookAt(CONUS_VIEW.target.x, CONUS_VIEW.target.y, CONUS_VIEW.target.z);
+  camera.updateMatrixWorld(true);
+  return camera;
+}
 
 function source(file: string): string {
   return readFileSync(new URL(file, web), "utf8");
@@ -40,8 +93,49 @@ test("the default frame is a tilt over the contiguous states, above the ground",
   assert.ok(CONUS_VIEW.position.z > 0);
 });
 
+test("the opening frame holds the whole contiguous country, on a phone as on a laptop", () => {
+  // A fixed distance frames the country on a wide pane and cuts both coasts off
+  // a narrow one: half the frustum's width is the aspect times its height, so
+  // the frame has to be chosen against the pane it is drawn into.
+  const points = contiguousPoints();
+
+  for (const aspect of ASPECTS) {
+    const camera = openingCamera(aspect);
+    for (const point of points) {
+      const ndc = point.clone().project(camera);
+      const worst = Math.max(Math.abs(ndc.x), Math.abs(ndc.y));
+      assert.ok(worst <= 1, `aspect ${aspect}: a point sits ${worst.toFixed(2)} off centre`);
+    }
+  }
+});
+
+test("the frame's half-width is the committed country's own east–west reach", () => {
+  // The frame is centred on x = 0, so what has to fit is the further of the two
+  // edges. A constant that drifted from the geometry would frame a country the
+  // ground plane no longer draws.
+  const reach = Math.max(
+    ...groundOutlines()
+      .filter((outline) => !OFF_FRAME.has(outline.state))
+      .flatMap((outline) => outline.rings.flatMap((ring) => ring.map((point) => Math.abs(point.x)))),
+  );
+
+  assert.ok(CONUS_HALF_WIDTH >= reach, `${CONUS_HALF_WIDTH} covers ${reach}`);
+  // And no wider: a frame with a country's width of slack in it opens too far out.
+  assert.ok(CONUS_HALF_WIDTH - reach < 1);
+});
+
+test("a wide pane opens at the module's own frame; a narrow one pulls back from it", () => {
+  assert.deepEqual(openingPosition(1.78), CONUS_VIEW.position);
+  // Narrower panes only ever move the camera away along the same ray, so the
+  // tilt the country is seen at is the one frame for every viewport.
+  const portrait = orbitOf(openingPosition(0.62));
+  const base = orbitOf(CONUS_VIEW.position);
+  assert.ok(portrait.distance > base.distance);
+  assert.ok(Math.abs(portrait.polar - base.polar) < 1e-9, "the same angle, further out");
+});
+
 test("the first load eases into that frame, in under about a second", () => {
-  const intro = introEase(false);
+  const intro = introEase(false, 1.78);
 
   assert.deepEqual(intro.to, CONUS_VIEW.position);
   assert.notDeepEqual(intro.from, intro.to);
@@ -50,11 +144,15 @@ test("the first load eases into that frame, in under about a second", () => {
 });
 
 test("reduced motion opens on the tilted view instead of flying into it", () => {
-  const intro = introEase(true);
+  for (const aspect of ASPECTS) {
+    const intro = introEase(true, aspect);
 
-  assert.equal(intro.durationMs, 0);
-  assert.deepEqual(intro.from, CONUS_VIEW.position);
-  assert.deepEqual(intro.to, CONUS_VIEW.position);
+    assert.equal(intro.durationMs, 0);
+    // The finished frame, and the one the pane is wide enough for: a visitor
+    // who asked for less motion is not also given a narrower country.
+    assert.deepEqual(intro.from, openingPosition(aspect));
+    assert.deepEqual(intro.to, openingPosition(aspect));
+  }
 });
 
 test("the ease arrives rather than stopping, and is bounded at both ends", () => {
@@ -79,12 +177,16 @@ function orbitOf(point: ScenePoint): { distance: number; polar: number } {
 test("the ease starts and ends somewhere the orbit could have been put", () => {
   // An endpoint outside the limits would be clamped by the controls on the very
   // first frame, so the opening move would fight the constraint rather than run.
-  for (const point of [introEase(false).from, introEase(false).to]) {
-    const { distance, polar } = orbitOf(point);
-    assert.ok(polar >= MIN_POLAR_ANGLE, `polar ${polar}`);
-    assert.ok(polar <= MAX_POLAR_ANGLE, `polar ${polar}`);
-    assert.ok(distance >= MIN_DISTANCE, `distance ${distance}`);
-    assert.ok(distance <= MAX_DISTANCE, `distance ${distance}`);
+  // A narrow pane opens further out, so the claim is made at every aspect.
+  for (const aspect of ASPECTS) {
+    const intro = introEase(false, aspect);
+    for (const point of [intro.from, intro.to]) {
+      const { distance, polar } = orbitOf(point);
+      assert.ok(polar >= MIN_POLAR_ANGLE, `aspect ${aspect}: polar ${polar}`);
+      assert.ok(polar <= MAX_POLAR_ANGLE, `aspect ${aspect}: polar ${polar}`);
+      assert.ok(distance >= MIN_DISTANCE, `aspect ${aspect}: distance ${distance}`);
+      assert.ok(distance <= MAX_DISTANCE, `aspect ${aspect}: distance ${distance}`);
+    }
   }
 });
 
@@ -101,8 +203,20 @@ test("the scene takes its limits from this module, and never pans off the ground
   assert.doesNotMatch(scene, /\broll\b|rotation\.z/);
 });
 
+test("the scene frames against its own pane, and keeps a view the visitor set", () => {
+  const scene = source("app/skyline-scene.ts");
+
+  // One field of view, and the aspect the canvas is actually drawn at: a camera
+  // built with a fixed pair would frame a pane the page does not have.
+  assert.match(scene, /PerspectiveCamera\(FIELD_OF_VIEW, hostAspect\(host\)/);
+  assert.match(scene, /openingPosition\(camera\.aspect\)/);
+  // A resize re-frames only while nothing has been dragged or zoomed.
+  assert.match(scene, /untouched = false/);
+  assert.match(scene, /if \(!untouched\)/);
+});
+
 test("the ease the scene runs is this module's, and it asks the visitor first", () => {
-  assert.match(source("app/skyline-scene.ts"), /introEase\(input\.reducedMotion\)/);
+  assert.match(source("app/skyline-scene.ts"), /introEase\(input\.reducedMotion, /);
   assert.match(
     source("components/SkylineCanvas.tsx"),
     /matchMedia\("\(prefers-reduced-motion: reduce\)"\)/,

@@ -19,6 +19,7 @@ import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 import { lampVariable } from "./lamp-hue.ts";
 import {
   CONUS_VIEW,
+  FIELD_OF_VIEW,
   MAX_DISTANCE,
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
@@ -26,6 +27,7 @@ import {
   type ScenePoint,
   easeOut,
   introEase,
+  openingPosition,
 } from "./map-camera.ts";
 import { COLUMN_RADIUS, type MapMark } from "./map-view.ts";
 import type { PlacedOutline } from "./us-ground.ts";
@@ -57,8 +59,9 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   }
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-  camera.position.copy(vector(CONUS_VIEW.position));
+  // The frame is chosen against the pane's own shape, so a narrow one opens
+  // holding the country rather than cutting both coasts off it.
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, hostAspect(host), 0.1, 400);
 
   const palette = resolvePalette(host);
   scene.add(
@@ -71,13 +74,36 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   // of gap under it inside a pane sized to the viewport.
   renderer.domElement.style.display = "block";
   host.appendChild(renderer.domElement);
-  const controls = orbit(camera, renderer.domElement, CONUS_VIEW.target);
-  const resize = fitToHost(host, renderer, camera);
 
-  const intro = introEase(input.reducedMotion);
+  const intro = introEase(input.reducedMotion, camera.aspect);
   const from = vector(intro.from);
   const to = vector(intro.to);
+  camera.position.copy(from);
   const startedAt = performance.now();
+
+  // The controls read the camera off its position, so it stands where the ease
+  // starts before they are built.
+  const controls = orbit(camera, renderer.domElement, CONUS_VIEW.target);
+
+  // A pane that changes shape — a phone turned on its side — is re-framed, but
+  // only until the visitor takes the controls: after that the view is theirs,
+  // and a resize must not throw it away.
+  let untouched = true;
+  controls.addEventListener("start", () => {
+    untouched = false;
+  });
+  const resize = fitToHost(host, renderer, camera, () => {
+    if (!untouched) {
+      return;
+    }
+    to.copy(vector(openingPosition(camera.aspect)));
+    // Mid-ease the loop is already driving the camera towards `to`; once it has
+    // finished, nothing is, so the new frame is taken here.
+    if (performance.now() - startedAt >= intro.durationMs) {
+      camera.position.copy(to);
+    }
+  });
+
   renderer.setAnimationLoop((now) => {
     // A reduced-motion visitor gets a zero-length ease, so this never runs and
     // the first frame is already the tilted view.
@@ -260,20 +286,29 @@ function orbit(
   return controls;
 }
 
-/** Keeps the drawing buffer the size of the element it is drawn into. */
+/** The shape of the pane the canvas is drawn into: its width over its height. */
+function hostAspect(host: HTMLElement): number {
+  return Math.max(host.clientWidth, 1) / Math.max(host.clientHeight, 1);
+}
+
+/**
+ * Keeps the drawing buffer the size of the element it is drawn into, and tells
+ * the caller the shape it now has: how far back the country has to be seen from
+ * is the aspect ratio's own business.
+ */
 function fitToHost(
   host: HTMLElement,
   renderer: THREE.WebGLRenderer,
   camera: THREE.PerspectiveCamera,
+  onFit: () => void,
 ): ResizeObserver {
   const fit = (): void => {
-    const width = Math.max(host.clientWidth, 1);
-    const height = Math.max(host.clientHeight, 1);
     // `setSize` writes the CSS size as well as the drawing buffer, so a device
     // pixel ratio above 1 sharpens the canvas rather than doubling its box.
-    renderer.setSize(width, height);
-    camera.aspect = width / height;
+    renderer.setSize(Math.max(host.clientWidth, 1), Math.max(host.clientHeight, 1));
+    camera.aspect = hostAspect(host);
     camera.updateProjectionMatrix();
+    onFit();
   };
 
   fit();
