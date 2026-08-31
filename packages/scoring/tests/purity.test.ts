@@ -3,9 +3,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 
 // PRD story 43: the screen must not be able to reach an LLM, the network, or
-// Convex. This test reads every runtime module, so adding a file cannot dodge it.
+// Convex. The walk is recursive, so a new module cannot dodge it by sitting in a
+// subdirectory of `src/`.
 const src = new URL("../src/", import.meta.url);
-const modules = readdirSync(src).filter((file) => file.endsWith(".ts"));
+const modules = readdirSync(src, { encoding: "utf8", recursive: true }).filter((file) =>
+  file.endsWith(".ts"),
+);
 
 const FORBIDDEN = [
   "fetch(",

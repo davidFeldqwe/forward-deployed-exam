@@ -3,26 +3,14 @@ import { test } from "node:test";
 
 import { loadSnapshot } from "@repo/snapshot";
 
-import {
-  COMPONENTS,
-  MAX_LIMIT,
-  WEIGHTS,
-  queryAirports,
-  scoreUniverse,
-  type ScoredAirport,
-} from "../src/index.ts";
+import { COMPONENTS, MAX_LIMIT, WEIGHTS, queryAirports, scoreUniverse } from "../src/index.ts";
+import { rowLookup } from "./rows.ts";
 
 // The committed snapshot, scored: the numbers a reviewer curls and an analyst
 // reads. A fresh clone runs this with no aviation HTTP.
 const snapshot = loadSnapshot();
 const scored = scoreUniverse(snapshot);
-const byIata = new Map(scored.map((airport) => [airport.iata, airport]));
-
-function row(iata: string): ScoredAirport {
-  const found = byIata.get(iata);
-  assert.ok(found, `${iata} is in the committed snapshot`);
-  return found;
-}
+const row = rowLookup(scored);
 
 test("every airport in the committed snapshot is scored", () => {
   assert.equal(scored.length, snapshot.airports.length);
@@ -32,7 +20,10 @@ test("every airport in the committed snapshot is scored", () => {
       const { percentile, coverage } = airport.scoreVector[component];
       assert.equal(percentile === null, coverage === "missing", `${airport.iata} ${component}`);
       if (percentile !== null) {
-        assert.ok(Number.isInteger(percentile) && percentile >= 0 && percentile <= 100);
+        assert.ok(
+          Number.isInteger(percentile) && percentile >= 0 && percentile <= 100,
+          `${airport.iata} ${component} percentile is a whole 0-100 rank, got ${percentile}`,
+        );
       }
     }
   }
@@ -147,7 +138,11 @@ test("a territory has no division, so a region ranking never returns it", () => 
 
 test("the committed snapshot is fully covered, so partial rows need a fixture", () => {
   const withheld = scored.filter((airport) => airport.composite === null);
-  assert.deepEqual(withheld, [], "no airport in the committed file is missing an input today");
+  assert.deepEqual(
+    withheld.map((airport) => airport.iata),
+    [],
+    "no airport in the committed file is missing an input today",
+  );
 });
 
 test("the national rank mixes peer groups, and every row says so", () => {
@@ -179,7 +174,11 @@ test("a compare against an airport outside the top 100 names the code", () => {
   assert.deepEqual(compare.rows.map((candidate) => candidate.iata), ["LAX"]);
   assert.equal(compare.matched, 1);
   assert.deepEqual(compare.unknownIata, ["ITH"]);
-  assert.equal(byIata.has("ITH"), false, "ITH really is outside the committed snapshot");
+  assert.equal(
+    scored.some((candidate) => candidate.iata === "ITH"),
+    false,
+    "ITH really is outside the committed snapshot",
+  );
 });
 
 test("a query result is exactly the locked payload, no more and no less", () => {

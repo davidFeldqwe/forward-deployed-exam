@@ -142,6 +142,22 @@ test("the limit defaults to 10, is honoured when given, and is capped at 25", ()
   assert.equal(queryAirports(scored, { iata: ["ATL", "ORD"], limit: 1 }).rows.length, 1);
 });
 
+// `limit` arrives from a query string and from the model, so it can be a number
+// the caller never meant. Every one of those lands on a usable row count rather
+// than an empty answer the analyst would read as "no airports match".
+test("a limit that is not a usable row count is coerced, never left to empty the answer", () => {
+  assert.equal(queryAirports(scored, { limit: -3 }).limit, 1);
+  assert.equal(queryAirports(scored, { limit: 3.7 }).limit, 3, "a fraction truncates");
+  assert.equal(queryAirports(scored, { limit: Number.NaN }).limit, DEFAULT_LIMIT);
+  assert.equal(queryAirports(scored, { limit: Number.POSITIVE_INFINITY }).limit, DEFAULT_LIMIT);
+  // The fallback is the one the codes lifted, so an unusable limit still returns
+  // every row of a compare rather than dropping back to ten.
+  assert.equal(
+    queryAirports(scored, { iata: ["ATL", "ORD"], limit: Number.NaN }).limit,
+    MAX_LIMIT,
+  );
+});
+
 test("querying leaves the scored universe untouched", () => {
   const before = scored.map((row) => row.iata);
   queryAirports(scored, { sortBy: "delay" });

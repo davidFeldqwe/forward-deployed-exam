@@ -77,7 +77,9 @@ itself.
   `sortBy` arrives from a query string or from the model, where the TypeScript
   type is no guard. Long-haul share is not a sort key.
 - `limit`: default 10, hard cap 25. Passing `iata` lifts the default to the cap,
-  so a two-code compare returns both rows.
+  so a two-code compare returns both rows. A limit below 1 is raised to 1 and a
+  fraction truncates, so a stray number narrows the answer rather than emptying
+  it; one that is not a finite number falls back to the default.
 - Returns `{ rows, matched, sortBy, limit, unknownIata }`; `matched` is the count
   before the limit. `unknownIata` lists requested codes with no airport in the
   scored universe, in the order asked: "LAX vs ITH" comes back as one row, and

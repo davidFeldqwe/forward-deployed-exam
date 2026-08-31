@@ -1,23 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  COMPONENTS,
-  WEIGHTS,
-  candidateLamp,
-  scoreUniverse,
-  type ScoredAirport,
-} from "../src/index.ts";
+import { COMPONENTS, WEIGHTS, candidateLamp, scoreUniverse } from "../src/index.ts";
 import { FIXTURE } from "./fixture.ts";
+import { rowLookup } from "./rows.ts";
 
 const scored = scoreUniverse(FIXTURE);
-const byIata = new Map(scored.map((row) => [row.iata, row]));
-
-function row(iata: string): ScoredAirport {
-  const found = byIata.get(iata);
-  assert.ok(found, `${iata} is in the scored universe`);
-  return found;
-}
+const row = rowLookup(scored);
 
 function percentiles(iata: string) {
   const { scoreVector } = row(iata);
