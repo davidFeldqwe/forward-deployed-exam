@@ -28,7 +28,7 @@ function gate(): { held: Promise<void>; release: () => void } {
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  return { held, release: () => release() };
+  return { held, release };
 }
 
 /** Lets every job already queued run, so "has not started yet" means it. */
@@ -266,11 +266,11 @@ test("a blank question is refused whether or not a thread is open", () => {
 test("two overlapping asks on one thread keep each answer under its own question", async () => {
   const analyst = "overlap@example.com";
   const opened = startThread(analyst, NEW_ENGLAND)!;
-  const gates = [gate(), gate()];
+  const turns = [gate(), gate()];
   const asked: string[][] = [];
   const answer = async (thread: Thread) => {
-    asked.push(textsOf(thread));
-    await gates[asked.length - 1]!.held;
+    const turn = turns[asked.push(textsOf(thread)) - 1]!;
+    await turn.held;
     return assistantMessage(`answering ${thread.messages.at(-1)!.text}`);
   };
 
@@ -283,8 +283,9 @@ test("two overlapping asks on one thread keep each answer under its own question
   assert.deepEqual(asked, [[NEW_ENGLAND, "Which is first?"]]);
   assert.deepEqual(textsOf(readThread(analyst, opened.id)), [NEW_ENGLAND, "Which is first?"]);
 
-  gates[0]!.release();
-  gates[1]!.release();
+  for (const turn of turns) {
+    turn.release();
+  }
   await first;
   const thread = await second;
 

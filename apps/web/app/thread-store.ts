@@ -51,8 +51,8 @@ function threadsById(): Map<string, Thread> {
   return host.__aiiThreadStore;
 }
 
-/** The tail of each thread's queue of asks: what the next one waits on. */
-function asksInFlight(): Map<string, Promise<void>> {
+/** Each thread's queue of asks, held as its tail: what the next one waits on. */
+function askQueues(): Map<string, Promise<void>> {
   const host = threadHost();
   host.__aiiThreadAsks ??= new Map();
   return host.__aiiThreadAsks;
@@ -203,7 +203,7 @@ export async function askOnThread(
   question: string,
   answer: AnswerTurn,
 ): Promise<Thread | null> {
-  return inTurnOn(askKey(ownerEmail, openThreadId), async () => {
+  const ask = async (): Promise<Thread | null> => {
     const thread = recordQuestion(ownerEmail, openThreadId, question);
     if (!thread) {
       return null;
@@ -211,25 +211,25 @@ export async function askOnThread(
     // A refused answer — a payload the store will not take — leaves the thread
     // as the question left it, rather than nothing at all.
     return appendMessage(ownerEmail, thread.id, await answer(thread)) ?? thread;
-  });
+  };
+
+  // An ask naming no thread opens one nobody can be holding yet, so it takes no
+  // turn at all.
+  return openThreadId ? inTurnOn(askKey(ownerEmail, openThreadId), ask) : ask();
 }
 
 /**
  * What an ask queues on: the thread it was sent to, under the account asking.
- * An ask naming no thread opens one nobody can be holding yet, and a forged id
- * opens the asker's own thread rather than touching the owner's, so neither
- * waits on a thread it will not write to.
+ * Keying by the asker means an ask on a forged id — which opens that asker's
+ * own thread rather than touching the owner's — waits on no one else's ask.
  */
-function askKey(ownerEmail: string, openThreadId: string | null): string | null {
-  return openThreadId ? `${normalizeEmail(ownerEmail)}\n${openThreadId}` : null;
+function askKey(ownerEmail: string, threadId: string): string {
+  return `${normalizeEmail(ownerEmail)}\n${threadId}`;
 }
 
 /** Runs `work` after every ask already queued on `key` has finished. */
-function inTurnOn<T>(key: string | null, work: () => Promise<T>): Promise<T> {
-  if (!key) {
-    return work();
-  }
-  const asks = asksInFlight();
+function inTurnOn<T>(key: string, work: () => Promise<T>): Promise<T> {
+  const asks = askQueues();
   const turn = (asks.get(key) ?? Promise.resolve()).then(work);
   // The queue carries the order and nothing else: an ask that fails must still
   // let the next one run, so what the next one waits on cannot reject.
