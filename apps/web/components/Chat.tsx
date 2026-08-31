@@ -67,14 +67,15 @@ export function Chat({
       <SiteHeader
         signedIn
         leading={<ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />}
-      >
-        {/* Every airport is on the same two years. The phrase says which years
-            those are; a phone-width bar keeps the years and drops the phrase. */}
-        <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
-          <span className="max-md:hidden">{chatCopy.comparisonWindow}</span>
-          <span className="md:hidden">{chatCopy.comparisonWindowYears}</span>
-        </Badge>
-      </SiteHeader>
+        // Every airport is on the same two years. The phrase says which years
+        // those are; a phone-width bar keeps the years and drops the phrase.
+        status={
+          <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
+            <span className="max-md:hidden">{chatCopy.comparisonWindow}</span>
+            <span className="md:hidden">{chatCopy.comparisonWindowYears}</span>
+          </Badge>
+        }
+      />
 
       {/* The rail is a column of its own from `md` up, and a drawer over the
           transcript below it. */}

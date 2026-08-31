@@ -32,13 +32,13 @@ const LINK_ICONS = {
 export function SiteHeader({
   signedIn,
   leading,
-  children,
+  status,
 }: {
   signedIn: boolean;
   /** A control at the leading edge: chat's recents drawer button. */
   leading?: ReactNode;
-  /** Chrome in the actions cluster, ahead of them: the comparison window. */
-  children?: ReactNode;
+  /** What this surface says about itself, ahead of the actions: the window. */
+  status?: ReactNode;
 }) {
   const { wordmark, links, profile } = siteHeader(signedIn);
 
@@ -48,12 +48,12 @@ export function SiteHeader({
 
       {/* Identity takes the room the actions do not: on a phone the product
           name is clipped rather than pushing a control off the bar. */}
-      <div className="flex min-w-0 flex-1 items-center">
+      <div className="min-w-0 flex-1">
         <Wordmark name={wordmark} />
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
-        {children}
+        {status}
         {links.map((link) => (
           <HeaderAction key={link.key} link={link} />
         ))}
