@@ -7,7 +7,14 @@
  */
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
+import {
+  generateText,
+  stepCountIs,
+  streamText,
+  type LanguageModel,
+  type ModelMessage,
+  type ToolSet,
+} from "ai";
 
 import {
   AGENT_MAX_STEPS,
@@ -34,42 +41,112 @@ export type AgentRequest = { system: string; messages: readonly AgentTurn[] };
 export type ModelAnswer = { text: string; toolCalls: ToolCall[] };
 
 /**
- * Runs the tool loop and returns the prose beside every tool call it made, in
- * the order it made them. The calls are recorded here rather than read back off
- * the SDK's steps because the transcript stores what the tool actually returned
- * and how long it took — that payload is what the ranking re-renders from.
+ * A model object as the SDK hands one back, so a caller — or a test with a
+ * scripted model — can name one without importing a vendor package itself.
  */
-export async function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
+export type AgentLanguageModel = Exclude<LanguageModel, string>;
+
+/** The tool loop, given a model: the two shapes below run the same one. */
+type ModelLoop = (model: AgentLanguageModel, request: AgentRequest) => Promise<ModelAnswer>;
+
+/**
+ * Runs the tool loop in one call and returns the prose beside every tool call it
+ * made, in the order it made them. This is the runner the chat server action
+ * uses; `streamAgentModel` is the same answer over a stream.
+ */
+export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
+  return answerWithProvider(generateModelAnswer, request);
+}
+
+/**
+ * The same complete answer, with the loop run as a stream — what the SSE chat
+ * route (#65) will build its pending row and tool rows from. Nothing partial
+ * comes back here: the ranking is drawn from a finished `queryAirports` payload,
+ * never from a half-read one.
+ */
+export function streamAgentModel(request: AgentRequest): Promise<ModelAnswer> {
+  return answerWithProvider(streamModelAnswer, request);
+}
+
+async function answerWithProvider(loop: ModelLoop, request: AgentRequest): Promise<ModelAnswer> {
   const choice = chooseProvider(process.env);
   if (!choice) {
     throw new NoProviderError();
   }
 
   try {
-    return await generate(choice, request);
+    return await loop(languageModel(choice), request);
   } catch (error) {
     // The PRD names one OpenAI fallback: a deployment whose account cannot see
     // `gpt-4o` should answer on `gpt-4o-mini` rather than not answer at all.
     if (choice.fallbackModel === null || !isModelUnavailable(error)) {
       throw error;
     }
-    return await generate({ ...choice, model: choice.fallbackModel }, request);
+    return await loop(languageModel({ ...choice, model: choice.fallbackModel }), request);
   }
 }
 
-async function generate(choice: ProviderChoice, request: AgentRequest): Promise<ModelAnswer> {
+/**
+ * The loop in one call. Tool calls are recorded by the tools themselves rather
+ * than read back off the SDK's steps, because the transcript stores what the
+ * tool actually returned and how long it took — that payload is what the ranking
+ * re-renders from.
+ */
+export async function generateModelAnswer(
+  model: AgentLanguageModel,
+  request: AgentRequest,
+): Promise<ModelAnswer> {
   const toolCalls: ToolCall[] = [];
-  const { text } = await generateText({
-    model: languageModel(choice),
+  const { text } = await generateText(modelCall(model, request, toolCalls));
+  return { text, toolCalls };
+}
+
+/**
+ * The loop as a stream, ending in the same stored answer: the tools record the
+ * same payloads, and the prose is the accumulated deltas.
+ */
+export async function streamModelAnswer(
+  model: AgentLanguageModel,
+  request: AgentRequest,
+): Promise<ModelAnswer> {
+  let failure: unknown = null;
+  const toolCalls: ToolCall[] = [];
+  const result = streamText({
+    ...modelCall(model, request, toolCalls),
+    // `streamText` puts a failed call on the stream instead of throwing it, and
+    // the promise below then rejects with a NoOutputGeneratedError carrying no
+    // cause. Keep the vendor's own error: the fallback above reads it, and the
+    // thread would otherwise report an SDK detail as the model's failure.
+    onError: ({ error }) => {
+      failure ??= error;
+    },
+  });
+
+  let text: string;
+  try {
+    text = await result.text;
+  } catch (error) {
+    throw failure ?? error;
+  }
+  // An error after a step finished still leaves an answer that stopped early;
+  // half a ranking is not what the thread stores.
+  if (failure !== null) {
+    throw failure;
+  }
+  return { text, toolCalls };
+}
+
+function modelCall(model: AgentLanguageModel, request: AgentRequest, recorded: ToolCall[]) {
+  return {
+    model,
     system: request.system,
     messages: request.messages.map(
       (turn): ModelMessage => ({ role: turn.role, content: turn.content }),
     ),
-    tools: instrumentedTools(toolCalls),
+    tools: instrumentedTools(recorded),
     // PRD "Stack": cap tool steps, eight is enough.
     stopWhen: stepCountIs(AGENT_MAX_STEPS),
-  });
-  return { text, toolCalls };
+  };
 }
 
 /** The one place either vendor's client is constructed. */
