@@ -1,0 +1,55 @@
+import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
+
+import { WEIGHTS } from "./weights.ts";
+import { COMPONENTS, COMPONENT_LABELS, type Component } from "./types.ts";
+
+// Caveats ride on the row, not in a global footer: the answer that shows a
+// number shows the assumptions behind that number.
+const OUT_OF_SCOPE =
+  "Construction cost, ROI, land availability, politics, and airline leases are outside this capacity-pressure screen.";
+
+export function sharedAssumptions(snapshot: AirportSnapshot): string[] {
+  const { firstYear, secondYear } = snapshot.comparisonWindow;
+  const { units, longHaulShare } = snapshot.methodology;
+  return [
+    `Comparison window is ${firstYear}-${secondYear}; every airport is measured on the same two calendar years.`,
+    "Percentiles are within the airport's FAA hub-size peer group, computed nationally: a medium-hub 74th percentile is not a large-hub 74th percentile. A place question filters these rows, it does not re-percentile them.",
+    `Weights are fixed: congestion ${WEIGHTS.congestion}, unmet flight demand ${WEIGHTS.unmetFlightDemand}, delay ${WEIGHTS.delay}, growth ${WEIGHTS.growth}.`,
+    `Congestion is ${units.congestion}; unmet flight demand is ${units.unmetFlightDemand}; delay is ${units.delay}; growth is ${units.growth}.`,
+    `Long-haul share is a lookup over ${longHaulShare.basis} beyond ${longHaulShare.thresholdMiles} miles, not a score-vector component.`,
+    "A missing input is never zero-filled and the remaining components are never re-weighted, so an airport missing any component has no composite.",
+    OUT_OF_SCOPE,
+  ];
+}
+
+export function assumptionsFor(
+  shared: readonly string[],
+  airport: SnapshotAirport,
+  missing: readonly Component[],
+): string[] {
+  if (missing.length === 0) return [...shared];
+  const labels = missing.map((component) => COMPONENT_LABELS[component]);
+  const named = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+  const verb = labels.length === 1 ? "is" : "are";
+  return [
+    ...shared,
+    `${named} ${verb} missing for ${airport.iata}, so it has no composite because the input is absent, not because it scored low.`,
+  ];
+}
+
+export function gapsFor(snapshot: AirportSnapshot, airport: SnapshotAirport): string[] {
+  const gaps = [...snapshot.gaps];
+  if (airport.region === null) {
+    gaps.push(
+      `${airport.iata} is in ${airport.state}, which the Census Bureau does not place in a division, so it never appears in a region ranking.`,
+    );
+  }
+  if (airport.longHaulShare.coverage === "missing") {
+    gaps.push(`Long-haul share is not available for ${airport.iata}.`);
+  }
+  return gaps;
+}
+
+export function missingComponents(airport: SnapshotAirport): Component[] {
+  return COMPONENTS.filter((component) => airport.inputs[component].coverage === "missing");
+}

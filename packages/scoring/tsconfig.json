@@ -3,8 +3,11 @@
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["ESNext"],
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
   },
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules"]
 }

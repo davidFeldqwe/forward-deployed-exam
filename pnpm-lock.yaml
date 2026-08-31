@@ -126,6 +126,10 @@ importers:
         version: 8.50.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
 
   packages/scoring:
+    dependencies:
+      '@repo/snapshot':
+        specifier: workspace:*
+        version: link:../snapshot
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -133,6 +137,9 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/node':
+        specifier: 24.10.9
+        version: 24.10.9
       eslint:
         specifier: 9.39.4
         version: 9.39.4(jiti@2.7.0)
