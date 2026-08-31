@@ -3,15 +3,17 @@ import { test } from "node:test";
 
 import {
   type ToolCall,
-  appendMessage,
   assistantMessage,
+  userMessage,
+} from "./thread-messages.ts";
+import {
+  appendMessage,
   latestThreadId,
   listThreads,
   readThread,
   recordQuestion,
   startThread,
-  userMessage,
-} from "./threads.ts";
+} from "./thread-store.ts";
 
 const NEW_ENGLAND = "Which airports in New England are renovation-investment candidates?";
 
@@ -132,8 +134,8 @@ test("two copies of this module share one store, as Next's route bundles are", a
   // Next bundles the page graph and the server-action graph separately, so this
   // module is instantiated more than once in one server. A question asked
   // through the action must be readable by the page that renders the thread.
-  const asTheAction = await import("./threads.ts?bundle=action");
-  const asThePage = await import("./threads.ts?bundle=page");
+  const asTheAction = await import("./thread-store.ts?bundle=action");
+  const asThePage = await import("./thread-store.ts?bundle=page");
 
   const analyst = "twobundles@example.com";
   const started = asTheAction.startThread(analyst, NEW_ENGLAND);

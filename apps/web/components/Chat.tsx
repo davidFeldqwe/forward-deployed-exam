@@ -7,7 +7,8 @@ import { signOut } from "@/app/auth-actions";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { chatCopy } from "@/app/chat-copy";
 import { askQuestion } from "@/app/thread-actions";
-import type { ThreadMessage, ThreadSummary } from "@/app/threads";
+import type { ThreadMessage } from "@/app/thread-messages";
+import type { ThreadSummary } from "@/app/thread-store";
 import { PromptChips } from "@/components/PromptChips";
 import { ThreadMenu } from "@/components/ThreadMenu";
 import { Transcript } from "@/components/Transcript";
@@ -32,12 +33,14 @@ export function Chat({
   messages?: readonly ThreadMessage[];
   recents: readonly ThreadSummary[];
 }) {
+  // Which transcript is on screen, and how far it has got: a question that
+  // landed changes it, and so does opening a different thread.
+  const transcriptKey = `${threadId ?? ""}:${messages.length}`;
+
   const [draft, setDraft] = useState(initialPrompt ?? "");
   // Asking inside an open thread redirects back to the same route, so React
   // reconciles rather than remounts and this controlled field would still hold
-  // the question that was just sent — one Send away from appending it twice. A
-  // transcript that grew, or a different thread, clears the composer.
-  const transcriptKey = `${threadId ?? ""}:${messages.length}`;
+  // the question that was just sent — one Send away from appending it twice.
   const [clearedFor, setClearedFor] = useState(transcriptKey);
   if (clearedFor !== transcriptKey) {
     setClearedFor(transcriptKey);
@@ -53,7 +56,7 @@ export function Chat({
     if (pane) {
       pane.scrollTop = pane.scrollHeight;
     }
-  }, [threadId, messages.length]);
+  }, [transcriptKey]);
 
   return (
     // Exactly the viewport, so a long transcript scrolls inside `main` instead
@@ -106,9 +109,9 @@ export function Chat({
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={chatCopy.composerPlaceholder}
-                // The action bounds a question at the same length; stopping the
-                // field here means a long question is visibly capped rather
-                // than silently cut on its way into the thread.
+                // `askQuestion` bounds a question by the same maximum, so
+                // stopping the field here means a long question is visibly
+                // capped rather than silently cut on its way into the thread.
                 maxLength={PROMPT_MAX_LENGTH}
                 className="h-9 text-base md:text-base"
               />

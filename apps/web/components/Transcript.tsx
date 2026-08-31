@@ -1,4 +1,4 @@
-import type { ThreadMessage, ToolCall } from "@/app/threads";
+import type { ThreadMessage, ToolCall } from "@/app/thread-messages";
 
 const roleLabel: Record<ThreadMessage["role"], string> = {
   user: "You",

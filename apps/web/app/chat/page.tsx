@@ -7,7 +7,7 @@ import {
   loginRedirect,
 } from "@/app/auth-gate";
 import { currentSession } from "@/app/auth-session";
-import { listThreads } from "@/app/threads";
+import { listThreads } from "@/app/thread-store";
 import { Chat } from "@/components/Chat";
 
 export default async function ChatPage({

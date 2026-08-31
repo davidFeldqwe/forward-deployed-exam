@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { CHAT_PATH, chatDestination, loginRedirect } from "@/app/auth-gate";
 import { currentSession } from "@/app/auth-session";
-import { listThreads, readThread } from "@/app/threads";
+import { listThreads, readThread } from "@/app/thread-store";
 import { Chat } from "@/components/Chat";
 
 export default async function ThreadPage({

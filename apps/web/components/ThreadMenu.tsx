@@ -6,7 +6,7 @@ import { ChevronDownIcon, PlusIcon } from "lucide-react";
 
 import { CHAT_PATH, chatDestination } from "@/app/auth-gate";
 import { chatCopy } from "@/app/chat-copy";
-import type { ThreadSummary } from "@/app/threads";
+import type { ThreadSummary } from "@/app/thread-store";
 import { Button } from "@/components/ui/button";
 
 const itemClass =

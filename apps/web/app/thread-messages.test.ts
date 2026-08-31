@@ -11,7 +11,7 @@ import {
   rankingRows,
   threadTitle,
   userMessage,
-} from "./threads.ts";
+} from "./thread-messages.ts";
 
 test("a thread is titled with its first user question", () => {
   assert.equal(

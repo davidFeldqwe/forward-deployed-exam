@@ -11,7 +11,7 @@ import {
 } from "@/app/auth-gate";
 import { currentSession } from "@/app/auth-session";
 import { textField } from "@/app/form-fields";
-import { recordQuestion } from "@/app/threads";
+import { recordQuestion } from "@/app/thread-store";
 
 /**
  * Persists a question from the composer and shows the Thread it landed in —
