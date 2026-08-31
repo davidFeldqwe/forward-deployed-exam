@@ -25,11 +25,6 @@ import { cn } from "@/lib/utils";
 const barClass =
   "sticky top-0 z-30 flex h-12 w-full shrink-0 items-center gap-1.5 border-b bg-header px-4 md:gap-3 md:px-6";
 
-/** The action a visitor is already on takes the foreground; the rest stay grey. */
-const actionClass = "px-2 md:px-3";
-const currentActionClass = "text-foreground";
-const restingActionClass = "text-muted-foreground";
-
 /** The glyph for each action, so the pure module holds no components. */
 const LINK_ICONS = {
   chat: MessageSquareIcon,
@@ -95,7 +90,8 @@ function HeaderAction({ link }: { link: HeaderLink }) {
       size="sm"
       nativeButton={false}
       aria-current={link.current ? "page" : undefined}
-      className={cn(actionClass, link.current ? currentActionClass : restingActionClass)}
+      // The action a visitor is already on takes the foreground; the rest stay grey.
+      className={cn("px-2 md:px-3", link.current ? "text-foreground" : "text-muted-foreground")}
       render={
         link.external ? (
           <a href={link.href} target="_blank" rel="noreferrer" />

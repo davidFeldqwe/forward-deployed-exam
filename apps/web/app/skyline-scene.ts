@@ -186,8 +186,11 @@ export function groundLines(
   const points: number[] = [];
   for (const outline of outlines) {
     for (const ring of outline.rings) {
+      // Two vertices per adjacent pair: a ring is drawn as its own segments.
       for (let i = 1; i < ring.length; i += 1) {
-        points.push(ring[i - 1].x, 0, ring[i - 1].z, ring[i].x, 0, ring[i].z);
+        const start = ring[i - 1];
+        const end = ring[i];
+        points.push(start.x, 0, start.z, end.x, 0, end.z);
       }
     }
   }
@@ -286,9 +289,19 @@ function orbit(
   return controls;
 }
 
-/** The shape of the pane the canvas is drawn into: its width over its height. */
+/**
+ * The pane the canvas is drawn into, in CSS pixels. Never zero on either side:
+ * an aspect ratio has to divide by the height, and a drawing buffer of no width
+ * is not a canvas. A pane inside a flex column is briefly both.
+ */
+function hostSize(host: HTMLElement): { width: number; height: number } {
+  return { width: Math.max(host.clientWidth, 1), height: Math.max(host.clientHeight, 1) };
+}
+
+/** The shape of that pane: its width over its height. */
 function hostAspect(host: HTMLElement): number {
-  return Math.max(host.clientWidth, 1) / Math.max(host.clientHeight, 1);
+  const { width, height } = hostSize(host);
+  return width / height;
 }
 
 /**
@@ -303,9 +316,10 @@ function fitToHost(
   onFit: () => void,
 ): ResizeObserver {
   const fit = (): void => {
+    const { width, height } = hostSize(host);
     // `setSize` writes the CSS size as well as the drawing buffer, so a device
     // pixel ratio above 1 sharpens the canvas rather than doubling its box.
-    renderer.setSize(Math.max(host.clientWidth, 1), Math.max(host.clientHeight, 1));
+    renderer.setSize(width, height);
     camera.aspect = hostAspect(host);
     camera.updateProjectionMatrix();
     onFit();
