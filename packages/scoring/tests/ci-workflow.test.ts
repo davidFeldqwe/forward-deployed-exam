@@ -16,7 +16,11 @@ const rootManifest = JSON.parse(readFileSync(new URL("package.json", repo), "utf
 };
 const rootScripts = Object.keys(rootManifest.scripts ?? {});
 
-const commands = workflow
+/**
+ * Every `pnpm …` the job runs, whether it is a `- run:` step or a line inside a
+ * block scalar: the leading indentation and any `- run:` prefix are stripped.
+ */
+const pnpmCommands = workflow
   .split("\n")
   .map((line) => line.replace(/^\s*(?:-\s*run:\s*)?/, "").trim())
   .filter((line) => line.startsWith("pnpm "));
@@ -29,20 +33,20 @@ test("CI runs on the branches a reviewer would push", () => {
 
 test("CI installs from the lockfile and runs the three quality gates", () => {
   assert.ok(
-    commands.some((command) => command.startsWith("pnpm install")),
-    "CI installs dependencies",
+    pnpmCommands.includes("pnpm install --frozen-lockfile"),
+    "CI installs the lockfile's dependencies rather than resolving fresh ones",
   );
   for (const gate of ["typecheck", "lint", "test"]) {
     assert.ok(
-      commands.includes(`pnpm ${gate}`),
-      `CI runs pnpm ${gate}; its commands are ${commands.join(", ")}`,
+      pnpmCommands.includes(`pnpm ${gate}`),
+      `CI runs pnpm ${gate}; its commands are ${pnpmCommands.join(", ")}`,
     );
   }
 });
 
 test("every pnpm command CI runs is a root script", () => {
-  for (const command of commands) {
-    const [script] = command.split(/\s+/).slice(1);
+  for (const command of pnpmCommands) {
+    const [, script] = command.split(/\s+/);
     if (script === "install") continue;
     assert.ok(script !== undefined && rootScripts.includes(script), `${command} is a root script`);
   }

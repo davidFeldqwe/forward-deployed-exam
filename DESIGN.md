@@ -60,9 +60,9 @@ percentile = round(100 * (peers below + half the ties) / peers scored)
 The composite is the weighted mean of those four integer percentiles, rounded.
 Two consequences the answer objects state rather than hide:
 
-- A percentile is peer-relative. Santa Ana's 77th is a medium-hub rank and Los
-  Angeles's 89th is a large-hub rank; they are not comparable, and neither are the
-  composites built from them.
+- A percentile is peer-relative. Santa Ana's 77th congestion percentile is a
+  medium-hub rank and Los Angeles's 89th is a large-hub rank; they are not
+  comparable, and neither are the composites built from them.
 - A place question **filters** the national ranking; it never re-percentiles.
   Asking about New England ranks four airports against the whole country, not
   against each other, so the answer does not invent a regional leader.

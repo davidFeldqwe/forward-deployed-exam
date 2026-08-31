@@ -97,7 +97,7 @@ vendor SDK).
 | `apps/web` | Next.js App Router — Landing, login, chat, the two agent tools, the one LLM module |
 | `prototype`, `research` | the locked answer shape and the data-source notes; not runtime code |
 
-Each package has its own README with the details of that seam.
+Each package under `packages/` has its own README with the details of that seam.
 
 ## History
 

@@ -11,6 +11,7 @@ import {
   MIXED_VECTOR_AT,
   STRONG_CANDIDATE_AT,
   WEIGHTS,
+  scoreUniverse,
 } from "../src/index.ts";
 
 /**
@@ -23,6 +24,7 @@ import {
 const repo = new URL("../../../", import.meta.url);
 const design = readFileSync(new URL("DESIGN.md", repo), "utf8");
 const snapshot = loadSnapshot();
+const scored = scoreUniverse(snapshot);
 
 /** Markdown table rows, as trimmed cells, so a weight can be read off one. */
 const tableRows = design
@@ -42,6 +44,9 @@ function rowStartingWith(label: string): string[] {
   return row;
 }
 
+/** `| Component | Weight | Raw measure |`, so a component's weight is cell 1. */
+const WEIGHT_CELL = 1;
+
 test("the writeup covers the six subjects the exam asks for", () => {
   const headings = [...design.matchAll(/^#+\s+(.+)$/gm)].map(([, text]) => text.toLowerCase());
   for (const subject of ["thesis", "weight", "join", "boundary", "vintage", "gap"]) {
@@ -54,11 +59,10 @@ test("the writeup covers the six subjects the exam asks for", () => {
 
 test("the stated weights are the weights the screen uses", () => {
   const stated = Object.fromEntries(
-    COMPONENTS.map((component) => {
-      const cells = rowStartingWith(COMPONENT_LABELS[component]);
-      const weight = cells.map((cell) => Number(cell)).find((value) => Number.isInteger(value));
-      return [component, weight];
-    }),
+    COMPONENTS.map((component) => [
+      component,
+      Number(rowStartingWith(COMPONENT_LABELS[component])[WEIGHT_CELL]),
+    ]),
   );
   assert.deepEqual(stated, WEIGHTS);
 });
@@ -67,13 +71,19 @@ test("the stated candidate-lamp bands are the module's thresholds", () => {
   for (const lamp of CANDIDATE_LAMPS) {
     assert.ok(design.includes(lamp), `DESIGN.md names ${lamp}`);
   }
-  const band = (lamp: string) => rowStartingWith(lamp).join(" ");
-  const strong = `${STRONG_CANDIDATE_AT}`;
-  const mixed = `${MIXED_VECTOR_AT}`;
-  assert.ok(band("Strong candidate").includes(strong), `the Strong band states ${strong}`);
-  assert.ok(band("Mixed vector").includes(mixed), `the Mixed band states ${mixed}`);
-  assert.ok(band("Mixed vector").includes(strong), `the Mixed band states ${strong}`);
-  assert.ok(band("Weak candidate").includes(mixed), `the Weak band states ${mixed}`);
+  // Each band's row has to state the thresholds it sits between, so a reader
+  // never has to guess which side of 40 or 70 a composite falls on.
+  const bandThresholds: Record<string, number[]> = {
+    "Strong candidate": [STRONG_CANDIDATE_AT],
+    "Mixed vector": [MIXED_VECTOR_AT, STRONG_CANDIDATE_AT],
+    "Weak candidate": [MIXED_VECTOR_AT],
+  };
+  for (const [lamp, thresholds] of Object.entries(bandThresholds)) {
+    const row = rowStartingWith(lamp).join(" ");
+    for (const threshold of thresholds) {
+      assert.ok(row.includes(`${threshold}`), `the ${lamp} band states ${threshold}`);
+    }
+  }
 });
 
 test("the stated vintage is the committed snapshot's own", () => {
@@ -85,6 +95,21 @@ test("the stated vintage is the committed snapshot's own", () => {
     design.includes(`top ${snapshot.airports.length} US airports`),
     "DESIGN.md names the size of the universe",
   );
+});
+
+test("the peer-relative example is the committed snapshot's own numbers", () => {
+  // The one worked example in the writeup: two airports whose congestion
+  // percentiles are close enough to look comparable and are not.
+  for (const iata of ["SNA", "LAX"]) {
+    const airport = scored.find((candidate) => candidate.iata === iata);
+    assert.ok(airport, `${iata} is in the committed universe`);
+    const { percentile } = airport.scoreVector.congestion;
+    assert.ok(design.includes(`${percentile}th`), `DESIGN.md states ${iata}'s ${percentile}th`);
+    assert.ok(
+      design.includes(`${airport.peerGroup}-hub rank`),
+      `DESIGN.md calls that a ${airport.peerGroup}-hub rank`,
+    );
+  }
 });
 
 test("the stated join key is the snapshot's, and the doc names what it is not", () => {
