@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { signOut } from "@/app/auth-actions";
+import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { chatCopy } from "@/app/chat-copy";
 import { askQuestion } from "@/app/thread-actions";
 import type { ThreadMessage, ThreadSummary } from "@/app/threads";
@@ -86,6 +87,10 @@ export function Chat({
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={chatCopy.composerPlaceholder}
+                // The action bounds a question at the same length; stopping the
+                // field here means a long question is visibly capped rather
+                // than silently cut on its way into the thread.
+                maxLength={PROMPT_MAX_LENGTH}
                 className="h-9 text-base md:text-base"
               />
               <InputGroupAddon align="inline-end">

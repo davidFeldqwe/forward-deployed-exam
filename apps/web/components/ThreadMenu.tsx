@@ -28,7 +28,9 @@ export function ThreadMenu({
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
-          <Menu.Popup className="w-[320px] max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+          {/* Recents grows with the analyst's threads, so the popup scrolls
+              rather than running off the bottom of the window. */}
+          <Menu.Popup className="max-h-[min(60svh,20rem)] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
             <Menu.LinkItem closeOnClick className={itemClass} render={<Link href={CHAT_PATH} />}>
               <PlusIcon aria-hidden="true" className="text-muted-foreground" />
               {chatCopy.newThreadLabel}
