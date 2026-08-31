@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { answerQuestion } from "@/app/agent";
 import {
   CHAT_PATH,
   carriedPrompt,
@@ -11,12 +12,17 @@ import {
 } from "@/app/auth-gate";
 import { currentSession } from "@/app/auth-session";
 import { textField } from "@/app/form-fields";
-import { recordQuestion } from "@/app/thread-store";
+import { appendMessage, recordQuestion } from "@/app/thread-store";
 
 /**
- * Persists a question from the composer and shows the Thread it landed in —
- * `recordQuestion` decides whether that is a new thread or a follow-up, and
- * never discards the question. A blank question leaves the page as it stands.
+ * Persists a question from the composer, answers it, and shows the Thread both
+ * landed in — `recordQuestion` decides whether that is a new thread or a
+ * follow-up, and never discards the question. A blank question leaves the page
+ * as it stands.
+ *
+ * The question is stored before the agent runs, so a model that fails or times
+ * out loses the answer and not the question. `answerQuestion` returns a message
+ * either way, so the thread never comes back with a user turn and no reply.
  */
 export async function askQuestion(formData: FormData): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));
@@ -34,6 +40,10 @@ export async function askQuestion(formData: FormData): Promise<void> {
     textField(formData, "threadId") || null,
     question,
   );
+
+  if (thread) {
+    appendMessage(session.email, thread.id, await answerQuestion(thread.messages));
+  }
 
   redirect(chatDestination(thread?.id ?? null));
 }

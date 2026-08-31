@@ -1,4 +1,9 @@
-import type { ThreadMessage, ToolCall } from "@/app/thread-messages";
+import { rankingView, type RankingView } from "@/app/ranking-view";
+import type { ThreadMessage } from "@/app/thread-messages";
+import { Caveats } from "@/components/answers/Caveats";
+import { Ranking } from "@/components/answers/Ranking";
+import { ResolvedSet } from "@/components/answers/ResolvedSet";
+import { ToolRow } from "@/components/answers/ToolRow";
 
 const roleLabel: Record<ThreadMessage["role"], string> = {
   user: "You",
@@ -6,41 +11,71 @@ const roleLabel: Record<ThreadMessage["role"], string> = {
 };
 
 /**
- * The persisted message list. Answer objects (ranking, score vector, lamp) are
- * rendered from the tool payloads in #21; until then the payload is shown as
- * the inspectable row it was stored as, collapsed.
+ * The persisted message list. An answer is drawn in the locked order: the
+ * inspectable tool rows, the resolved airport set, the model's prose, the
+ * ranking, and this answer's caveats. Everything but the prose is rendered from
+ * the tool payloads the message carries, so a sentence that disagrees with the
+ * table is visibly the sentence that is wrong.
  */
 export function Transcript({ messages }: { messages: readonly ThreadMessage[] }) {
   return (
     <ol className="flex list-none flex-col gap-6 p-0">
       {messages.map((message, index) => (
-        <li key={index} className="flex flex-col gap-2">
+        <li key={index} className="flex flex-col gap-3">
           <span className="font-mono text-[11.5px] tracking-wide text-muted-foreground uppercase">
             {roleLabel[message.role]}
           </span>
-          {message.text ? (
-            <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">
-              {message.text}
-            </p>
-          ) : null}
-          {message.toolCalls.map((call, callIndex) => (
-            <ToolRow key={`${call.tool}-${callIndex}`} call={call} />
-          ))}
+          {message.role === "assistant" ? (
+            <Answer message={message} />
+          ) : (
+            <Prose text={message.text} />
+          )}
         </li>
       ))}
     </ol>
   );
 }
 
-function ToolRow({ call }: { call: ToolCall }) {
+function Answer({ message }: { message: ThreadMessage }) {
+  const rankings = message.toolCalls
+    .map((call) => rankingView(call))
+    .filter((view): view is RankingView => view !== null);
+
   return (
-    <details className="rounded-lg border bg-card px-3 py-2">
-      <summary className="cursor-pointer font-mono text-xs text-muted-foreground">
-        {call.tool} · complete ({Math.round(call.durationMs)} ms)
-      </summary>
-      <pre className="mt-2 overflow-x-auto font-mono text-[11.5px] text-muted-foreground">
-        {JSON.stringify({ args: call.args, result: call.result }, null, 2)}
-      </pre>
-    </details>
+    <>
+      {message.toolCalls.map((call, index) => (
+        <ToolRow key={`${call.tool}-${index}`} call={call} />
+      ))}
+      {rankings.map((view) => (
+        <ResolvedSet key={view.resolved.phrase} resolved={view.resolved} unknown={view.unknown} />
+      ))}
+      {message.text ? (
+        <div className="flex flex-col gap-2">
+          <span className="flex items-center gap-2 text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            AI explanation
+            <span aria-hidden className="h-px flex-1 bg-grid" />
+          </span>
+          <Prose text={message.text} />
+        </div>
+      ) : null}
+      {rankings.map((view) => (
+        <Ranking key={view.resolved.phrase} rows={view.rows} sortLabel={view.sortLabel} />
+      ))}
+      <Caveats
+        assumptions={mergedLines(rankings, "assumptions")}
+        gaps={mergedLines(rankings, "gaps")}
+      />
+    </>
   );
+}
+
+function Prose({ text }: { text: string }) {
+  return (
+    <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">{text}</p>
+  );
+}
+
+// One caveats block per answer, even when the answer ran two queries.
+function mergedLines(views: RankingView[], key: "assumptions" | "gaps"): string[] {
+  return [...new Set(views.flatMap((view) => view[key]))];
 }

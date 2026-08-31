@@ -44,6 +44,12 @@
   --body: #d0d6e0;
   --grid: rgb(255 255 255 / 4%);
   --row-head: #141516;
+  /* Candidate lamp. Hue never appears without the lamp's words beside it, and
+     the two coverage states (Partial inputs, No data) take no hue at all --
+     missing is not a low score, so it is never red. */
+  --lamp-strong: #4cb782;
+  --lamp-mixed: #d9a13a;
+  --lamp-weak: #c2685e;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -90,6 +96,9 @@
   --color-body: var(--body);
   --color-grid: var(--grid);
   --color-row-head: var(--row-head);
+  --color-lamp-strong: var(--lamp-strong);
+  --color-lamp-mixed: var(--lamp-mixed);
+  --color-lamp-weak: var(--lamp-weak);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
