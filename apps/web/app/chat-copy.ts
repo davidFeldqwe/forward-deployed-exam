@@ -3,6 +3,7 @@ export const chatCopy = {
   comparisonWindow: "Comparison window 2023–2024",
   composerPlaceholder: "Ask about an airport…",
   sendLabel: "Send",
+  sendingLabel: "Sending…",
   signOutLabel: "Sign out",
   recentsLabel: "Recents",
   newThreadLabel: "New thread",

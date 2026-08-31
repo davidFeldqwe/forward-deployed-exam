@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 
 import { signOut } from "@/app/auth-actions";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
@@ -44,8 +45,20 @@ export function Chat({
   }
   const ready = draft.trim().length > 0;
 
+  // A thread that survived a refresh opens where the conversation is: at the
+  // newest message, not scrolled back up to the first question.
+  const transcriptPane = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const pane = transcriptPane.current;
+    if (pane) {
+      pane.scrollTop = pane.scrollHeight;
+    }
+  }, [threadId, messages.length]);
+
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    // Exactly the viewport, so a long transcript scrolls inside `main` instead
+    // of growing the page and carrying the composer off the bottom of it.
+    <div className="flex h-svh flex-col bg-background">
       <header className="h-12 shrink-0 border-b bg-header">
         <div className="mx-auto flex h-full max-w-[820px] items-center justify-between gap-4 px-6">
           <Wordmark name={chatCopy.wordmark} />
@@ -63,7 +76,13 @@ export function Chat({
         </div>
       </header>
 
-      <main className="flex flex-1 justify-center overflow-y-auto" aria-label="Transcript">
+      <main
+        ref={transcriptPane}
+        // `min-h-0`: a flex item's automatic minimum size is its content, so
+        // without this the pane grows to fit the transcript and never scrolls.
+        className="flex min-h-0 flex-1 justify-center overflow-y-auto"
+        aria-label="Transcript"
+      >
         <div className="w-full max-w-[820px] px-6 pt-7 pb-6">
           {messages.length === 0 ? (
             <PromptChips questions={chatCopy.chips} onSelect={setDraft} />
@@ -94,18 +113,33 @@ export function Chat({
                 className="h-9 text-base md:text-base"
               />
               <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  type="submit"
-                  size="sm"
-                  variant={ready ? "default" : "secondary"}
-                >
-                  {chatCopy.sendLabel}
-                </InputGroupButton>
+                <SendButton ready={ready} />
               </InputGroupAddon>
             </InputGroup>
           </form>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Send, held while the question is on its way into the Thread. The composer
+ * only clears once the transcript comes back with the question in it, so until
+ * then a second click would post the same question again and append it twice.
+ * Rendered enabled on the server, so the form still sends without JavaScript.
+ */
+function SendButton({ ready }: { ready: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <InputGroupButton
+      type="submit"
+      size="sm"
+      variant={ready ? "default" : "secondary"}
+      disabled={pending}
+    >
+      {pending ? chatCopy.sendingLabel : chatCopy.sendLabel}
+    </InputGroupButton>
   );
 }
