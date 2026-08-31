@@ -212,8 +212,8 @@ test("scoring keeps the snapshot's row order and does not mutate it", () => {
   );
   assert.equal(FIXTURE.airports[4]!.inputs.delay.raw, null);
   // `loadSnapshot` memoises one parsed object for the whole process, so a
-  // snapshot this function wrote back to -- filling a blank, sorting the
-  // airports -- would follow every later query in that process.
+  // snapshot this function wrote back to — filling a blank, sorting the
+  // airports — would follow every later query in that process.
   const untouched = structuredClone(FIXTURE);
   scoreUniverse(FIXTURE);
   assert.deepEqual(FIXTURE, untouched);
