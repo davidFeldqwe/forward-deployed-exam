@@ -10,7 +10,9 @@ import {
   userMessage,
 } from "./thread-messages.ts";
 import {
+  type Thread,
   appendMessage,
+  askOnThread,
   latestThreadId,
   listThreads,
   readThread,
@@ -19,6 +21,25 @@ import {
 } from "./thread-store.ts";
 
 const NEW_ENGLAND = "Which airports in New England are renovation-investment candidates?";
+
+/** A pretend agent held mid-answer, and the call that lets it finish. */
+function gate(): { held: Promise<void>; release: () => void } {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { held, release: () => release() };
+}
+
+/** Lets every job already queued run, so "has not started yet" means it. */
+function settle(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+/** A thread as the transcript reads it: one line per message, in order. */
+function textsOf(thread: Thread | null): string[] {
+  return (thread?.messages ?? []).map((message) => message.text);
+}
 
 test("a thread survives a later read, titled with its first user question", () => {
   const analyst = "refresh@example.com";
@@ -236,4 +257,143 @@ test("a blank question is refused whether or not a thread is open", () => {
   assert.equal(recordQuestion(analyst, null, ""), null);
   assert.equal(readThread(analyst, thread.id)?.messages.length, 1);
   assert.deepEqual(listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
+});
+
+// #60: the composer holds Send while a question is in flight, but a second tab
+// (or a form posted twice) does not go through that composer. Without a lock on
+// the store itself, two asks record both questions first and then append both
+// answers, leaving the reply to the first question sitting under the second.
+test("two overlapping asks on one thread keep each answer under its own question", async () => {
+  const analyst = "overlap@example.com";
+  const opened = startThread(analyst, NEW_ENGLAND)!;
+  const gates = [gate(), gate()];
+  const asked: string[][] = [];
+  const answer = async (thread: Thread) => {
+    asked.push(textsOf(thread));
+    await gates[asked.length - 1]!.held;
+    return assistantMessage(`answering ${thread.messages.at(-1)!.text}`);
+  };
+
+  const first = askOnThread(analyst, opened.id, "Which is first?", answer);
+  const second = askOnThread(analyst, opened.id, "Which is second?", answer);
+  await settle();
+
+  // The second ask has not run, and its question is not stored yet either: one
+  // ask holds this thread from the question to the answer under it.
+  assert.deepEqual(asked, [[NEW_ENGLAND, "Which is first?"]]);
+  assert.deepEqual(textsOf(readThread(analyst, opened.id)), [NEW_ENGLAND, "Which is first?"]);
+
+  gates[0]!.release();
+  gates[1]!.release();
+  await first;
+  const thread = await second;
+
+  // The second ask reads the first answer as context, not as a race it won.
+  assert.deepEqual(asked[1], [
+    NEW_ENGLAND,
+    "Which is first?",
+    "answering Which is first?",
+    "Which is second?",
+  ]);
+  assert.deepEqual(textsOf(thread), [
+    NEW_ENGLAND,
+    "Which is first?",
+    "answering Which is first?",
+    "Which is second?",
+    "answering Which is second?",
+  ]);
+});
+
+test("an ask waits on its own thread only, not on every thread the analyst has", async () => {
+  const analyst = "twothreads@example.com";
+  const held = startThread(analyst, NEW_ENGLAND)!;
+  const free = startThread(analyst, "How much unmet flight demand is there at SFO?")!;
+  const inFlight = gate();
+
+  const slow = askOnThread(analyst, held.id, "Hold this thread.", async () => {
+    await inFlight.held;
+    return assistantMessage("the held answer");
+  });
+  const other = await askOnThread(analyst, free.id, "Answer here.", async () =>
+    assistantMessage("the other answer"),
+  );
+
+  assert.deepEqual(textsOf(other), [
+    "How much unmet flight demand is there at SFO?",
+    "Answer here.",
+    "the other answer",
+  ]);
+  inFlight.release();
+  await slow;
+});
+
+test("an ask that fails hands the thread on rather than wedging it shut", async () => {
+  const analyst = "failedask@example.com";
+  const opened = startThread(analyst, NEW_ENGLAND)!;
+
+  await assert.rejects(
+    askOnThread(analyst, opened.id, "The one that fails?", async () => {
+      throw new Error("the model never answered");
+    }),
+    /the model never answered/,
+  );
+
+  const after = await askOnThread(analyst, opened.id, "The one after it?", async () =>
+    assistantMessage("an answer"),
+  );
+
+  // The failed ask stored its question, as asking has always done, and left.
+  assert.deepEqual(textsOf(after), [
+    NEW_ENGLAND,
+    "The one that fails?",
+    "The one after it?",
+    "an answer",
+  ]);
+});
+
+test("a blank ask is refused before the agent is run at all", async () => {
+  const analyst = "blankaskrun@example.com";
+  const opened = startThread(analyst, NEW_ENGLAND)!;
+
+  const refused = await askOnThread(analyst, opened.id, "  \n ", async () => {
+    assert.fail("a question with nothing in it must not reach the agent");
+  });
+
+  assert.equal(refused, null);
+  assert.deepEqual(textsOf(readThread(analyst, opened.id)), [NEW_ENGLAND]);
+});
+
+test("the lock is on the store, so both of Next's bundles take one turn each", async () => {
+  // The store hangs off `globalThis` because this module is instantiated once
+  // per route bundle. A lock held in a module-level Map would be one lock per
+  // bundle, which is no lock at all.
+  const asTheAction = await import("./thread-store.ts?bundle=action");
+  const asThePage = await import("./thread-store.ts?bundle=page");
+
+  const analyst = "bundledask@example.com";
+  const opened = asTheAction.startThread(analyst, NEW_ENGLAND)!;
+  const inFlight = gate();
+  let pageAskRan = false;
+
+  const fromAction = asTheAction.askOnThread(analyst, opened.id, "From the action.", async () => {
+    await inFlight.held;
+    return assistantMessage("the action's answer");
+  });
+  const fromPage = asThePage.askOnThread(analyst, opened.id, "From the page.", async () => {
+    pageAskRan = true;
+    return assistantMessage("the page's answer");
+  });
+  await settle();
+
+  assert.equal(pageAskRan, false);
+  inFlight.release();
+  await fromAction;
+
+  assert.deepEqual(textsOf(await fromPage), [
+    NEW_ENGLAND,
+    "From the action.",
+    "the action's answer",
+    "From the page.",
+    "the page's answer",
+  ]);
 });

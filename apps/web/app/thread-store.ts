@@ -30,17 +30,32 @@ export type ThreadSummary = {
   title: string;
 };
 
-type ThreadHost = { __aiiThreadStore?: Map<string, Thread> };
+type ThreadHost = {
+  __aiiThreadStore?: Map<string, Thread>;
+  __aiiThreadAsks?: Map<string, Promise<void>>;
+};
 
 /**
  * The store hangs off `globalThis` because Next bundles the page graph and the
  * server-action graph separately: a module-level Map would give the action that
- * writes a thread and the page that renders it a store each.
+ * writes a thread and the page that renders it a store each — and the queue in
+ * `askOnThread` a lock each, which is no lock at all.
  */
+function threadHost(): ThreadHost {
+  return globalThis as unknown as ThreadHost;
+}
+
 function threadsById(): Map<string, Thread> {
-  const host = globalThis as unknown as ThreadHost;
+  const host = threadHost();
   host.__aiiThreadStore ??= new Map();
   return host.__aiiThreadStore;
+}
+
+/** The tail of each thread's queue of asks: what the next one waits on. */
+function asksInFlight(): Map<string, Promise<void>> {
+  const host = threadHost();
+  host.__aiiThreadAsks ??= new Map();
+  return host.__aiiThreadAsks;
 }
 
 function newThreadId(): string {
@@ -157,4 +172,78 @@ export function listThreads(ownerEmail: string): ThreadSummary[] {
 /** Where `/` sends a signed-in analyst: their last thread, or an empty chat. */
 export function latestThreadId(ownerEmail: string): string | null {
   return listThreads(ownerEmail)[0]?.id ?? null;
+}
+
+/**
+ * How an ask gets its answer: the agent, handed the thread as the question left
+ * it. A parameter, so the store keeps its distance from the model the way
+ * `answerQuestion` does — and so the SSE route can pass a streaming runner that
+ * appends the same one assistant message at the end.
+ */
+export type AnswerTurn = (thread: Thread) => Promise<ThreadMessage>;
+
+/**
+ * One ask, whole: the question is stored, the agent runs on the thread that
+ * question landed in, and the answer is appended — with no other ask on that
+ * thread getting between the three. The composer holds Send while a question is
+ * in flight, but a second tab or a re-posted form never went through that
+ * composer, and two asks interleaving here put the reply to the first question
+ * under the second.
+ *
+ * Overlapping asks are queued rather than refused: both questions were typed
+ * and sent, and the one that waits is answered with the first answer already in
+ * its context, which is what a follow-up asked a moment later should see. The
+ * answer's own failures stay the caller's — `answerQuestion` returns a message
+ * for every path it has, so a thrown error here is a bug rather than a model
+ * that said no, and it still leaves the thread free for the next ask.
+ */
+export async function askOnThread(
+  ownerEmail: string,
+  openThreadId: string | null,
+  question: string,
+  answer: AnswerTurn,
+): Promise<Thread | null> {
+  return inTurnOn(askKey(ownerEmail, openThreadId), async () => {
+    const thread = recordQuestion(ownerEmail, openThreadId, question);
+    if (!thread) {
+      return null;
+    }
+    // A refused answer — a payload the store will not take — leaves the thread
+    // as the question left it, rather than nothing at all.
+    return appendMessage(ownerEmail, thread.id, await answer(thread)) ?? thread;
+  });
+}
+
+/**
+ * What an ask queues on: the thread it was sent to, under the account asking.
+ * An ask naming no thread opens one nobody can be holding yet, and a forged id
+ * opens the asker's own thread rather than touching the owner's, so neither
+ * waits on a thread it will not write to.
+ */
+function askKey(ownerEmail: string, openThreadId: string | null): string | null {
+  return openThreadId ? `${normalizeEmail(ownerEmail)}\n${openThreadId}` : null;
+}
+
+/** Runs `work` after every ask already queued on `key` has finished. */
+function inTurnOn<T>(key: string | null, work: () => Promise<T>): Promise<T> {
+  if (!key) {
+    return work();
+  }
+  const asks = asksInFlight();
+  const turn = (asks.get(key) ?? Promise.resolve()).then(work);
+  // The queue carries the order and nothing else: an ask that fails must still
+  // let the next one run, so what the next one waits on cannot reject.
+  const finished = turn.then(
+    () => {},
+    () => {},
+  );
+  asks.set(key, finished);
+  void finished.then(() => {
+    // Only the last ask in the queue clears it; an ask that arrived while this
+    // one was finishing is already waiting on itself.
+    if (asks.get(key) === finished) {
+      asks.delete(key);
+    }
+  });
+  return turn;
 }
