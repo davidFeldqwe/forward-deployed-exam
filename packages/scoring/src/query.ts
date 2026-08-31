@@ -33,8 +33,15 @@ export function queryAirports(
   scored: readonly ScoredAirport[],
   args: QueryAirportsArgs = {},
 ): QueryResult {
+  // Arguments are resolved before any work, so a bad `sortBy` is refused rather
+  // than reported after a filter the caller never gets to see.
   const codes = requestedCodes(args.iata);
-  const matched = scored.filter(
+  const sortBy = resolveSortBy(args.sortBy);
+  // Naming codes is an explicit ask for those rows, so it lifts the default to
+  // the cap: a two-code compare returns both.
+  const limit = resolveLimit(args.limit, codes === null ? DEFAULT_LIMIT : MAX_LIMIT);
+
+  const matchedRows = scored.filter(
     (row) =>
       (codes === null || codes.has(row.iata)) &&
       matches(row.region, args.region) &&
@@ -42,14 +49,17 @@ export function queryAirports(
       matches(row.municipality, args.municipality) &&
       matches(row.peerGroup, args.peerGroup),
   );
+  // `filter` already copied, so sorting in place leaves the scored universe
+  // untouched. The sort is stable, so airports tied on the sort key keep the
+  // snapshot's order, which is enplanements descending.
+  matchedRows.sort((left, right) => byDescending(left, right, sortBy));
 
-  const sortBy = resolveSortBy(args.sortBy);
-  const limit = resolveLimit(args.limit, codes === null ? DEFAULT_LIMIT : MAX_LIMIT);
-  // Stable, so airports tied on the sort key keep the snapshot's order, which is
-  // enplanements descending.
-  const rows = [...matched].sort((left, right) => byDescending(left, right, sortBy));
-
-  return { rows: rows.slice(0, limit), matched: matched.length, sortBy, limit };
+  return {
+    rows: matchedRows.slice(0, limit),
+    matched: matchedRows.length,
+    sortBy,
+    limit,
+  };
 }
 
 // `sortBy` reaches this module from a query string and from the model, where the
@@ -76,9 +86,9 @@ function matches(value: string | null, wanted: string | undefined): boolean {
   return value !== null && value.toLowerCase() === wanted.trim().toLowerCase();
 }
 
-function resolveLimit(requested: number | undefined, whenUnset: number): number {
+function resolveLimit(requested: number | undefined, fallback: number): number {
   const asked =
-    requested !== undefined && Number.isFinite(requested) ? Math.trunc(requested) : whenUnset;
+    requested !== undefined && Number.isFinite(requested) ? Math.trunc(requested) : fallback;
   return Math.min(Math.max(asked, 1), MAX_LIMIT);
 }
 

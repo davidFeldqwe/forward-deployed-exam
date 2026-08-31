@@ -1,7 +1,7 @@
 import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
 
-import { WEIGHTS } from "./weights.ts";
 import { COMPONENTS, COMPONENT_LABELS } from "./types.ts";
+import { WEIGHTS } from "./weights.ts";
 
 // Caveats ride on the row, not in a global footer: the answer that shows a
 // number shows the assumptions behind that number.

@@ -2,7 +2,6 @@ import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
 
 import { assumptionsFor, gapsFor, sharedAssumptions } from "./caveats.ts";
 import { peerDistributions, percentileRank, type PeerDistribution } from "./percentile.ts";
-import { MIXED_VECTOR_AT, STRONG_CANDIDATE_AT, WEIGHTS } from "./weights.ts";
 import {
   COMPONENTS,
   type CandidateLamp,
@@ -11,6 +10,7 @@ import {
   type ScoreVector,
   type ScoredAirport,
 } from "./types.ts";
+import { MIXED_VECTOR_AT, STRONG_CANDIDATE_AT, WEIGHTS } from "./weights.ts";
 
 /**
  * Scores every airport in the snapshot. All four components point the same way:
