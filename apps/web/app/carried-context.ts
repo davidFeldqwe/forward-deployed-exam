@@ -12,6 +12,7 @@
 import { PLACE_FIELDS } from "@repo/scoring";
 
 import { rankingView } from "./ranking-view.ts";
+import { indexOfPhrase } from "./text.ts";
 import {
   previousQuestion,
   rankingRows,
@@ -135,10 +136,9 @@ function namesAnAirport(
   );
 }
 
+/** Whether the text spells this word out, rather than containing its letters. */
 function containsWord(text: string, word: string): boolean {
-  if (word.trim().length === 0) return false;
-  const escaped = word.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-  return new RegExp(`(?:^|[^\\p{L}])${escaped}(?:[^\\p{L}]|$)`, "iu").test(text);
+  return indexOfPhrase(text, word) !== -1;
 }
 
 /**

@@ -7,8 +7,10 @@
  */
 import {
   CANDIDATE_LAMPS,
+  LOOKUP_METRICS,
   SCORE_COMPONENTS,
   SLOT_LIMIT_LEVELS,
+  type LookupMetric,
   type ScoredAirport,
 } from "@repo/scoring";
 
@@ -101,6 +103,18 @@ export function rankingRows(call: ToolCall | undefined): ScoredAirport[] | null 
   }
   const { rows } = call.result;
   return Array.isArray(rows) ? (rows as ScoredAirport[]) : null;
+}
+
+/**
+ * The one metric a persisted `queryAirports` call was asked for, as the result
+ * echoes it back, or null when the call is a ranking. Read here rather than in
+ * each answer object: the ranking table draws one number instead of a composite
+ * and a lamp for a lookup, and the map gate withholds a picture of lamps the
+ * answer never lit, so both have to agree on what a lookup is.
+ */
+export function lookupMetric(call: ToolCall): LookupMetric | null {
+  const metric = isRecord(call.result) ? call.result.metric : undefined;
+  return LOOKUP_METRICS.find((candidate) => candidate === metric) ?? null;
 }
 
 /**

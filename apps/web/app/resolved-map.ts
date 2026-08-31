@@ -5,9 +5,9 @@
  * The gate is data, never model text. A map is drawn only when all four of
  * these hold, so the picture cannot claim a geography the answer does not have:
  *
- *   (a) *this* message names a US state or one of the nine Census regions, out
- *       of the closed lists below — a follow-up such as "the second one" does
- *       not get a map even while the carried context is still New England;
+ *   (a) *this* message names a US state or one of the nine Census divisions,
+ *       out of the closed lists below — a follow-up such as "the second one"
+ *       does not get a map even while the carried context is still New England;
  *   (b) this turn's `queryAirports` filtered on `region` or `state` — an IATA
  *       compare and a peer-group question are not a place;
  *   (c) two or more of the returned rows carry a coordinate — one pin is not a
@@ -20,15 +20,11 @@
  * of truth. There is no tile library, no projection service and no second
  * geography tool: the points are the snapshot's own latitude and longitude.
  */
-import { LOOKUP_METRICS, type CandidateLamp, type ScoredAirport } from "@repo/scoring";
+import type { CandidateLamp, ScoredAirport } from "@repo/scoring";
 import { CENSUS_DIVISIONS } from "@repo/snapshot";
 
-import {
-  rankingRows,
-  type JsonObject,
-  type JsonValue,
-  type ToolCall,
-} from "./thread-messages.ts";
+import { indexOfPhrase } from "./text.ts";
+import { lookupMetric, rankingRows, type JsonObject, type ToolCall } from "./thread-messages.ts";
 
 /** The drawing box, in SVG user units. The card scales it to its own width. */
 export const MAP_WIDTH = 320;
@@ -70,7 +66,10 @@ export function resolvedMap(
     return null;
   }
   const place = placeNamed(question);
-  if (place === null || !filtersByStateOrRegion(call.args) || isLookup(call.result)) {
+  // A lookup withholds the candidate lamp, and a marker is that lamp as a dot,
+  // so a picture of one would put back the recommendation the table refused.
+  const isLookup = lookupMetric(call) !== null;
+  if (place === null || !filtersByStateOrRegion(call.args) || isLookup) {
     return null;
   }
   const located = rows.filter(isLocated);
@@ -89,7 +88,7 @@ export function resolvedMap(
 }
 
 /**
- * The nine Census regions and the fifty states and DC, as an analyst spells
+ * The nine Census divisions and the fifty states and DC, as an analyst spells
  * them. Two-letter codes are deliberately absent: "in", "or", "me" and "ok" are
  * English words before they are states, and a gate whose list cannot be read
  * aloud is a keyword soup. A message naming a state the model then filtered by
@@ -107,7 +106,10 @@ const US_STATES = [
   "West Virginia", "Wisconsin", "Wyoming",
 ] as const;
 
-/** Every place word this gate accepts, longest first so "West Virginia" wins. */
+/**
+ * Every place word this gate accepts. Longest first, so a name that starts
+ * where a longer one does loses the tie rather than shortening the answer.
+ */
 const PLACE_NAMES: readonly string[] = [...CENSUS_DIVISIONS, ...US_STATES].sort(
   (left, right) => right.length - left.length,
 );
@@ -123,30 +125,11 @@ function placeNamed(question: string | null): string | null {
   let found: { place: string; at: number } | null = null;
   for (const place of PLACE_NAMES) {
     const at = indexOfPhrase(question, place);
-    if (at === -1 || (found !== null && at >= found.at)) continue;
-    found = { place, at };
+    if (at !== -1 && (found === null || at < found.at)) {
+      found = { place, at };
+    }
   }
   return found?.place ?? null;
-}
-
-/** Where a phrase appears as words rather than inside a longer one, or -1. */
-function indexOfPhrase(text: string, phrase: string): number {
-  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.search(new RegExp(`(?:^|[^\\p{L}])${escaped}(?:[^\\p{L}]|$)`, "iu"));
-}
-
-/**
- * A single-metric lookup, which gets no map even from a state question: a
- * lookup withholds the candidate lamp, and a marker is that lamp as a dot, so
- * the picture would put back the recommendation the table refused to make.
- */
-function isLookup(result: JsonValue): boolean {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    !Array.isArray(result) &&
-    LOOKUP_METRICS.some((metric) => metric === result.metric)
-  );
 }
 
 /** Half the gate: the tool call this turn made was a geographic one. */
@@ -175,7 +158,8 @@ function project(rows: readonly Located[]): MapMarker[] {
   // Degrees of longitude are shorter than degrees of latitude away from the
   // equator, and this set's own mid-latitude is the honest amount to narrow
   // them by: it is the only latitude the drawing has to be true at.
-  const narrowing = Math.cos((extent(rows.map((row) => row.latitude)).middle * Math.PI) / 180);
+  const midLatitude = extent(rows.map((row) => row.latitude)).middle;
+  const narrowing = Math.cos((midLatitude * Math.PI) / 180);
   // North is up, so latitude runs the other way from the SVG's y axis.
   const points = rows.map((row) => ({ row, x: row.longitude * narrowing, y: -row.latitude }));
 

@@ -48,6 +48,8 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
 function Marker({ marker }: { marker: MapMarker }) {
   return (
     <g>
+      {/* First child, as SVG asks: the hover text for the dot and its code. */}
+      <title>{`${marker.iata} · ${marker.name} · ${marker.lamp}`}</title>
       <circle
         cx={marker.x}
         cy={marker.y}
@@ -62,7 +64,6 @@ function Marker({ marker }: { marker: MapMarker }) {
       >
         {marker.iata}
       </text>
-      <title>{`${marker.iata} · ${marker.name} · ${marker.lamp}`}</title>
     </g>
   );
 }

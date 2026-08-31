@@ -31,6 +31,15 @@ const LAMP_PILL: Readonly<Record<LampTone, string>> = {
 };
 
 /**
+ * The pill classes one lamp word draws. Both the ranking rows and the legend
+ * that names all five words come through here, so a row and its key cannot
+ * disagree about what green means.
+ */
+export function lampPill(lamp: CandidateLamp): string {
+  return LAMP_PILL[LAMP_TONES[lamp]];
+}
+
+/**
  * The marker one lamp word draws on the resolved-set map (issue #29): the same
  * three hues, as a filled dot with its own outline. A dot carries no words, so
  * this is only ever drawn beside the map's legend — which is the ranking
@@ -48,15 +57,6 @@ const LAMP_MARKER: Readonly<Record<LampTone, string>> = {
 /** The marker classes one lamp word draws, from the same tone as its pill. */
 export function lampMarker(lamp: CandidateLamp): string {
   return LAMP_MARKER[LAMP_TONES[lamp]];
-}
-
-/**
- * The pill classes one lamp word draws. Both the ranking rows and the legend
- * that names all five words come through here, so a row and its key cannot
- * disagree about what green means.
- */
-export function lampPill(lamp: CandidateLamp): string {
-  return LAMP_PILL[LAMP_TONES[lamp]];
 }
 
 export const LAMP_LEGEND_NOTE =

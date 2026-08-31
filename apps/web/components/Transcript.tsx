@@ -43,7 +43,7 @@ export function Transcript({ messages }: { messages: readonly ThreadMessage[] })
 }
 
 /** One ranking payload, as the table draws it and as the map places it. */
-type Answered = { view: RankingView; map: ResolvedMapView | null };
+type RankedAnswer = { view: RankingView; map: ResolvedMapView | null };
 
 function Answer({
   message,
@@ -56,8 +56,8 @@ function Answer({
   carried: CarriedContextView | null;
 }) {
   const rankings = message.toolCalls
-    .map((call) => answered(question, call))
-    .filter((answer): answer is Answered => answer !== null);
+    .map((call) => rankedAnswer(question, call))
+    .filter((answer): answer is RankedAnswer => answer !== null);
 
   return (
     <>
@@ -100,12 +100,12 @@ function Answer({
 }
 
 /** The answer objects for one tool call, or null when it is not a ranking. */
-function answered(question: string | null, call: ToolCall): Answered | null {
+function rankedAnswer(question: string | null, call: ToolCall): RankedAnswer | null {
   const view = rankingView(call);
   return view === null ? null : { view, map: resolvedMap(question, call) };
 }
 
 // One caveats block per answer, even when the answer ran two queries.
-function mergedLines(answers: Answered[], key: "assumptions" | "gaps"): string[] {
+function mergedLines(answers: RankedAnswer[], key: "assumptions" | "gaps"): string[] {
   return [...new Set(answers.flatMap((answer) => answer.view[key]))];
 }
