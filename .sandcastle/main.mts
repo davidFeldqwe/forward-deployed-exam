@@ -1,19 +1,19 @@
 // Planner with Review — four-phase orchestration loop
 //
 // This template drives a multi-phase workflow:
-//   Phase 1 (Plan):             A Claude Code (claude-opus-4-8) agent analyzes
+//   Phase 1 (Plan):             A Claude Code (claude-opus-5) agent analyzes
 //                               open issues, builds a dependency graph, and
 //                               outputs a <plan> JSON listing unblocked issues
 //                               with branch names.
 //   Phase 2 (Execute + Review): Up to MAX_CONCURRENT_ISSUES issues run in
 //                               parallel, each in its own sandbox created via
 //                               createSandbox(). The Claude Code implementer
-//                               (claude-sonnet-5) runs first (100 iterations).
+//                               (claude-opus-5) runs first (100 iterations).
 //                               If it produces
 //                               commits, a Claude Code reviewer
-//                               (claude-opus-4-8) runs in the same sandbox on
+//                               (claude-opus-5) runs in the same sandbox on
 //                               the same branch (1 iteration).
-//   Phase 3 (Merge):            A Codex agent (gpt-5.6-luna, medium effort)
+//   Phase 3 (Merge):            A Claude Code agent (claude-opus-5)
 //                               merges the completed branches into the
 //                               current branch.
 //
@@ -135,11 +135,7 @@ const MAX_CONCURRENT_ISSUES = 1;
 // default 600s idle timeout is too tight.
 const IMPLEMENTER_IDLE_TIMEOUT_SECONDS = 1800;
 
-// Copy host Codex login into $HOME/.codex (this image uses
-// HOME=/tmp/sandcastle-home). Mount is read-only at .codex-host; Codex needs a
-// writable copy for session files.
-const syncCodexAuth =
-  'rm -rf "$HOME/.codex" && mkdir -p "$HOME/.codex" && for item in auth.json config.toml AGENTS.md rules; do if [ -e "/home/agent/.codex-host/$item" ]; then cp -R "/home/agent/.codex-host/$item" "$HOME/.codex/"; fi; done && chmod -R u+rwX "$HOME/.codex"';
+const claude = () => sandcastle.claudeCode("claude-opus-5");
 
 // Hooks run inside the sandbox before the agent starts each iteration.
 // Frozen-lockfile install ensures the sandbox always has fresh dependencies
@@ -147,7 +143,6 @@ const syncCodexAuth =
 const hooks = {
   sandbox: {
     onSandboxReady: [
-      { command: syncCodexAuth },
       {
         command:
           "CI=true HUSKY=0 pnpm install --frozen-lockfile --store-dir /tmp/pnpm-store-sandcastle",
@@ -159,20 +154,6 @@ const hooks = {
 
 /** Planner only needs `gh` — skip `pnpm install` for a faster cold start. */
 const plannerHooks = { sandbox: { onSandboxReady: [] } };
-
-// Podman with host ~/.codex mounted for Codex agents (ChatGPT login, not
-// OPENAI_KEY). Needed on sandboxes that run the reviewer or merger.
-const sandcastlePodman = () =>
-  podman({
-    userns: false,
-    mounts: [
-      {
-        hostPath: "~/.codex",
-        sandboxPath: "/home/agent/.codex-host",
-        readonly: true,
-      },
-    ],
-  });
 
 // Copy node_modules from the host into the worktree before each sandbox
 // starts. Avoids a full install from scratch; the hook above handles
@@ -217,7 +198,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     // One iteration is enough: the planner just needs to read and reason,
     // not write code. (Structured output requires maxIterations: 1.)
     maxIterations: 1,
-    agent: sandcastle.claudeCode("claude-opus-4-8"),
+    agent: claude(),
     promptFile: "./.sandcastle/plan-prompt.md",
     // Extract and validate the <plan> JSON into a typed object. Throws
     // StructuredOutputError if the tag is missing, the JSON is malformed, or
@@ -280,7 +261,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
           name: "implementer",
           maxIterations: 100,
           idleTimeoutSeconds: IMPLEMENTER_IDLE_TIMEOUT_SECONDS,
-          agent: sandcastle.claudeCode("claude-sonnet-5"),
+          agent: claude(),
           promptFile: "./.sandcastle/implement-prompt.md",
           promptArgs: {
             TASK_ID: issue.id,
@@ -296,7 +277,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
           await sandbox.run({
             name: "reviewer",
             maxIterations: 1,
-            agent: sandcastle.claudeCode("claude-opus-4-8"),
+            agent: claude(),
             promptFile: "./.sandcastle/review-prompt.md",
             promptArgs: {
               BRANCH: issue.branch,
@@ -355,10 +336,10 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   try {
     await sandcastle.run({
       hooks,
-      sandbox: sandcastlePodman(),
+      sandbox: sandboxProvider,
       name: "merger",
       maxIterations: 1,
-      agent: sandcastle.codex("gpt-5.6-luna", { effort: "medium" }),
+      agent: claude(),
       promptFile: "./.sandcastle/merge-prompt.md",
       promptArgs: {
         // A markdown list of branch names, one per line.
