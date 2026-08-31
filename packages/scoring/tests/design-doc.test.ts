@@ -67,11 +67,13 @@ test("the stated candidate-lamp bands are the module's thresholds", () => {
   for (const lamp of CANDIDATE_LAMPS) {
     assert.ok(design.includes(lamp), `DESIGN.md names ${lamp}`);
   }
-  assert.match(rowStartingWith("Strong candidate").join(" "), new RegExp(`${STRONG_CANDIDATE_AT}`));
-  const mixed = rowStartingWith("Mixed vector").join(" ");
-  assert.match(mixed, new RegExp(`${MIXED_VECTOR_AT}`));
-  assert.match(mixed, new RegExp(`${STRONG_CANDIDATE_AT}`));
-  assert.match(rowStartingWith("Weak candidate").join(" "), new RegExp(`${MIXED_VECTOR_AT}`));
+  const band = (lamp: string) => rowStartingWith(lamp).join(" ");
+  const strong = `${STRONG_CANDIDATE_AT}`;
+  const mixed = `${MIXED_VECTOR_AT}`;
+  assert.ok(band("Strong candidate").includes(strong), `the Strong band states ${strong}`);
+  assert.ok(band("Mixed vector").includes(mixed), `the Mixed band states ${mixed}`);
+  assert.ok(band("Mixed vector").includes(strong), `the Mixed band states ${strong}`);
+  assert.ok(band("Weak candidate").includes(mixed), `the Weak band states ${mixed}`);
 });
 
 test("the stated vintage is the committed snapshot's own", () => {

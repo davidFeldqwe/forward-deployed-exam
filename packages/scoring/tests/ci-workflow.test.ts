@@ -10,11 +10,11 @@ import { test } from "node:test";
  */
 const repo = new URL("../../../", import.meta.url);
 const workflow = readFileSync(new URL(".github/workflows/ci.yml", repo), "utf8");
-const rootScripts = Object.keys(
-  (JSON.parse(readFileSync(new URL("package.json", repo), "utf8")) as {
-    scripts?: Record<string, string>;
-  }).scripts ?? {},
-);
+const rootManifest = JSON.parse(readFileSync(new URL("package.json", repo), "utf8")) as {
+  scripts?: Record<string, string>;
+  engines?: { node?: string };
+};
+const rootScripts = Object.keys(rootManifest.scripts ?? {});
 
 const commands = workflow
   .split("\n")
@@ -64,12 +64,7 @@ test("no secret reaches the job, so the run cannot spend a token", () => {
 });
 
 test("CI runs the Node version this repo is pinned to", () => {
-  const engines = (
-    JSON.parse(readFileSync(new URL("package.json", repo), "utf8")) as {
-      engines?: { node?: string };
-    }
-  ).engines;
-  const major = engines?.node?.match(/^(\d+)/)?.[1];
+  const major = rootManifest.engines?.node?.match(/^(\d+)/)?.[1];
   assert.ok(major, "the root manifest pins a Node major");
   assert.match(workflow, new RegExp(`node-version:\\s*(["']?)${major}(\\.x)?\\1\\s*$`, "m"));
 });
