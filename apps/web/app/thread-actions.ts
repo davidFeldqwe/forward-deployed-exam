@@ -12,9 +12,9 @@ import {
 import { currentSession } from "@/app/auth-session";
 import { appendMessage, startThread, userMessage } from "@/app/threads";
 
-function textField(formData: FormData, name: string): string | null {
+function textField(formData: FormData, name: string): string {
   const value = formData.get(name);
-  return typeof value === "string" ? value : null;
+  return typeof value === "string" ? value : "";
 }
 
 /**
@@ -34,12 +34,10 @@ export async function askQuestion(formData: FormData): Promise<void> {
   }
 
   const openThreadId = textField(formData, "threadId");
-  if (openThreadId) {
-    const thread = appendMessage(session.email, openThreadId, userMessage(question));
-    // A thread this account does not own is simply not there.
-    redirect(thread ? chatDestination(thread.id) : CHAT_PATH);
-  }
+  const thread = openThreadId
+    ? appendMessage(session.email, openThreadId, userMessage(question))
+    : startThread(session.email, question);
 
-  const started = startThread(session.email, question);
-  redirect(started ? chatDestination(started.id) : CHAT_PATH);
+  // A thread this account does not own is simply not there.
+  redirect(thread ? chatDestination(thread.id) : CHAT_PATH);
 }

@@ -35,10 +35,10 @@ export function Chat({
   // reconciles rather than remounts and this controlled field would still hold
   // the question that was just sent — one Send away from appending it twice. A
   // transcript that grew, or a different thread, clears the composer.
-  const transcript = `${threadId ?? ""}:${messages.length}`;
-  const [rendered, setRendered] = useState(transcript);
-  if (rendered !== transcript) {
-    setRendered(transcript);
+  const transcriptKey = `${threadId ?? ""}:${messages.length}`;
+  const [clearedFor, setClearedFor] = useState(transcriptKey);
+  if (clearedFor !== transcriptKey) {
+    setClearedFor(transcriptKey);
     setDraft("");
   }
   const ready = draft.trim().length > 0;

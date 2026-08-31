@@ -67,6 +67,15 @@ test("an assistant message carries the tool payload a ranking, score vector and 
   assert.deepEqual(rankingRows(restored?.toolCalls[0]), [bosRow]);
 });
 
+test("only a queryAirports payload carries ranking rows", () => {
+  const methodology = assistantMessage("Weights are fixed at 35/35/20/10.", [
+    { tool: "describeMethodology", args: {}, result: { weights: {} }, durationMs: 2 },
+  ]);
+
+  assert.equal(rankingRows(methodology.toolCalls[0]), null);
+  assert.equal(rankingRows(userMessage("Which airports?").toolCalls[0]), null);
+});
+
 test("a user message is text with no tool payload", () => {
   const message = userMessage("  Which airports in New England are candidates?  ");
   assert.deepEqual(message, {
