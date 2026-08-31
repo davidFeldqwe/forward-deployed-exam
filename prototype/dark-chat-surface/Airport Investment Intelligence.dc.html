@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#08090a}
+*{box-sizing:border-box}
+a{color:#8a92e8;text-decoration:none}
+a:hover{color:#a3aaf0}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+input{font-family:inherit}
+@keyframes dcpulse{0%,100%{opacity:.25}50%{opacity:.85}}
+@keyframes dcspin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div style="height:100vh;display:flex;flex-direction:column;background:#08090a;font-family:'Inter',system-ui,sans-serif;color:#d0d6e0;-webkit-font-smoothing:antialiased">
+
+  <div style="flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;height:48px;border-bottom:1px solid rgba(255,255,255,.07);background:#0b0c0d">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div style="width:14px;height:14px;border:1.5px solid #5e6ad2;border-radius:3px"></div>
+      <span style="font:600 13.5px 'Inter',sans-serif;color:#f7f8f8;letter-spacing:-.01em">Airport Investment Intelligence</span>
+    </div>
+    <div style="width:1px;height:16px;background:rgba(255,255,255,.09)"></div>
+    <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8a8f98">100 US airports · deterministic scoring engine v2.4</span>
+    <div style="flex:1"></div>
+    <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8a8f98;padding:3px 8px;border:1px solid rgba(255,255,255,.09);border-radius:5px">Comparison window 2023–2024</span>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;display:flex;justify-content:center">
+    <div style="width:100%;max-width:820px;padding:28px 24px 40px;display:flex;flex-direction:column;gap:20px">
+
+      <sc-for list="{{ blocks }}" as="b" hint-placeholder-count="5">
+        <div>
+
+          <sc-if value="{{ b.isUser }}">
+            <div style="display:flex;flex-direction:column;gap:7px;padding:14px 16px;background:#0f1011;border:1px solid rgba(255,255,255,.07);border-radius:8px">
+              <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">Analyst</span>
+              <span style="font:400 16px/1.45 'Inter',sans-serif;color:#f7f8f8;text-wrap:pretty">{{ b.text }}</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isContext }}">
+            <div style="display:flex;gap:10px;padding:11px 14px;background:#0f1011;border:1px solid rgba(255,255,255,.07);border-left:2px solid #5e6ad2;border-radius:0 7px 7px 0">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">Carried context</span>
+                <span style="font:400 14px/1.5 'Inter',sans-serif;color:#d0d6e0;text-wrap:pretty">{{ b.text }}</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isProse }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">AI explanation</span>
+                <div style="flex:1;height:1px;background:rgba(255,255,255,.06)"></div>
+              </div>
+              <sc-for list="{{ b.paras }}" as="p" hint-placeholder-count="2">
+                <p style="margin:0;font:400 16px/1.6 'Inter',sans-serif;color:#d0d6e0;text-wrap:pretty">{{ p.t }}</p>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isTool }}">
+            <div style="border:1px solid rgba(255,255,255,.07);border-radius:7px;background:#0d0e0f;overflow:hidden">
+              <div onClick="{{ b.toggle }}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer" style-hover="background:#131415">
+                <span style="font:400 10px 'Inter',sans-serif;color:#8a8f98;width:8px">{{ b.caret }}</span>
+                <span style="font:500 12.5px 'IBM Plex Mono',monospace;color:#d0d6e0">{{ b.name }}</span>
+                <span style="font:400 12px 'Inter',sans-serif;color:#5c6169">·</span>
+                <sc-if value="{{ b.running }}">
+                  <span style="display:flex;align-items:center;gap:6px">
+                    <span style="width:9px;height:9px;border:1.5px solid rgba(94,106,210,.3);border-top-color:#5e6ad2;border-radius:50%;display:inline-block;animation:dcspin .8s linear infinite"></span>
+                    <span style="font:400 12px 'Inter',sans-serif;color:#8a92e8">Running</span>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ b.done }}" hint-placeholder-val="{{ true }}">
+                  <span style="font:400 12px 'Inter',sans-serif;color:#8a8f98">Complete</span>
+                </sc-if>
+                <div style="flex:1"></div>
+                <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5c6169">{{ b.ms }}</span>
+              </div>
+              <sc-if value="{{ b.open }}">
+                <div style="border-top:1px solid rgba(255,255,255,.06);padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#0a0b0c">
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5c6169">Arguments</span>
+                    <sc-for list="{{ b.args }}" as="a" hint-placeholder-count="3">
+                      <div style="display:flex;justify-content:space-between;gap:14px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+                        <span style="font:400 12px 'IBM Plex Mono',monospace;color:#8a8f98">{{ a.k }}</span>
+                        <span style="font:400 12px 'IBM Plex Mono',monospace;color:#d0d6e0;text-align:right">{{ a.v }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5c6169">Result</span>
+                    <sc-for list="{{ b.result }}" as="r" hint-placeholder-count="3">
+                      <div style="display:flex;justify-content:space-between;gap:14px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+                        <span style="font:400 12px 'IBM Plex Mono',monospace;color:#8a8f98">{{ r.k }}</span>
+                        <span style="font:400 12px 'IBM Plex Mono',monospace;color:#f7f8f8;text-align:right">{{ r.v }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isPending }}">
+            <div style="display:flex;align-items:center;gap:10px;padding:13px 14px;border:1px dashed rgba(255,255,255,.1);border-radius:7px;background:#0c0d0e">
+              <div style="display:flex;gap:3px">
+                <span style="width:4px;height:4px;border-radius:50%;background:#8a92e8;animation:dcpulse 1.1s ease-in-out infinite"></span>
+                <span style="width:4px;height:4px;border-radius:50%;background:#8a92e8;animation:dcpulse 1.1s ease-in-out .18s infinite"></span>
+                <span style="width:4px;height:4px;border-radius:50%;background:#8a92e8;animation:dcpulse 1.1s ease-in-out .36s infinite"></span>
+              </div>
+              <span style="font:400 14px 'Inter',sans-serif;color:#8a8f98">{{ b.text }}</span>
+              <div style="flex:1"></div>
+              <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5c6169;padding:2px 7px;border:1px solid rgba(255,255,255,.08);border-radius:4px">No composite yet</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isResolved }}">
+            <div style="border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;padding:13px 15px;display:flex;flex-direction:column;gap:9px">
+              <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">Resolved airport set</span>
+              <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                <span style="font:500 14px 'Inter',sans-serif;color:#f7f8f8">{{ b.query }}</span>
+                <span style="font:400 13px 'Inter',sans-serif;color:#5c6169">→</span>
+                <span style="font:400 13px 'IBM Plex Mono',monospace;color:#d0d6e0">{{ b.states }}</span>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ b.codes }}" as="c" hint-placeholder-count="8">
+                  <span style="font:400 12px 'IBM Plex Mono',monospace;color:#d0d6e0;padding:3px 7px;background:#191a1b;border:1px solid rgba(255,255,255,.06);border-radius:4px">{{ c.t }}</span>
+                </sc-for>
+              </div>
+              <span style="font:400 12.5px 'Inter',sans-serif;color:#8a8f98">{{ b.count }}</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isRanking }}">
+            <div style="border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;overflow:hidden">
+              <div style="display:grid;grid-template-columns:26px 1fr 92px 148px 16px;gap:12px;align-items:center;padding:9px 14px;background:#141516;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">#</span>
+                <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">Airport</span>
+                <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98;text-align:right">Composite</span>
+                <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">Candidate signal</span>
+                <span></span>
+              </div>
+              <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="8">
+                <div style="border-bottom:1px solid rgba(255,255,255,.05)">
+                  <div onClick="{{ r.toggle }}" style="display:grid;grid-template-columns:26px 1fr 92px 148px 16px;gap:12px;align-items:center;padding:11px 14px;cursor:pointer" style-hover="background:#131415">
+                    <span style="font:400 12px 'IBM Plex Mono',monospace;color:#5c6169">{{ r.rank }}</span>
+                    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;min-width:0">
+                      <span style="font:500 14px 'IBM Plex Mono',monospace;color:#f7f8f8">{{ r.code }}</span>
+                      <span style="font:400 13.5px 'Inter',sans-serif;color:#d0d6e0">{{ r.name }}</span>
+                      <sc-for list="{{ r.labels }}" as="l" hint-placeholder-count="1">
+                        <span style="font:400 10.5px 'IBM Plex Mono',monospace;color:#8a8f98;padding:2px 6px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:3px;white-space:nowrap">{{ l.t }}</span>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;align-items:baseline;gap:4px;justify-content:flex-end">
+                      <span style="font:500 15px 'IBM Plex Mono',monospace;color:#f7f8f8">{{ r.composite }}</span>
+                      <span style="font:400 10px 'Inter',sans-serif;color:#5c6169">/100</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="display:flex;flex-direction:column;gap:2px;padding:3px;border:1px solid rgba(255,255,255,.07);border-radius:3px;background:#0b0c0d">
+                        <sc-for list="{{ r.lamp }}" as="d" hint-placeholder-count="3">
+                          <span style="width:5px;height:5px;border-radius:50%;background:{{ d.bg }};box-shadow:{{ d.glow }}"></span>
+                        </sc-for>
+                      </div>
+                      <span style="font:500 11.5px 'Inter',sans-serif;color:{{ r.signalColor }};padding:2px 7px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:4px;white-space:nowrap">{{ r.signal }}</span>
+                    </div>
+                    <span style="font:400 10px 'Inter',sans-serif;color:#5c6169">{{ r.caret }}</span>
+                  </div>
+                  <sc-if value="{{ r.open }}">
+                    <div style="padding:0 14px 14px 40px;background:#0c0d0e">
+                      <div style="border:1px solid rgba(255,255,255,.06);border-radius:7px;overflow:hidden;background:#0f1011">
+                        <div style="display:grid;grid-template-columns:1.5fr 1.35fr 1.5fr .5fr;gap:12px;padding:8px 12px;background:#141516;border-bottom:1px solid rgba(255,255,255,.06)">
+                          <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">Component</span>
+                          <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">Percentile</span>
+                          <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98;text-align:right">Raw value</span>
+                          <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98;text-align:right">Weight</span>
+                        </div>
+                        <sc-for list="{{ r.vector }}" as="c" hint-placeholder-count="4">
+                          <div style="display:grid;grid-template-columns:1.5fr 1.35fr 1.5fr .5fr;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04)">
+                            <span style="font:400 13px 'Inter',sans-serif;color:#d0d6e0">{{ c.n }}</span>
+                            <div style="display:flex;align-items:center;gap:8px">
+                              <div style="width:52px;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
+                                <div style="height:3px;width:{{ c.w }};background:{{ c.barColor }}"></div>
+                              </div>
+                              <span style="font:400 12px 'IBM Plex Mono',monospace;color:{{ c.pctlColor }};white-space:nowrap">{{ c.pctl }}</span>
+                            </div>
+                            <span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#f7f8f8;text-align:right">{{ c.raw }}</span>
+                            <span style="font:400 12px 'IBM Plex Mono',monospace;color:#8a8f98;text-align:right">{{ c.weight }}</span>
+                          </div>
+                        </sc-for>
+                        <div style="padding:8px 12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                          <span style="font:400 11.5px 'Inter',sans-serif;color:#8a8f98">Percentiles within peer group: {{ r.peer }}</span>
+                          <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8a8f98">Coverage {{ r.coverage }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isVector }}">
+            <div style="display:flex;flex-direction:column;gap:12px;border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;padding:15px">
+              <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+                <div style="display:flex;align-items:baseline;gap:10px">
+                  <span style="font:500 17px 'IBM Plex Mono',monospace;color:#f7f8f8">{{ b.code }}</span>
+                  <span style="font:400 14px 'Inter',sans-serif;color:#d0d6e0">{{ b.name }}</span>
+                </div>
+                <sc-for list="{{ b.labels }}" as="l" hint-placeholder-count="1">
+                  <span style="font:400 11px 'IBM Plex Mono',monospace;color:#8a8f98;padding:3px 7px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:4px">{{ l.t }}</span>
+                </sc-for>
+                <div style="flex:1"></div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:3px;padding:4px;border:1px solid rgba(255,255,255,.07);border-radius:4px;background:#0b0c0d">
+                    <sc-for list="{{ b.lamp }}" as="d" hint-placeholder-count="3">
+                      <span style="width:6px;height:6px;border-radius:50%;background:{{ d.bg }};box-shadow:{{ d.glow }}"></span>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">
+                    <span style="font:500 12px 'Inter',sans-serif;color:{{ b.signalColor }};padding:3px 8px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:4px">{{ b.signal }}</span>
+                    <span style="font:400 11px 'Inter',sans-serif;color:#8a8f98">{{ b.signalRule }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;padding-left:14px;border-left:1px solid rgba(255,255,255,.07)">
+                    <span style="font:500 24px 'IBM Plex Mono',monospace;color:#f7f8f8;line-height:1.1">{{ b.composite }}</span>
+                    <span style="font:400 10px 'Inter',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8f98">Composite</span>
+                  </div>
+                </div>
+              </div>
+              <div style="border:1px solid rgba(255,255,255,.06);border-radius:7px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:1.5fr 1.35fr 1.5fr .5fr;gap:12px;padding:8px 12px;background:#141516;border-bottom:1px solid rgba(255,255,255,.06)">
+                  <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">Component</span>
+                  <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98">Percentile</span>
+                  <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98;text-align:right">Raw value</span>
+                  <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98;text-align:right">Weight</span>
+                </div>
+                <sc-for list="{{ b.vector }}" as="c" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:1.5fr 1.35fr 1.5fr .5fr;gap:12px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)">
+                    <span style="font:400 13.5px 'Inter',sans-serif;color:#d0d6e0">{{ c.n }}</span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="width:56px;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
+                        <div style="height:3px;width:{{ c.w }};background:{{ c.barColor }}"></div>
+                      </div>
+                      <span style="font:400 12.5px 'IBM Plex Mono',monospace;color:{{ c.pctlColor }};white-space:nowrap">{{ c.pctl }}</span>
+                    </div>
+                    <span style="font:400 13px 'IBM Plex Mono',monospace;color:#f7f8f8;text-align:right">{{ c.raw }}</span>
+                    <span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#8a8f98;text-align:right">{{ c.weight }}</span>
+                  </div>
+                </sc-for>
+                <div style="padding:9px 12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                  <span style="font:400 11.5px 'Inter',sans-serif;color:#8a8f98">Percentiles within peer group: {{ b.peer }}</span>
+                  <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#8a8f98">Coverage {{ b.coverage }}</span>
+                </div>
+              </div>
+              <sc-if value="{{ b.warn }}">
+                <span style="font:400 13px/1.5 'Inter',sans-serif;color:#d0d6e0;padding:9px 11px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:6px;text-wrap:pretty">{{ b.warn }}</span>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isCompare }}">
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <sc-for list="{{ b.cols }}" as="c" hint-placeholder-count="2">
+                  <div style="border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;padding:14px;display:flex;flex-direction:column;gap:11px">
+                    <div style="display:flex;align-items:baseline;gap:9px">
+                      <span style="font:500 16px 'IBM Plex Mono',monospace;color:#f7f8f8">{{ c.code }}</span>
+                      <span style="font:400 13px 'Inter',sans-serif;color:#d0d6e0">{{ c.name }}</span>
+                    </div>
+                    <span style="font:400 11px 'IBM Plex Mono',monospace;color:#8a8f98;padding:3px 7px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:4px;align-self:flex-start">Peer group · {{ c.peer }}</span>
+                    <div style="display:flex;flex-direction:column;gap:3px;padding-top:4px">
+                      <span style="font:500 26px 'IBM Plex Mono',monospace;color:#f7f8f8;line-height:1.1">{{ c.raw }}</span>
+                      <span style="font:400 12px 'Inter',sans-serif;color:#8a8f98">{{ c.rawUnit }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06)">
+                      <sc-for list="{{ c.rows }}" as="d" hint-placeholder-count="3">
+                        <div style="display:flex;justify-content:space-between;gap:12px">
+                          <span style="font:400 12.5px 'Inter',sans-serif;color:#8a8f98">{{ d.k }}</span>
+                          <span style="font:400 12.5px 'IBM Plex Mono',monospace;color:#d0d6e0;text-align:right">{{ d.v }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:10px;padding:11px 13px;background:#191a1b;border:1px solid rgba(255,255,255,.07);border-radius:7px">
+                <span style="font:500 11px 'Inter',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#d9a13a;white-space:nowrap;padding-top:2px">Not comparable</span>
+                <span style="font:400 13.5px/1.55 'Inter',sans-serif;color:#d0d6e0;text-wrap:pretty">{{ b.warn }}</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isMetric }}">
+            <div style="border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;padding:16px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">{{ b.label }}</span>
+                  <span style="font:500 38px 'IBM Plex Mono',monospace;color:#f7f8f8;line-height:1">{{ b.value }}</span>
+                </div>
+                <span style="font:400 13px 'Inter',sans-serif;color:#8a8f98;padding-bottom:4px">{{ b.sub }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)">
+                <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;justify-content:space-between;gap:14px;padding:2px 0">
+                    <span style="font:400 13px 'Inter',sans-serif;color:#8a8f98">{{ r.k }}</span>
+                    <span style="font:400 13px 'IBM Plex Mono',monospace;color:#d0d6e0;text-align:right">{{ r.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ b.note }}">
+                <span style="font:400 12.5px/1.5 'Inter',sans-serif;color:#8a8f98;text-wrap:pretty">{{ b.note }}</span>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isStats }}">
+            <div style="border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;overflow:hidden">
+              <div style="padding:10px 14px;background:#141516;border-bottom:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;gap:12px">
+                <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">{{ b.title }}</span>
+                <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5c6169">{{ b.window }}</span>
+              </div>
+              <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:1.4fr 110px 1fr;gap:14px;align-items:center;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04)">
+                  <span style="font:400 14px 'Inter',sans-serif;color:#d0d6e0">{{ r.k }}</span>
+                  <span style="font:500 15px 'IBM Plex Mono',monospace;color:{{ r.color }};text-align:right">{{ r.v }}</span>
+                  <span style="font:400 12px 'Inter',sans-serif;color:#8a8f98">{{ r.note }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isScope }}">
+            <div style="border:1px solid rgba(255,255,255,.07);border-radius:8px;background:#0f1011;padding:15px;display:flex;flex-direction:column;gap:13px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font:500 11px 'Inter',sans-serif;letter-spacing:.07em;text-transform:uppercase;color:#8a8f98;padding:3px 8px;background:#191a1b;border:1px solid rgba(255,255,255,.09);border-radius:4px">Out of scope</span>
+                <span style="font:400 15px 'Inter',sans-serif;color:#f7f8f8">{{ b.text }}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5c6169">This tool computes</span>
+                  <sc-for list="{{ b.can }}" as="c" hint-placeholder-count="4">
+                    <span style="font:400 13.5px/1.45 'Inter',sans-serif;color:#d0d6e0">{{ c.t }}</span>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5c6169">It does not model</span>
+                  <sc-for list="{{ b.cannot }}" as="c" hint-placeholder-count="4">
+                    <span style="font:400 13.5px/1.45 'Inter',sans-serif;color:#8a8f98">{{ c.t }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ b.isAssumptions }}">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:13px 15px;border:1px solid rgba(255,255,255,.06);border-radius:8px;background:#0c0d0e">
+              <span style="font:500 10.5px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8a8f98">Assumptions &amp; data gaps</span>
+              <sc-for list="{{ b.items }}" as="i" hint-placeholder-count="4">
+                <div style="display:flex;gap:9px">
+                  <span style="font:400 13px 'Inter',sans-serif;color:#5c6169;line-height:1.55">—</span>
+                  <span style="font:400 13.5px/1.55 'Inter',sans-serif;color:#8a8f98;text-wrap:pretty">{{ i.t }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+        </div>
+      </sc-for>
+
+    </div>
+  </div>
+
+  <div style="flex:none;border-top:1px solid rgba(255,255,255,.07);background:#0b0c0d">
+    <div style="max-width:820px;margin:0 auto;padding:12px 24px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font:500 10px 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5c6169;margin-right:2px">Examples</span>
+        <sc-for list="{{ examples }}" as="e" hint-placeholder-count="8">
+          <span onClick="{{ e.pick }}" style="font:400 12px 'Inter',sans-serif;color:{{ e.color }};padding:4px 9px;background:{{ e.bg }};border:1px solid {{ e.border }};border-radius:5px;cursor:pointer;white-space:nowrap" style-hover="border-color:rgba(255,255,255,.2);color:#f7f8f8">{{ e.label }}</span>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:9px;align-items:center;padding:7px 8px 7px 14px;background:#0f1011;border:1px solid {{ inputBorder }};border-radius:8px">
+        <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" onFocus="{{ onFocus }}" onBlur="{{ onBlur }}" placeholder="Ask about an airport…" style="flex:1;background:transparent;border:none;outline:none;font:400 16px 'Inter',sans-serif;color:#f7f8f8" />
+        <span onClick="{{ onSend }}" style="font:500 13px 'Inter',sans-serif;color:{{ sendColor }};background:{{ sendBg }};padding:7px 15px;border-radius:6px;cursor:pointer;white-space:nowrap">Send</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:14px">
+        <span style="font:400 11.5px 'Inter',sans-serif;color:#5c6169">{{ hint }}</span>
+        <span style="font:400 11.5px 'IBM Plex Mono',monospace;color:#5c6169">Scores computed · AI explains only</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultToolsExpanded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;showAssumptions&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#5e6ad2&quot;,&quot;options&quot;:[&quot;#5e6ad2&quot;,&quot;#7a7fd6&quot;,&quot;#4c9aff&quot;,&quot;#8a8f98&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Style&quot;}}">
+class Component extends DCLogic {
+  state = { conv: 'ranking', open: {}, draft: '', hint: '', focus: false };
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  peers = { large: 'large FAA hubs (n=30)', medium: 'medium FAA hubs (n=31)', small: 'small FAA hubs (n=39)' };
+
+  air = {
+    BOS: { name: 'Boston Logan Intl', hub: 'large', composite: 79, coverage: '100%',
+      labels: ['Large hub', 'Long-haul share 24.1%'],
+      v: [['Congestion', 88, '12.4M pax/runway/yr', '35%'], ['Unmet flight demand', 81, '+6.2 pp', '35%'], ['Delay', 62, '14.8 min', '20%'], ['Growth', 71, '+8.4%', '10%']] },
+    PVD: { name: 'T.F. Green Intl', hub: 'medium', composite: 67, coverage: '100%',
+      labels: ['Medium hub'],
+      v: [['Congestion', 74, '3.1M pax/runway/yr', '35%'], ['Unmet flight demand', 69, '+4.1 pp', '35%'], ['Delay', 52, '11.6 min', '20%'], ['Growth', 66, '+6.9%', '10%']] },
+    BDL: { name: 'Bradley Intl', hub: 'medium', composite: 61, coverage: '100%', labels: ['Medium hub'],
+      v: [['Congestion', 66, '1.9M pax/runway/yr', '35%'], ['Unmet flight demand', 63, '+3.4 pp', '35%'], ['Delay', 55, '12.1 min', '20%'], ['Growth', 48, '+4.2%', '10%']] },
+    MHT: { name: 'Manchester–Boston Regional', hub: 'small', composite: 53, coverage: '100%', labels: ['Small hub'],
+      v: [['Congestion', 58, '0.9M pax/runway/yr', '35%'], ['Unmet flight demand', 54, '+2.6 pp', '35%'], ['Delay', 49, '10.4 min', '20%'], ['Growth', 44, '+3.6%', '10%']] },
+    PWM: { name: 'Portland Intl Jetport', hub: 'small', composite: 49, coverage: '100%', labels: ['Small hub'],
+      v: [['Congestion', 51, '0.7M pax/runway/yr', '35%'], ['Unmet flight demand', 47, '+2.1 pp', '35%'], ['Delay', 44, '9.8 min', '20%'], ['Growth', 61, '+5.4%', '10%']] },
+    BTV: { name: 'Burlington Intl', hub: 'small', composite: 43, coverage: '100%', labels: ['Small hub'],
+      v: [['Congestion', 44, '0.5M pax/runway/yr', '35%'], ['Unmet flight demand', 41, '+1.7 pp', '35%'], ['Delay', 38, '9.1 min', '20%'], ['Growth', 52, '+4.6%', '10%']] },
+    ORH: { name: 'Worcester Regional', hub: 'small', composite: 30, coverage: '100%', labels: ['Small hub'],
+      v: [['Congestion', 29, '0.2M pax/runway/yr', '35%'], ['Unmet flight demand', 26, '+0.6 pp', '35%'], ['Delay', 34, '8.4 min', '20%'], ['Growth', 41, '+3.1%', '10%']] },
+    HYA: { name: 'Hyannis / Barnstable Muni', hub: 'small', composite: null, coverage: '75% · 3 of 4 inputs', labels: ['Non-hub', 'Seasonal schedule'], missing: 'Delay',
+      v: [['Congestion', 37, '0.1M pax/runway/yr', '35%'], ['Unmet flight demand', 33, '+1.1 pp', '35%'], ['Delay', null, 'Not reported', '20%'], ['Growth', 46, '+3.8%', '10%']] },
+    SFO: { name: 'San Francisco Intl', hub: 'large', composite: 81, coverage: '100%',
+      labels: ['Large hub', 'Slot-limited · Level 2', 'Long-haul share 31.7%'],
+      v: [['Congestion', 89, '13.1M pax/runway/yr', '35%'], ['Unmet flight demand', 86, '+6.5 pp', '35%'], ['Delay', 58, '13.9 min', '20%'], ['Growth', 78, '+9.6%', '10%']] }
+  };
+
+  tone(t) {
+    if (t === 'strong') return { c: '#4cb782', i: 0 };
+    if (t === 'mixed') return { c: '#d9a13a', i: 1 };
+    if (t === 'weak') return { c: '#c2685e', i: 2 };
+    return { c: '#8a8f98', i: -1 };
+  }
+
+  signalOf(a) {
+    if (a.missing) return { label: 'Partial inputs', tone: 'partial', rule: 'one or more inputs missing' };
+    if (a.composite == null) return { label: 'No data', tone: 'none', rule: 'no composite available' };
+    if (a.composite >= 70) return { label: 'Strong candidate', tone: 'strong', rule: 'composite ≥ 70, all inputs present' };
+    if (a.composite >= 40) return { label: 'Mixed vector', tone: 'mixed', rule: 'composite 40–69, all inputs present' };
+    return { label: 'Weak candidate', tone: 'weak', rule: 'composite < 40, all inputs present' };
+  }
+
+  lamp(tone) {
+    const lit = this.tone(tone).i;
+    const base = ['#4cb782', '#d9a13a', '#c2685e'];
+    return base.map((c, i) => i === lit
+      ? { bg: c, glow: '0 0 5px ' + c + '99' }
+      : { bg: 'rgba(255,255,255,.09)', glow: 'none' });
+  }
+
+  vecRows(a) {
+    return a.v.map(([n, p, raw, w]) => ({
+      n: n,
+      pctl: p == null ? 'no data' : p + ' pctl',
+      pctlColor: p == null ? '#8a8f98' : '#d0d6e0',
+      raw: raw,
+      weight: w,
+      w: (p == null ? 0 : p) + '%',
+      barColor: p == null ? 'rgba(255,255,255,.09)' : '#5e6ad2'
+    }));
+  }
+
+  card(code, extra) {
+    const a = this.air[code], s = this.signalOf(a);
+    return Object.assign({
+      isVector: true, code: code, name: a.name,
+      labels: a.labels.map(t => ({ t: t })),
+      composite: a.composite == null ? '—' : String(a.composite),
+      signal: s.label, signalRule: s.rule,
+      signalColor: this.tone(s.tone).c,
+      lamp: this.lamp(s.tone),
+      vector: this.vecRows(a),
+      peer: this.peers[a.hub],
+      coverage: a.coverage,
+      warn: a.missing ? 'Delay data for ' + code + ' is not reported in the 2023–2024 window. It was left out of the composite rather than treated as zero, so no composite score is available — this is a coverage gap, not a weak result.' : null
+    }, extra || {});
+  }
+
+  ranking(codes) {
+    return {
+      isRanking: true,
+      rows: codes.map((code, i) => {
+        const a = this.air[code], s = this.signalOf(a), id = 'vec:' + code;
+        const open = !!this.state.open[id];
+        return {
+          rank: String(i + 1), code: code, name: a.name,
+          labels: a.labels.map(t => ({ t: t })),
+          composite: a.composite == null ? '—' : String(a.composite),
+          signal: s.label, signalColor: this.tone(s.tone).c, lamp: this.lamp(s.tone),
+          vector: this.vecRows(a), peer: this.peers[a.hub], coverage: a.coverage,
+          open: open, caret: open ? '▾' : '▸',
+          toggle: () => this.toggle(id)
+        };
+      })
+    };
+  }
+
+  toggle(id) {
+    this.setState(s => ({ open: Object.assign({}, s.open, { [id]: !s.open[id] }) }));
+  }
+
+  tool(id, name, args, result, opts) {
+    const o = opts || {};
+    const defOpen = this.props.defaultToolsExpanded ?? false;
+    const open = this.state.open[id] === undefined ? (defOpen && !o.running) : this.state.open[id];
+    return {
+      isTool: true, name: name, running: !!o.running, done: !o.running,
+      ms: o.ms || '', open: open && !o.running, caret: open && !o.running ? '▾' : '▸',
+      args: args.map(([k, v]) => ({ k: k, v: v })),
+      result: result.map(([k, v]) => ({ k: k, v: v })),
+      toggle: () => this.toggle(id)
+    };
+  }
+
+  user(text) { return { isUser: true, text: text }; }
+  prose() { return { isProse: true, paras: Array.prototype.slice.call(arguments).map(t => ({ t: t })) }; }
+  assume() {
+    if (this.props.showAssumptions === false) return null;
+    return { isAssumptions: true, items: Array.prototype.slice.call(arguments).map(t => ({ t: t })) };
+  }
+
+  convBlocks(key) {
+    const NE = ['BOS', 'PVD', 'BDL', 'MHT', 'PWM', 'BTV', 'ORH', 'HYA'];
+    if (key === 'ranking') return [
+      this.user('Which airports in New England are strong candidates for terminal expansion?'),
+      this.tool('t:res', 'resolve_geography', [['region', '"New England"'], ['granularity', 'state']], [['states', 'CT ME MA NH RI VT'], ['airports_matched', '8'], ['excluded', '0']], { ms: '124 ms' }),
+      this.tool('t:score', 'compute_airport_score', [['airports', '8 codes'], ['window', '2023–2024'], ['peer_grouping', 'faa_hub_size'], ['weights', 'c .35 / u .35 / d .20 / g .10']], [['scored', '7'], ['partial_inputs', '1 (HYA)'], ['max_composite', '79 (BOS)']], { ms: '318 ms' }),
+      { isResolved: true, query: 'New England', states: 'CT, ME, MA, NH, RI, VT', codes: NE.map(t => ({ t: t })), count: '8 airports found · 7 fully scored, 1 with partial inputs' },
+      this.prose('One airport in the resolved set clears the strong-candidate threshold: BOS at composite 79, driven by congestion (88th percentile among large hubs) and unmet flight demand (81st). PVD and BDL sit in the mixed band — their congestion percentiles are high inside the medium-hub peer group, but absolute passenger-per-runway load is roughly a quarter of Boston\'s.',
+        'HYA has no composite because delay data is missing, not because it scored poorly. Expand any row to inspect its score vector.'),
+      this.ranking(NE),
+      this.assume('Weather delays excluded from the delay component.', 'Percentiles are calculated within the airport\'s FAA hub-size peer group, so a medium-hub 74th percentile is not equivalent to a large-hub 74th percentile.', 'Missing delay data for HYA was not treated as zero; the airport is reported as partial inputs.', 'Construction cost, ROI, land availability, politics and airline leases are outside this tool\'s scope.')
+    ];
+
+    if (key === 'compare') return [
+      this.user('Compare LA and Santa Ana airport congestion levels.'),
+      this.tool('t:cong', 'get_congestion_metric', [['airports', 'LAX, SNA'], ['metric', 'passengers_per_runway_per_year'], ['window', '2023–2024']], [['LAX', '21.9M pax/runway/yr'], ['SNA', '11.6M pax/runway/yr'], ['peer_groups', 'large, medium']], { ms: '96 ms' }),
+      this.prose('These two airports are in different peer groups, so their percentiles are computed against different populations and cannot be read side by side. Compare the raw values instead.'),
+      {
+        isCompare: true,
+        cols: [
+          { code: 'LAX', name: 'Los Angeles Intl', peer: 'large FAA hub (n=30)', raw: '21.9M', rawUnit: 'passengers per runway per year', rows: [['Annual passengers', '87.5M'], ['Runways', '4'], ['Congestion percentile', '94 pctl (large hubs)'], ['Long-haul share', '38.2%']].map(([k, v]) => ({ k: k, v: v })) },
+          { code: 'SNA', name: 'John Wayne / Orange County', peer: 'medium FAA hub (n=31)', raw: '11.6M', rawUnit: 'passengers per runway per year', rows: [['Annual passengers', '11.6M'], ['Runways', '1'], ['Congestion percentile', '97 pctl (medium hubs)'], ['Long-haul share', '1.4%']].map(([k, v]) => ({ k: k, v: v })) }
+        ],
+        warn: 'SNA\'s 97th percentile means it is near the top of the medium-hub distribution; LAX\'s 94th means it is near the top of the large-hub distribution. In absolute terms LAX carries 1.9× SNA\'s load per runway. Treating 97 > 94 as "SNA is more congested" would be a peer-group error.'
+      },
+      this.assume('Congestion is passengers per runway per year; it does not account for runway length, configuration or gate count.', 'Percentiles are within FAA hub-size peer groups and are not comparable across groups.', 'No composite score is shown — this was a single-component question.')
+    ];
+
+    if (key === 'metric') return [
+      this.user('What is the percentage of long haul flights out of Anchorage airport?'),
+      this.tool('t:lh', 'get_long_haul_share', [['airport', 'ANC'], ['definition', 'segments > 3,000 mi'], ['window', '2023–2024']], [['long_haul_share', '6.3%'], ['departures_covered', '141,208'], ['coverage', '100%']], { ms: '61 ms' }),
+      this.prose('Long-haul share at ANC (Ted Stevens Anchorage Intl) is 6.3% of scheduled passenger departures in the comparison window.'),
+      { isMetric: true, label: 'Long-haul share · ANC', value: '6.3%', sub: 'of scheduled passenger departures, 2023–2024', rows: [['Scheduled passenger departures', '141,208'], ['Long-haul departures (>3,000 mi)', '8,896'], ['Peer group', 'medium FAA hub (n=31)'], ['Coverage', '100% of window']].map(([k, v]) => ({ k: k, v: v })), note: 'This is a lookup, not an assessment: no candidate signal or composite score applies. Cargo operations are excluded, which materially affects ANC — it is one of the largest cargo hubs in the US.' },
+      this.assume('Long haul is defined as a segment over 3,000 statute miles.', 'Cargo-only flights are excluded from the denominator.', 'No composite score or candidate signal is produced for a single-metric lookup.')
+    ];
+
+    if (key === 'reasoning') return [
+      this.user('What is the unmet flight demand in SFO airport and why?'),
+      this.tool('t:sfo', 'compute_unmet_flight_demand', [['airport', 'SFO'], ['window', '2023–2024'], ['peer_group', 'large']], [['passenger_growth', '+9.6%'], ['flight_growth', '+3.1%'], ['unmet_flight_demand', '+6.5 pp'], ['percentile', '86 (large hubs)']], { ms: '142 ms' }),
+      this.tool('t:sfo2', 'compute_airport_score', [['airport', 'SFO'], ['weights', 'c .35 / u .35 / d .20 / g .10']], [['composite', '81'], ['inputs_present', '4 of 4'], ['signal', 'Strong candidate']], { ms: '203 ms' }),
+      { isStats: true, title: 'Unmet flight demand · SFO', window: '2023–2024', rows: [
+        { k: 'Passenger growth', v: '+9.6%', color: '#f7f8f8', note: '2023 → 2024, enplanements' },
+        { k: 'Flight growth', v: '+3.1%', color: '#f7f8f8', note: '2023 → 2024, scheduled departures' },
+        { k: 'Unmet flight demand', v: '+6.5 pp', color: '#f7f8f8', note: '86th percentile among large hubs' }
+      ] },
+      this.prose('Passengers grew roughly three times faster than flights, a 6.5-percentage-point gap. The airlines absorbed that demand mainly through larger aircraft and higher load factors rather than more departures, which is the pattern the unmet-flight-demand component is designed to detect.',
+        'SFO is slot-limited (IATA Level 2), so the constraint is at least partly administrative rather than physical. That matters for interpretation: a terminal renovation adds gate and processing capacity, but it does not by itself create movements at a schedule-facilitated airport.',
+        'The gap alone does not make SFO a candidate. The Strong candidate signal below comes from the full composite — congestion at the 89th percentile is the larger contributor.'),
+      this.card('SFO'),
+      this.assume('Unmet flight demand measures a growth divergence, not a headroom estimate — it cannot say how many additional flights the airport could absorb.', 'A 6.5 pp gap can also reflect fleet up-gauging or load-factor recovery independent of any capacity constraint.', 'Slot status is a schedule-coordination fact, not a scoring input.', 'Weather delays excluded. Percentiles within the large-hub peer group.')
+    ];
+
+    if (key === 'missing') return [
+      this.user('Show me the score vector for Hyannis (HYA).'),
+      this.tool('t:hya', 'compute_airport_score', [['airport', 'HYA'], ['window', '2023–2024'], ['peer_group', 'small']], [['congestion_pctl', '37'], ['unmet_demand_pctl', '33'], ['delay_pctl', 'null — source has no record'], ['growth_pctl', '46'], ['composite', 'null'], ['signal', 'Partial inputs']], { ms: '88 ms' }),
+      this.prose('HYA returns Partial inputs. The delay component — average arrival delay minutes excluding weather — has no record for HYA in the 2023–2024 window, so the engine withheld the composite rather than scoring three of four components as if the fourth were zero.'),
+      this.card('HYA'),
+      this.assume('Delay is missing, not zero: substituting zero would have raised the delay percentile and produced a misleadingly complete composite.', 'The three components that are present are shown with their real percentiles and can be used on their own.', 'HYA is a non-hub airport with a seasonal schedule; low reporting volume is the likely cause of the gap.', 'Partial inputs is a coverage state, not a weak result — the two are visually distinct throughout this tool.')
+    ];
+
+    if (key === 'scope') return [
+      this.user('What will a new terminal at DFW cost?'),
+      this.prose('Construction cost is outside the scope of this tool. No cost, ROI, or financing figure is computed anywhere in the scoring engine, and I will not estimate one — there is no data behind it.'),
+      { isScope: true, text: 'Construction cost is not modelled.', can: [
+        'Composite score, 0–100, for ~100 US airports',
+        'Score vector: congestion, unmet flight demand, delay, growth',
+        'Peer-group percentiles within FAA hub size',
+        'Candidate signal and input coverage',
+        'Geographic ranking over a resolved airport set'
+      ].map(t => ({ t: t })), cannot: [
+        'Construction cost or cost per gate',
+        'ROI, IRR, financing or bond capacity',
+        'Land availability and acquisition',
+        'Political feasibility and approvals',
+        'Airline lease and gate-use agreements'
+      ].map(t => ({ t: t })) },
+      this.prose('If it helps: DFW\'s composite and score vector are available, which tells you whether renovation capacity is warranted by demand — a separate question from what it would cost.'),
+      this.assume('Cost, ROI, land, politics and airline leases are out of scope by design.', 'The scoring engine reads FAA and BTS operating data only; it has no capital-project inputs.')
+    ];
+
+    if (key === 'followup') return [
+      this.user('Which airports in New England are strong candidates for terminal expansion?'),
+      { isResolved: true, query: 'New England', states: 'CT, ME, MA, NH, RI, VT', codes: NE.map(t => ({ t: t })), count: '8 airports found · previous turn' },
+      this.ranking(NE),
+      this.user('What about the second one?'),
+      { isContext: true, text: 'Interpreting “the second one” as PVD — T.F. Green Intl, the second airport in the previous New England ranking (composite 67). Resolved from turn 1\'s ranked output, not from a name match.' },
+      this.tool('t:pvd', 'compute_airport_score', [['airport', 'PVD'], ['resolved_from', 'prior_ranking[1]'], ['window', '2023–2024']], [['composite', '67'], ['signal', 'Mixed vector'], ['inputs_present', '4 of 4']], { ms: '171 ms' }),
+      this.prose('PVD scores 67 — a mixed vector, just under the strong threshold. Its congestion percentile (74th among medium hubs) is the strongest component, but the raw load is 3.1M passengers per runway per year, about a quarter of Boston\'s. Delay is unremarkable at 11.6 minutes.',
+        'Read as an investment candidate: real demand pressure inside its peer group, no delay crisis, and a growth rate that is solid rather than exceptional.'),
+      this.card('PVD'),
+      this.assume('Reference resolution used the previous ranked output in this conversation; changing the earlier query would change what “the second one” means.', 'Percentiles are within the medium-hub peer group and are not comparable to BOS\'s large-hub percentiles.', 'Weather delays excluded.')
+    ];
+
+    if (key === 'streaming') return [
+      this.user('Rank the Texas airports by renovation-investment potential.'),
+      this.tool('t:res2', 'resolve_geography', [['region', '"Texas"'], ['granularity', 'state']], [['states', 'TX'], ['airports_matched', '11'], ['excluded', '0']], { ms: '118 ms' }),
+      { isResolved: true, query: 'Texas', states: 'TX', codes: ['DFW', 'IAH', 'AUS', 'SAT', 'HOU', 'DAL', 'ELP', 'MAF', 'LBB', 'CRP', 'AMA'].map(t => ({ t: t })), count: '11 airports found' },
+      this.tool('t:score2', 'compute_airport_score', [['airports', '11 codes'], ['window', '2023–2024'], ['peer_grouping', 'faa_hub_size']], [], { running: true, ms: '2.4 s elapsed' }),
+      { isPending: true, text: 'Computing percentiles across 3 peer groups — no composite scores available yet.' }
+    ];
+
+    return [];
+  }
+
+  send = () => {
+    const q = this.state.draft.trim().toLowerCase();
+    if (!q) { this.setState({ hint: 'Type a question or pick an example prompt.' }); return; }
+    const map = [
+      [/new england|northeast|rank/, 'ranking'],
+      [/compare|santa ana|lax|snа|sna/, 'compare'],
+      [/long ?haul|anchorage|anc\b/, 'metric'],
+      [/sfo|unmet|san francisco/, 'reasoning'],
+      [/hya|hyannis|missing|partial/, 'missing'],
+      [/cost|price|roi|budget|dfw/, 'scope'],
+      [/second|previous|that one/, 'followup']
+    ];
+    const hit = map.find(([re]) => re.test(q));
+    if (!hit) { this.setState({ hint: 'Static prototype — this build answers the eight example prompts below.' }); return; }
+    this.setState({ conv: 'streaming', draft: '', hint: '', open: {} });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ conv: hit[1] }), 1500);
+  };
+
+  renderVals() {
+    const key = this.state.conv;
+    const accent = this.props.accent || '#5e6ad2';
+    const ex = [
+      ['ranking', 'Ranking'], ['compare', 'Comparison'], ['metric', 'Single metric'],
+      ['reasoning', 'Reasoning'], ['missing', 'Missing data'], ['scope', 'Out of scope'],
+      ['followup', 'Follow-up context'], ['streaming', 'Streaming']
+    ];
+    return {
+      blocks: this.convBlocks(key).filter(Boolean),
+      examples: ex.map(([k, label]) => ({
+        label: label,
+        color: k === key ? '#f7f8f8' : '#8a8f98',
+        bg: k === key ? '#191a1b' : 'transparent',
+        border: k === key ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.08)',
+        pick: () => { clearTimeout(this._t); this.setState({ conv: k, open: {}, hint: '' }); }
+      })),
+      draft: this.state.draft,
+      onDraft: e => this.setState({ draft: e.target.value, hint: '' }),
+      onKey: e => { if (e.key === 'Enter') this.send(); },
+      onFocus: () => this.setState({ focus: true }),
+      onBlur: () => this.setState({ focus: false }),
+      onSend: this.send,
+      inputBorder: this.state.focus ? accent : 'rgba(255,255,255,.09)',
+      sendColor: this.state.draft.trim() ? '#f7f8f8' : '#8a8f98',
+      sendBg: this.state.draft.trim() ? accent : '#191a1b',
+      hint: this.state.hint || 'Numbers come from the scoring engine; the AI selects tools and explains results.'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

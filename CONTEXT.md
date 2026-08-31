@@ -4,11 +4,23 @@ A glossary for a capacity-pressure screen of US airports. The screen finds renov
 
 ## Prototype
 
-Answer shape and chat UI — paste-ready full-app design prompt (Linear product chrome, candidate lamp, eleven states):
+Locked answer shape for the PRD (pixels throwaway):
 
-[prototype/design-prompt.md](prototype/design-prompt.md)
+- [prototype/dark-chat-surface/Airport Investment Intelligence.dc.html](prototype/dark-chat-surface/Airport%20Investment%20Intelligence.dc.html) — zip chrome and answer objects
+- [prototype/transcripts/new-england-ranking.md](prototype/transcripts/new-england-ranking.md) — canonical ranking transcript
+- [prototype/design-prompt.md](prototype/design-prompt.md) — earlier prompt; chrome/tool-row bits superseded by the lock on [Prototype the answer shape and chat UI](https://github.com/davidFeldqwe/forward-deployed-exam/issues/10)
 
 ## Language
+
+### Product
+
+**Landing**:
+The public home page. Signed-out people see it. It is not the chat and not a ranking.
+_Avoid_: marketing site, dashboard, home as a synonym for the agent
+
+**Thread**:
+One persisted conversation for a signed-in user. Its title is the first user question.
+_Avoid_: session, chat history (as the object)
 
 ### Thesis
 
@@ -58,6 +70,10 @@ _Avoid_: score vector, route count
 Whether a score-vector component has its inputs in the snapshot. Missing is not a low score.
 _Avoid_: zero-fill, impute
 
+**Partial inputs**:
+A coverage state: at least one score-vector component is missing, so there is no composite. It is not a weak score.
+_Avoid_: no data, weak candidate, zero-fill
+
 ### Output
 
 **Score vector**:
@@ -79,3 +95,11 @@ _Avoid_: metro, area, market, city market
 **Resolved airport set**:
 The airports that a place phrase maps to. The agent names this set before it ranks the airports.
 _Avoid_: metro area, grouping
+
+**Candidate lamp**:
+A renovation-investment-candidate signal on an airport that has a composite: Strong candidate, Mixed vector, or Weak candidate. Hue never appears without a text pill. Missing data is Partial inputs or No data, never red.
+_Avoid_: candidate signal, traffic light, grade, RAG
+
+**Carried context**:
+How this thread resolved a follow-up reference (for example “the second one”). It is shown before the follow-up answer.
+_Avoid_: guess, inferred airport
