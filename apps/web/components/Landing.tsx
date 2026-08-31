@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
 
+import { chatPathWithPrompt } from "@/app/auth-gate";
 import { landingCopy } from "@/app/landing-copy";
 import { PromptChips } from "@/components/PromptChips";
 import { Wordmark } from "@/components/Wordmark";
@@ -137,7 +138,7 @@ export function Landing() {
           >
             Try one of these questions
           </h2>
-          <PromptChips questions={suggestedQuestions} href="/chat" />
+          <PromptChips questions={suggestedQuestions} href={chatPathWithPrompt} />
         </section>
 
         <section

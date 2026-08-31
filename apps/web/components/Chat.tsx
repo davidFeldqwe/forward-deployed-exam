@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
+import { signOut } from "@/app/auth-actions";
 import { chatCopy } from "@/app/chat-copy";
 import { PromptChips } from "@/components/PromptChips";
 import { Wordmark } from "@/components/Wordmark";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   InputGroup,
   InputGroupAddon,
@@ -13,8 +15,8 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 
-export function Chat() {
-  const [draft, setDraft] = useState("");
+export function Chat({ initialPrompt }: { initialPrompt: string | null }) {
+  const [draft, setDraft] = useState(initialPrompt ?? "");
   const ready = draft.trim().length > 0;
 
   return (
@@ -22,9 +24,16 @@ export function Chat() {
       <header className="h-12 shrink-0 border-b bg-header">
         <div className="mx-auto flex h-full max-w-[820px] items-center justify-between gap-4 px-6">
           <Wordmark name={chatCopy.wordmark} />
-          <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
-            {chatCopy.comparisonWindow}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-3">
+            <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
+              {chatCopy.comparisonWindow}
+            </Badge>
+            <form action={signOut}>
+              <Button type="submit" variant="link" size="sm">
+                {chatCopy.signOutLabel}
+              </Button>
+            </form>
+          </div>
         </div>
       </header>
 

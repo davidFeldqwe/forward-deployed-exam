@@ -54,3 +54,7 @@ test("chat chrome does not advertise dropped surfaces or a live scoring path", (
     assert.equal(text.includes(forbidden), false, `should not mention ${forbidden}`);
   }
 });
+
+test("sign out lives in the chat header", () => {
+  assert.equal(chatCopy.signOutLabel, "Sign out");
+});
