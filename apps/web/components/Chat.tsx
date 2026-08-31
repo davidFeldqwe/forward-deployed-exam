@@ -23,12 +23,12 @@ export function Chat({
   initialPrompt = null,
   threadId = null,
   messages = [],
-  recents = [],
+  recents,
 }: {
   initialPrompt?: string | null;
   threadId?: string | null;
   messages?: readonly ThreadMessage[];
-  recents?: readonly ThreadSummary[];
+  recents: readonly ThreadSummary[];
 }) {
   const [draft, setDraft] = useState(initialPrompt ?? "");
   const ready = draft.trim().length > 0;

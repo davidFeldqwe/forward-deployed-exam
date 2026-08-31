@@ -26,12 +26,14 @@ export type JsonValue =
   | boolean
   | null
   | JsonValue[]
-  | { [key: string]: JsonValue };
+  | JsonObject;
+
+export type JsonObject = { [key: string]: JsonValue };
 
 /** One inspectable tool row, stored with the arguments and result it showed. */
 export type ToolCall = {
   tool: AgentTool;
-  args: { [key: string]: JsonValue };
+  args: JsonObject;
   result: JsonValue;
   durationMs: number;
 };
@@ -110,8 +112,7 @@ function parseToolCall(value: unknown): ToolCall | null {
   if (
     !isRecord(value) ||
     !isAgentTool(value.tool) ||
-    !isRecord(value.args) ||
-    !isJsonValue(value.args) ||
+    !isJsonObject(value.args) ||
     !isJsonValue(value.result) ||
     typeof value.durationMs !== "number"
   ) {
@@ -122,34 +123,35 @@ function parseToolCall(value: unknown): ToolCall | null {
   }
   return {
     tool: value.tool,
-    args: value.args as { [key: string]: JsonValue },
+    args: value.args,
     result: value.result,
     durationMs: value.durationMs,
   };
 }
 
+function hasRenderableRows(result: JsonValue): boolean {
+  return (
+    isRecord(result) && Array.isArray(result.rows) && result.rows.every(isRenderableRow)
+  );
+}
+
 /**
  * What the ranking, the score vector and the lamp need from a stored
- * `queryAirports` result. The rest of the row is carried verbatim; scoring
- * owns its full shape.
+ * `queryAirports` row. The rest of the row is carried verbatim; scoring owns
+ * its full shape.
  */
-function hasRenderableRows(result: JsonValue): boolean {
-  if (!isRecord(result) || !Array.isArray(result.rows)) {
+function isRenderableRow(row: unknown): boolean {
+  if (!isRecord(row) || typeof row.iata !== "string") {
     return false;
   }
-  return result.rows.every((row) => {
-    if (!isRecord(row) || typeof row.iata !== "string") {
-      return false;
-    }
-    if (row.composite !== null && typeof row.composite !== "number") {
-      return false;
-    }
-    const vector: unknown = row.scoreVector;
-    if (!isLamp(row.candidateLamp) || !isRecord(vector)) {
-      return false;
-    }
-    return SCORE_COMPONENTS.every((component) => isScoreComponent(vector[component]));
-  });
+  if (!isNumberOrNull(row.composite) || !isLamp(row.candidateLamp)) {
+    return false;
+  }
+  const vector = row.scoreVector;
+  if (!isRecord(vector)) {
+    return false;
+  }
+  return SCORE_COMPONENTS.every((component) => isScoreComponent(vector[component]));
 }
 
 function isScoreComponent(value: unknown): boolean {
@@ -178,12 +180,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isJsonValue(value: unknown): value is JsonValue {
-  if (value === null || ["string", "number", "boolean"].includes(typeof value)) {
-    return typeof value !== "number" || Number.isFinite(value);
+  if (typeof value === "number") {
+    // A stored number has to survive JSON: NaN and Infinity do not.
+    return Number.isFinite(value);
+  }
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return true;
   }
   if (Array.isArray(value)) {
     return value.every(isJsonValue);
   }
+  return isJsonObject(value);
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
   return isRecord(value) && Object.values(value).every(isJsonValue);
 }
 
@@ -240,7 +250,7 @@ function ownedThread(ownerEmail: string, threadId: string): Thread | null {
 
 /** Handed out as a copy, so a caller cannot edit the store by accident. */
 function snapshotOf(thread: Thread): Thread {
-  return { ...thread, messages: thread.messages.map((message) => ({ ...message })) };
+  return structuredClone(thread);
 }
 
 /** A new conversation, titled with the question that opened it. */
@@ -272,7 +282,8 @@ export function appendMessage(
   if (!thread || !parsed) {
     return null;
   }
-  thread.messages.push(parsed);
+  // Stored as a copy, so the caller's message and the store cannot diverge.
+  thread.messages.push(structuredClone(parsed));
   thread.updatedAt = Date.now();
   // Re-insert so the thread just spoken in is the most recent one.
   threadsById().delete(thread.id);
@@ -288,13 +299,10 @@ export function readThread(ownerEmail: string, threadId: string): Thread | null 
 /** The analyst's threads for the header recents control, most recent first. */
 export function listThreads(ownerEmail: string): ThreadSummary[] {
   const owner = ownerKey(ownerEmail);
-  const summaries: ThreadSummary[] = [];
-  for (const thread of threadsById().values()) {
-    if (thread.ownerEmail === owner) {
-      summaries.unshift({ id: thread.id, title: thread.title });
-    }
-  }
-  return summaries;
+  return [...threadsById().values()]
+    .filter((thread) => thread.ownerEmail === owner)
+    .reverse()
+    .map(({ id, title }) => ({ id, title }));
 }
 
 /** Where `/` sends a signed-in analyst: their last thread, or an empty chat. */

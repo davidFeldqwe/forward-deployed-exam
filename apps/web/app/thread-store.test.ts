@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  type ToolCall,
   appendMessage,
   assistantMessage,
   latestThreadId,
@@ -99,12 +100,27 @@ test("an appended message is stored whole, and a broken payload is refused", () 
 test("a stored thread is a copy, so a caller cannot reach into the store", () => {
   const analyst = "copy@example.com";
   const thread = startThread(analyst, NEW_ENGLAND);
+  const methodology: ToolCall = {
+    tool: "describeMethodology",
+    args: { of: "weights" },
+    result: {},
+    durationMs: 4,
+  };
+  appendMessage(analyst, thread.id, assistantMessage("Weights are fixed.", [methodology]));
 
-  thread.messages.push(assistantMessage("not persisted"));
-  thread.title = "renamed";
+  const handedOut = readThread(analyst, thread.id)!;
+  handedOut.title = "renamed";
+  handedOut.messages.push(assistantMessage("not persisted"));
+  // A tool payload is nested, so a shallow copy would hand out the store's own.
+  handedOut.messages[1]!.toolCalls[0]!.args.of = "edited through the snapshot";
+  methodology.args.of = "edited through the message that was appended";
 
-  assert.equal(readThread(analyst, thread.id)?.messages.length, 1);
-  assert.equal(readThread(analyst, thread.id)?.title, NEW_ENGLAND);
+  const reread = readThread(analyst, thread.id);
+  assert.equal(reread?.title, NEW_ENGLAND);
+  assert.equal(reread?.messages.length, 2);
+  assert.deepEqual(reread?.messages[1]?.toolCalls, [
+    { tool: "describeMethodology", args: { of: "weights" }, result: {}, durationMs: 4 },
+  ]);
 });
 
 test("an unknown thread id is not found rather than fabricated", () => {
