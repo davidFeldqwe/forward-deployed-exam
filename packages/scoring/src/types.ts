@@ -64,7 +64,18 @@ export type ScoreVector = Record<Component, ScoreComponent>;
 
 export type ScoredAirport = Pick<
   SnapshotAirport,
-  "iata" | "name" | "municipality" | "state" | "region" | "peerGroup" | "slotLimit"
+  | "iata"
+  | "name"
+  | "municipality"
+  | "state"
+  | "region"
+  // The snapshot's OurAirports pair, passed through so the thread can place a
+  // resolved airport set without a second lookup. This module never computes on
+  // it: a coordinate is not a score, and it is null only as a pair.
+  | "latitude"
+  | "longitude"
+  | "peerGroup"
+  | "slotLimit"
 > & {
   scoreVector: ScoreVector;
   /** Weighted percentile 0-100, or null whenever a component is missing. */

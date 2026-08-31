@@ -210,6 +210,28 @@ test("the accepted place phrases are the committed universe's own", () => {
   }
 });
 
+// #26: `queryAirports` rows are what the thread would draw a map from, so the
+// pair travels on the ranked row rather than being looked up a second time.
+test("a ranked row carries the coordinates the map is drawn from", () => {
+  const byIata = new Map(snapshot.airports.map((airport) => [airport.iata, airport]));
+  const newEngland = queryAirports(scored, { region: "New England" });
+  for (const candidate of newEngland.rows) {
+    const airport = byIata.get(candidate.iata);
+    assert.ok(airport);
+    assert.equal(candidate.latitude, airport.latitude, `${candidate.iata} latitude`);
+    assert.equal(candidate.longitude, airport.longitude, `${candidate.iata} longitude`);
+    assert.equal(typeof candidate.latitude, "number", `${candidate.iata} is located`);
+  }
+  // Four New England airports, each with a pair: the map gate #24 describes
+  // needs two or more located rows, and this ranking has them.
+  assert.equal(
+    newEngland.rows.filter((candidate) => candidate.latitude !== null).length,
+    4,
+  );
+  assert.ok(Math.abs(row("BOS").latitude! - 42.3643) < 0.01);
+  assert.ok(Math.abs(row("BOS").longitude! - -71.0052) < 0.01);
+});
+
 test("a query result is exactly the locked payload, no more and no less", () => {
   // #19 asserts an HTTP body equals this object, so a rename fails here first.
   assert.deepEqual(Object.keys(queryAirports(scored, { region: "New England" })), [

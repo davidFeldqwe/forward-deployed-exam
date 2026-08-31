@@ -41,6 +41,8 @@ export function scoreUniverse(snapshot: AirportSnapshot): ScoredAirport[] {
       municipality: airport.municipality,
       state: airport.state,
       region: airport.region,
+      latitude: airport.latitude,
+      longitude: airport.longitude,
       peerGroup: airport.peerGroup,
       scoreVector,
       composite,
