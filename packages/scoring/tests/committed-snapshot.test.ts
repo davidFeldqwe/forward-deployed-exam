@@ -170,3 +170,25 @@ test("the national rank mixes peer groups, and every row says so", () => {
     );
   }
 });
+
+test("a compare against an airport outside the top 100 names the code", () => {
+  // ITH (Ithaca) is a real airport that the FAA top-100 universe does not reach,
+  // so a compare must say the code is out of scope rather than answer with one
+  // row and let the reader assume both were weighed.
+  const compare = queryAirports(scored, { iata: ["LAX", "ITH"] });
+  assert.deepEqual(compare.rows.map((candidate) => candidate.iata), ["LAX"]);
+  assert.equal(compare.matched, 1);
+  assert.deepEqual(compare.unknownIata, ["ITH"]);
+  assert.equal(byIata.has("ITH"), false, "ITH really is outside the committed snapshot");
+});
+
+test("a query result is exactly the locked payload, no more and no less", () => {
+  // #19 asserts an HTTP body equals this object, so a rename fails here first.
+  assert.deepEqual(Object.keys(queryAirports(scored, { region: "New England" })), [
+    "rows",
+    "matched",
+    "sortBy",
+    "limit",
+    "unknownIata",
+  ]);
+});

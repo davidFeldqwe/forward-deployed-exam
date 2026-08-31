@@ -178,3 +178,47 @@ test("an off-list sortBy is refused by name, not a TypeError from the sort", () 
   const lax = queryAirports(scored, { iata: "LAX" }).rows[0];
   assert.equal(lax?.longHaulShare, 0.2823);
 });
+
+// A compare is the case where a filter can half-succeed: "LAX vs ITH" returns
+// one row, and without this the caller cannot tell that from "both airports came
+// back". ITH is a real airport, just not in the top-100 screen, so the honest
+// answer names it as outside the universe rather than refusing the whole query.
+test("a requested code outside the universe is named, not silently dropped", () => {
+  const result = queryAirports(scored, { iata: ["LAX", " ith "] });
+  assert.deepEqual(result.rows.map((row) => row.iata), ["LAX"]);
+  assert.equal(result.matched, 1);
+  assert.deepEqual(result.unknownIata, ["ITH"]);
+});
+
+test("unknownIata is empty when nothing was asked for or everything matched", () => {
+  assert.deepEqual(queryAirports(scored).unknownIata, []);
+  assert.deepEqual(queryAirports(scored, { region: "Pacific Northwest" }).unknownIata, []);
+  // Codes are compared after case and padding are normalised, and a code named
+  // twice is one request, so neither spelling shows up as unknown.
+  const result = queryAirports(scored, { iata: ["lax", " LAX "] });
+  assert.equal(result.matched, 1);
+  assert.deepEqual(result.unknownIata, []);
+});
+
+// Unknown means "not in the screened universe", not "filtered out": LAX is
+// scored, it is simply not in New England, so calling it unknown would tell the
+// analyst the airport is uncovered when it is one filter away.
+test("a code the other filters exclude is still a known airport", () => {
+  const result = queryAirports(scored, { iata: "LAX", region: "New England" });
+  assert.deepEqual(result.rows, []);
+  assert.equal(result.matched, 0);
+  assert.deepEqual(result.unknownIata, []);
+});
+
+test("an explicitly empty code list asks for no airports, and nothing is unknown", () => {
+  const result = queryAirports(scored, { iata: [] });
+  assert.deepEqual(result.rows, []);
+  assert.equal(result.matched, 0);
+  assert.deepEqual(result.unknownIata, []);
+});
+
+test("a code filter that matches nothing at all reports every code it was given", () => {
+  const result = queryAirports(scored, { iata: ["ITH", "BUR"] });
+  assert.equal(result.matched, 0);
+  assert.deepEqual(result.unknownIata, ["ITH", "BUR"]);
+});

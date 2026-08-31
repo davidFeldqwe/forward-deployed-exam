@@ -78,9 +78,13 @@ itself.
   type is no guard. Long-haul share is not a sort key.
 - `limit`: default 10, hard cap 25. Passing `iata` lifts the default to the cap,
   so a two-code compare returns both rows.
-- Returns `{ rows, matched, sortBy, limit }`; `matched` is the count before the
-  limit. The row payload's key set is pinned by `tests/score.test.ts`, so the
-  rank HTTP can assert its body equals the module output.
+- Returns `{ rows, matched, sortBy, limit, unknownIata }`; `matched` is the count
+  before the limit. `unknownIata` lists requested codes with no airport in the
+  scored universe, in the order asked: "LAX vs ITH" comes back as one row, and
+  the caller has to be able to tell that from a compare that returned both. It
+  means outside the top-100 screen, not filtered out — a code the place filters
+  excluded is not listed. Both key sets, the row's and the result's, are pinned
+  by tests, so the rank HTTP can assert its body equals the module output.
 
 Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,

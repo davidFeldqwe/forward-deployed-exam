@@ -22,6 +22,13 @@ export type QueryResult = {
   sortBy: SortBy;
   /** The limit actually applied, after the default and the hard cap. */
   limit: number;
+  /**
+   * Requested codes with no airport in the scored universe, in the order asked.
+   * "LAX vs ITH" returns one row, and without this the caller cannot tell that
+   * from a compare that returned both. These are outside the top-100 screen, not
+   * merely filtered out: a code the place filters excluded is not listed here.
+   */
+  unknownIata: string[];
 };
 
 /**
@@ -40,10 +47,11 @@ export function queryAirports(
   // Naming codes is an explicit ask for those rows, so it lifts the default to
   // the cap: a two-code compare returns both.
   const limit = resolveLimit(args.limit, codes === null ? DEFAULT_LIMIT : MAX_LIMIT);
+  const requested = codes === null ? null : new Set(codes);
 
   const matchedRows = scored.filter(
     (row) =>
-      (codes === null || codes.has(row.iata)) &&
+      (requested === null || requested.has(row.iata)) &&
       matches(row.region, args.region) &&
       matches(row.state, args.state) &&
       matches(row.municipality, args.municipality) &&
@@ -59,6 +67,7 @@ export function queryAirports(
     matched: matchedRows.length,
     sortBy,
     limit,
+    unknownIata: codes === null ? [] : unknownCodes(codes, scored),
   };
 }
 
@@ -73,10 +82,21 @@ function resolveSortBy(requested: SortBy | undefined): SortBy {
   );
 }
 
-function requestedCodes(iata: QueryAirportsArgs["iata"]): Set<string> | null {
+// The codes asked for, normalised and de-duplicated, in the order given: the
+// order is what `unknownIata` is reported in, so it reads back as the question
+// was asked. An explicitly empty list asks for no airports, which is not the
+// same as passing no `iata` at all.
+function requestedCodes(iata: QueryAirportsArgs["iata"]): string[] | null {
   if (iata === undefined) return null;
   const codes = typeof iata === "string" ? [iata] : iata;
-  return new Set(codes.map((code) => code.trim().toUpperCase()));
+  return [...new Set(codes.map((code) => code.trim().toUpperCase()))];
+}
+
+// Outside the screened universe, which is not the same as excluded by a filter:
+// a code the place filters dropped is still an airport this module can score.
+function unknownCodes(codes: readonly string[], scored: readonly ScoredAirport[]): string[] {
+  const universe = new Set(scored.map((row) => row.iata));
+  return codes.filter((code) => !universe.has(code));
 }
 
 // Place phrases are resolved to snapshot values before the query, so matching is
