@@ -211,6 +211,12 @@ test("scoring keeps the snapshot's row order and does not mutate it", () => {
     FIXTURE.airports.map((airport) => airport.iata),
   );
   assert.equal(FIXTURE.airports[4]!.inputs.delay.raw, null);
+  // `loadSnapshot` memoises one parsed object for the whole process, so a
+  // snapshot this function wrote back to -- filling a blank, sorting the
+  // airports -- would follow every later query in that process.
+  const untouched = structuredClone(FIXTURE);
+  scoreUniverse(FIXTURE);
+  assert.deepEqual(FIXTURE, untouched);
 });
 
 // PRD "Row payload": #19 asserts an HTTP body equals this object and #26 adds a
