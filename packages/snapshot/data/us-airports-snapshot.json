@@ -1,0 +1,4156 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-08-31T14:10:50.033Z",
+  "joinKey": "iata",
+  "comparisonWindow": {
+    "firstYear": 2023,
+    "secondYear": 2024
+  },
+  "methodology": {
+    "units": {
+      "congestion": "enplanements per open runway in 2024",
+      "unmetFlightDemand": "percentage points by which enplanement growth exceeds departure growth across the window",
+      "delay": "arrival delay minutes per arrival with weather delay removed, 2024",
+      "growth": "percent change in enplanements across the window"
+    },
+    "longHaulShare": {
+      "basis": "domestic-departures",
+      "thresholdMiles": 2000
+    }
+  },
+  "sources": [
+    {
+      "id": "faa-acais",
+      "name": "FAA ACAIS calendar-year enplanements at commercial service airports",
+      "url": "https://www.faa.gov/airports/planning_capacity/passenger_allcargo_stats/passenger",
+      "vintage": "CY2024 final, with the CY2023 comparative column"
+    },
+    {
+      "id": "bts-on-time-performance",
+      "name": "BTS Reporting Carrier On-Time Performance",
+      "url": "https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FGJ",
+      "vintage": "monthly files for 2023-01 through 2024-12"
+    },
+    {
+      "id": "ourairports",
+      "name": "OurAirports airports and runways",
+      "url": "https://davidmegginson.github.io/ourairports-data/",
+      "vintage": "nightly build retrieved at ingest"
+    },
+    {
+      "id": "faa-slot-administration",
+      "name": "FAA slot administration Level 2 and Level 3 airports",
+      "url": "https://www.faa.gov/about/office_org/headquarters_offices/ato/service_units/systemops/perf_analysis/slot_administration/slot_administration_schedule_facilitation",
+      "vintage": "hand-coded list, verified 2026-08-31"
+    }
+  ],
+  "gaps": [
+    "No free source publishes gate or terminal capacity, so congestion uses enplanements per open runway; FAA ASPM declared rates are login-gated.",
+    "Long-haul share counts BTS domestic reporting-carrier departures over 2,000 miles. International long-haul is out of scope because T-100 Segment has no stable bulk download.",
+    "Departure counts and delay minutes cover BTS reporting carriers only, so unmet flight demand omits carriers under the 1% revenue reporting threshold.",
+    "Territories have no US Census division, so their region is null and they never appear in a division ranking.",
+    "FAA CY2025 enplanements were still preliminary at ingest, so the comparison window is the latest two final calendar years."
+  ],
+  "airports": [
+    {
+      "iata": "ATL",
+      "name": "Hartsfield Jackson Atlanta International Airport",
+      "municipality": "Atlanta",
+      "state": "GA",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 5,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 50950068,
+        "secondYear": 52511402
+      },
+      "flights": {
+        "firstYear": 333695,
+        "secondYear": 338500
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 10502280,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.62,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.48,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.06,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.031,
+        "longHaulFlights": 20862,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "DFW",
+      "name": "Dallas Fort Worth International Airport",
+      "municipality": "Dallas-Fort Worth",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "large",
+      "runwayCount": 7,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 39246212,
+        "secondYear": 42351316
+      },
+      "flights": {
+        "firstYear": 280830,
+        "secondYear": 307745
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 6050188,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.67,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 20.71,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.91,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0078,
+        "longHaulFlights": 4582,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "DEN",
+      "name": "Denver International Airport",
+      "municipality": "Denver",
+      "state": "CO",
+      "region": "Mountain",
+      "peerGroup": "large",
+      "runwayCount": 6,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 37863967,
+        "secondYear": 40012895
+      },
+      "flights": {
+        "firstYear": 284959,
+        "secondYear": 305160
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 6668816,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.41,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.51,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.68,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0082,
+        "longHaulFlights": 4837,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ORD",
+      "name": "Chicago O'Hare International Airport",
+      "municipality": "Chicago",
+      "state": "IL",
+      "region": "East North Central",
+      "peerGroup": "large",
+      "runwayCount": 8,
+      "slotLimit": "Level 2",
+      "enplanements": {
+        "firstYear": 35843104,
+        "secondYear": 38575693
+      },
+      "flights": {
+        "firstYear": 255715,
+        "secondYear": 276267
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4821962,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.41,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.56,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.62,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0098,
+        "longHaulFlights": 5192,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "LAX",
+      "name": "Los Angeles International Airport",
+      "municipality": "Los Angeles",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": "Level 2",
+      "enplanements": {
+        "firstYear": 40956673,
+        "secondYear": 37760834
+      },
+      "flights": {
+        "firstYear": 192780,
+        "secondYear": 192472
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 9440209,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -7.64,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.46,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -7.8,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.2823,
+        "longHaulFlights": 108766,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "JFK",
+      "name": "John F. Kennedy International Airport",
+      "municipality": "New York",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": "Level 3",
+      "enplanements": {
+        "firstYear": 30804355,
+        "secondYear": 31466102
+      },
+      "flights": {
+        "firstYear": 129993,
+        "secondYear": 121055
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 7866526,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 9.02,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 17.87,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.15,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.25,
+        "longHaulFlights": 62756,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "CLT",
+      "name": "Charlotte Douglas International Airport",
+      "municipality": "Charlotte",
+      "state": "NC",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 25896224,
+        "secondYear": 28523822
+      },
+      "flights": {
+        "firstYear": 193319,
+        "secondYear": 214578
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 9507941,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.85,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 19.13,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 10.15,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0418,
+        "longHaulFlights": 17044,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "LAS",
+      "name": "Harry Reid International Airport",
+      "municipality": "Las Vegas",
+      "state": "NV",
+      "region": "Mountain",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 27896199,
+        "secondYear": 28244966
+      },
+      "flights": {
+        "firstYear": 188617,
+        "secondYear": 187582
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 7061242,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.8,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.87,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 1.25,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.1086,
+        "longHaulFlights": 40855,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MCO",
+      "name": "Orlando International Airport",
+      "municipality": "Orlando",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 28033205,
+        "secondYear": 27859783
+      },
+      "flights": {
+        "firstYear": 162230,
+        "secondYear": 156643
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 6964946,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.83,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 18.35,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -0.62,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0538,
+        "longHaulFlights": 17158,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MIA",
+      "name": "Miami International Airport",
+      "municipality": "Miami",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 24717048,
+        "secondYear": 26588002
+      },
+      "flights": {
+        "firstYear": 101471,
+        "secondYear": 108066
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 6647001,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.07,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 19.43,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.57,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.084,
+        "longHaulFlights": 17592,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PHX",
+      "name": "Phoenix Sky Harbor International Airport",
+      "municipality": "Phoenix",
+      "state": "AZ",
+      "region": "Mountain",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 23880504,
+        "secondYear": 25595723
+      },
+      "flights": {
+        "firstYear": 175547,
+        "secondYear": 192373
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 8531908,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.4,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.36,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.18,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0702,
+        "longHaulFlights": 25813,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SEA",
+      "name": "Seattle–Tacoma International Airport",
+      "municipality": "Seattle",
+      "state": "WA",
+      "region": "Pacific",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 24594210,
+        "secondYear": 25414592
+      },
+      "flights": {
+        "firstYear": 162826,
+        "secondYear": 161911
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 8471531,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.9,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.76,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.34,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.195,
+        "longHaulFlights": 63331,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SFO",
+      "name": "San Francisco International Airport",
+      "municipality": "San Francisco",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": "Level 2",
+      "enplanements": {
+        "firstYear": 24191159,
+        "secondYear": 25078968
+      },
+      "flights": {
+        "firstYear": 134246,
+        "secondYear": 133185
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 6269742,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.46,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 20.11,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.67,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.292,
+        "longHaulFlights": 78078,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "EWR",
+      "name": "Newark Liberty International Airport",
+      "municipality": "Newark",
+      "state": "NJ",
+      "region": "Middle Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": "Level 2",
+      "enplanements": {
+        "firstYear": 24575320,
+        "secondYear": 24544320
+      },
+      "flights": {
+        "firstYear": 134741,
+        "secondYear": 125729
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 8181440,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 6.56,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 17.46,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -0.13,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.1666,
+        "longHaulFlights": 43382,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "IAH",
+      "name": "George Bush Intercontinental Airport",
+      "municipality": "Houston",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "large",
+      "runwayCount": 5,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 22228844,
+        "secondYear": 23349157
+      },
+      "flights": {
+        "firstYear": 110692,
+        "secondYear": 113586
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4669831,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.43,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.11,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.04,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0133,
+        "longHaulFlights": 2985,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BOS",
+      "name": "Boston Logan International Airport",
+      "municipality": "Boston",
+      "state": "MA",
+      "region": "New England",
+      "peerGroup": "large",
+      "runwayCount": 6,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 19962678,
+        "secondYear": 21090721
+      },
+      "flights": {
+        "firstYear": 137983,
+        "secondYear": 141409
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3515120,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.17,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 17.45,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.65,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.137,
+        "longHaulFlights": 38274,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MSP",
+      "name": "Minneapolis–Saint Paul International Airport / Wold–Chamberlain Field",
+      "municipality": "Minneapolis",
+      "state": "MN",
+      "region": "West North Central",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 17019128,
+        "secondYear": 18054481
+      },
+      "flights": {
+        "firstYear": 120554,
+        "secondYear": 125657
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4513620,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.85,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.37,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 6.08,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0096,
+        "longHaulFlights": 2375,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "FLL",
+      "name": "Fort Lauderdale Hollywood International Airport",
+      "municipality": "Fort Lauderdale",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 17063063,
+        "secondYear": 17096131
+      },
+      "flights": {
+        "firstYear": 88188,
+        "secondYear": 90391
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 8548066,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.3,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 18.33,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 0.19,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0701,
+        "longHaulFlights": 12522,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "LGA",
+      "name": "LaGuardia Airport",
+      "municipality": "New York",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 2,
+      "slotLimit": "Level 3",
+      "enplanements": {
+        "firstYear": 16173073,
+        "secondYear": 16715567
+      },
+      "flights": {
+        "firstYear": 159239,
+        "secondYear": 158586
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 8357784,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.76,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.02,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.35,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0002,
+        "longHaulFlights": 57,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "DTW",
+      "name": "Detroit Metropolitan Wayne County Airport",
+      "municipality": "Detroit",
+      "state": "MI",
+      "region": "East North Central",
+      "peerGroup": "large",
+      "runwayCount": 6,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 15378601,
+        "secondYear": 16110696
+      },
+      "flights": {
+        "firstYear": 124596,
+        "secondYear": 130013
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2685116,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.41,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.04,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.76,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0147,
+        "longHaulFlights": 3731,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PHL",
+      "name": "Philadelphia International Airport",
+      "municipality": "Philadelphia",
+      "state": "PA",
+      "region": "Middle Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 13658669,
+        "secondYear": 15102261
+      },
+      "flights": {
+        "firstYear": 88904,
+        "secondYear": 98954
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3775565,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.74,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 19.47,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 10.57,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.1072,
+        "longHaulFlights": 20134,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SLC",
+      "name": "Salt Lake City International Airport",
+      "municipality": "Salt Lake City",
+      "state": "UT",
+      "region": "Mountain",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 12905368,
+        "secondYear": 13543570
+      },
+      "flights": {
+        "firstYear": 108460,
+        "secondYear": 112541
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3385893,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.18,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.21,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.95,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0286,
+        "longHaulFlights": 6325,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BWI",
+      "name": "Baltimore/Washington International Thurgood Marshall Airport",
+      "municipality": "Baltimore",
+      "state": "MD",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 12849721,
+        "secondYear": 13221461
+      },
+      "flights": {
+        "firstYear": 95249,
+        "secondYear": 97445
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4407154,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.59,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.2,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.89,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0589,
+        "longHaulFlights": 11355,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "IAD",
+      "name": "Washington Dulles International Airport",
+      "municipality": "Dulles",
+      "state": "VA",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 12073571,
+        "secondYear": 13003234
+      },
+      "flights": {
+        "firstYear": 49242,
+        "secondYear": 52175
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3250809,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.74,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.93,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.7,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.2054,
+        "longHaulFlights": 20833,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SAN",
+      "name": "San Diego International Airport",
+      "municipality": "San Diego",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "large",
+      "runwayCount": 1,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 12190183,
+        "secondYear": 12780013
+      },
+      "flights": {
+        "firstYear": 90048,
+        "secondYear": 93434
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 12780013,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.08,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.78,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.84,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.1622,
+        "longHaulFlights": 29761,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "DCA",
+      "name": "Ronald Reagan Washington National Airport",
+      "municipality": "Washington",
+      "state": "VA",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": "Level 3",
+      "enplanements": {
+        "firstYear": 12365030,
+        "secondYear": 12750892
+      },
+      "flights": {
+        "firstYear": 137888,
+        "secondYear": 137794
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4250297,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.19,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.32,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.12,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0263,
+        "longHaulFlights": 7249,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "TPA",
+      "name": "Tampa International Airport",
+      "municipality": "Tampa",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "large",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 11677632,
+        "secondYear": 12075591
+      },
+      "flights": {
+        "firstYear": 77475,
+        "secondYear": 76532
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4025197,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.63,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 17.24,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.41,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0381,
+        "longHaulFlights": 5865,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BNA",
+      "name": "Nashville International Airport",
+      "municipality": "Nashville",
+      "state": "TN",
+      "region": "East South Central",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 11227243,
+        "secondYear": 12058688
+      },
+      "flights": {
+        "firstYear": 95356,
+        "secondYear": 98947
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3014672,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.64,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.79,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.41,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "AUS",
+      "name": "Austin Bergstrom International Airport",
+      "municipality": "Austin",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "large",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 10833443,
+        "secondYear": 10678073
+      },
+      "flights": {
+        "firstYear": 91639,
+        "secondYear": 84483
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 5339037,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 6.37,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.88,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -1.43,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0021,
+        "longHaulFlights": 366,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "HNL",
+      "name": "Daniel K. Inouye International Airport",
+      "municipality": "Honolulu, Oahu",
+      "state": "HI",
+      "region": "Pacific",
+      "peerGroup": "large",
+      "runwayCount": 6,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 10149761,
+        "secondYear": 10449022
+      },
+      "flights": {
+        "firstYear": 61148,
+        "secondYear": 60960
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1741504,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.26,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 9.41,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.95,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.4262,
+        "longHaulFlights": 52048,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MDW",
+      "name": "Chicago Midway International Airport",
+      "municipality": "Chicago",
+      "state": "IL",
+      "region": "East North Central",
+      "peerGroup": "large",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 10659520,
+        "secondYear": 10360093
+      },
+      "flights": {
+        "firstYear": 83893,
+        "secondYear": 78703
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2590023,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.38,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.75,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -2.81,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0021,
+        "longHaulFlights": 335,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "DAL",
+      "name": "Dallas Love Field",
+      "municipality": "Dallas",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 8559052,
+        "secondYear": 8654991
+      },
+      "flights": {
+        "firstYear": 73633,
+        "secondYear": 71888
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 4327496,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.49,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.88,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 1.12,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PDX",
+      "name": "Portland International Airport",
+      "municipality": "Portland",
+      "state": "OR",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 8123054,
+        "secondYear": 8639088
+      },
+      "flights": {
+        "firstYear": 58117,
+        "secondYear": 58829
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2879696,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 5.13,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.41,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 6.35,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.1297,
+        "longHaulFlights": 15171,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "STL",
+      "name": "St. Louis Lambert International Airport",
+      "municipality": "St Louis",
+      "state": "MO",
+      "region": "West North Central",
+      "peerGroup": "medium",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 7307561,
+        "secondYear": 7807362
+      },
+      "flights": {
+        "firstYear": 61311,
+        "secondYear": 64892
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1951841,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.12,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 6.84,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0006,
+        "longHaulFlights": 79,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "RDU",
+      "name": "Raleigh-Durham International Airport",
+      "municipality": "Raleigh/Durham",
+      "state": "NC",
+      "region": "South Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 7119040,
+        "secondYear": 7584394
+      },
+      "flights": {
+        "firstYear": 58519,
+        "secondYear": 60392
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2528131,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.34,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.1,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 6.54,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0457,
+        "longHaulFlights": 5439,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "HOU",
+      "name": "William P. Hobby Airport",
+      "municipality": "Houston",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 6800320,
+        "secondYear": 7116967
+      },
+      "flights": {
+        "firstYear": 54780,
+        "secondYear": 56360
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2372322,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.77,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.75,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.66,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SMF",
+      "name": "Sacramento International Airport",
+      "municipality": "Sacramento",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 6371910,
+        "secondYear": 6679426
+      },
+      "flights": {
+        "firstYear": 52514,
+        "secondYear": 54654
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3339713,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.75,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.68,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.83,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0733,
+        "longHaulFlights": 7853,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MSY",
+      "name": "Louis Armstrong New Orleans International Airport",
+      "municipality": "New Orleans",
+      "state": "LA",
+      "region": "West South Central",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 6309212,
+        "secondYear": 6537092
+      },
+      "flights": {
+        "firstYear": 49088,
+        "secondYear": 49448
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3268546,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.88,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.71,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.61,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0136,
+        "longHaulFlights": 1337,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SJU",
+      "name": "Luis Munoz Marin International Airport",
+      "municipality": "San Juan",
+      "state": "PR",
+      "region": null,
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 5985001,
+        "secondYear": 6490669
+      },
+      "flights": {
+        "firstYear": 32207,
+        "secondYear": 34992
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 3245335,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.2,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 19.09,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.45,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0967,
+        "longHaulFlights": 6495,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MCI",
+      "name": "Kansas City International Airport",
+      "municipality": "Kansas City",
+      "state": "MO",
+      "region": "West North Central",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 5654068,
+        "secondYear": 5915078
+      },
+      "flights": {
+        "firstYear": 47930,
+        "secondYear": 49278
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1971693,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.8,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.13,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.62,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SJC",
+      "name": "Mineta San Jose International Airport",
+      "municipality": "San Jose",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 5958855,
+        "secondYear": 5822019
+      },
+      "flights": {
+        "firstYear": 51613,
+        "secondYear": 50053
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2911010,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.73,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 10.48,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -2.3,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0805,
+        "longHaulFlights": 8181,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SAT",
+      "name": "San Antonio International Airport",
+      "municipality": "San Antonio",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 5336684,
+        "secondYear": 5466684
+      },
+      "flights": {
+        "firstYear": 39157,
+        "secondYear": 41127
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1822228,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.6,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.42,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.44,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "RSW",
+      "name": "Southwest Florida International Airport",
+      "municipality": "Fort Myers",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 1,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 4963269,
+        "secondYear": 5425293
+      },
+      "flights": {
+        "firstYear": 32608,
+        "secondYear": 34068
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 5425293,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.83,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.31,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 9.31,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.007,
+        "longHaulFlights": 466,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SNA",
+      "name": "John Wayne Orange County International Airport",
+      "municipality": "Santa Ana",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 5706332,
+        "secondYear": 5370273
+      },
+      "flights": {
+        "firstYear": 44346,
+        "secondYear": 43115
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2685137,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -3.11,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 10.44,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -5.89,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0414,
+        "longHaulFlights": 3619,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "OAK",
+      "name": "Oakland San Francisco Bay Airport",
+      "municipality": "Oakland",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 5520812,
+        "secondYear": 5292736
+      },
+      "flights": {
+        "firstYear": 45557,
+        "secondYear": 41084
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1323184,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 5.69,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 10.42,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -4.13,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0825,
+        "longHaulFlights": 7150,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "IND",
+      "name": "Indianapolis International Airport",
+      "municipality": "Indianapolis",
+      "state": "IN",
+      "region": "East North Central",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 4788376,
+        "secondYear": 5181947
+      },
+      "flights": {
+        "firstYear": 44356,
+        "secondYear": 47126
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1727316,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.97,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.1,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.22,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "CLE",
+      "name": "Cleveland Hopkins International Airport",
+      "municipality": "Cleveland",
+      "state": "OH",
+      "region": "East North Central",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 4803822,
+        "secondYear": 4950345
+      },
+      "flights": {
+        "firstYear": 40980,
+        "secondYear": 40399
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1650115,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.47,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.36,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.05,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.043,
+        "longHaulFlights": 3497,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PIT",
+      "name": "Pittsburgh International Airport",
+      "municipality": "Pittsburgh",
+      "state": "PA",
+      "region": "Middle Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 4493052,
+        "secondYear": 4862376
+      },
+      "flights": {
+        "firstYear": 41565,
+        "secondYear": 43207
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1215594,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.27,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.39,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.22,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0303,
+        "longHaulFlights": 2567,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "CVG",
+      "name": "Cincinnati Northern Kentucky International Airport",
+      "municipality": "Cincinnati / Covington",
+      "state": "KY",
+      "region": "East South Central",
+      "peerGroup": "medium",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 4287722,
+        "secondYear": 4500414
+      },
+      "flights": {
+        "firstYear": 39154,
+        "secondYear": 40693
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1125104,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.03,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.61,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.96,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "CMH",
+      "name": "John Glenn Columbus International Airport",
+      "municipality": "Columbus",
+      "state": "OH",
+      "region": "East North Central",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 4095189,
+        "secondYear": 4387395
+      },
+      "flights": {
+        "firstYear": 40818,
+        "secondYear": 41791
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2193698,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.75,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.18,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.14,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0192,
+        "longHaulFlights": 1589,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PBI",
+      "name": "President Donald J. Trump International Airport",
+      "municipality": "West Palm Beach",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3815977,
+        "secondYear": 4127211
+      },
+      "flights": {
+        "firstYear": 26689,
+        "secondYear": 28961
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1375737,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.36,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 18.43,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.16,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0053,
+        "longHaulFlights": 293,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "JAX",
+      "name": "Jacksonville International Airport",
+      "municipality": "Jacksonville",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3619739,
+        "secondYear": 3749791
+      },
+      "flights": {
+        "firstYear": 28058,
+        "secondYear": 29749
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1874896,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.43,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.95,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.59,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 2,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ONT",
+      "name": "Ontario International Airport",
+      "municipality": "Ontario",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3181161,
+        "secondYear": 3494554
+      },
+      "flights": {
+        "firstYear": 24050,
+        "secondYear": 25943
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1747277,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 1.98,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.35,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 9.85,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0463,
+        "longHaulFlights": 2314,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "OGG",
+      "name": "Kahului International Airport",
+      "municipality": "Kahului",
+      "state": "HI",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3745866,
+        "secondYear": 3415615
+      },
+      "flights": {
+        "firstYear": 29705,
+        "secondYear": 26271
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1707808,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.74,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 7.23,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -8.82,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.4424,
+        "longHaulFlights": 24763,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BUR",
+      "name": "Hollywood Burbank/Bob Hope Airport",
+      "municipality": "Burbank",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3132029,
+        "secondYear": 3383237
+      },
+      "flights": {
+        "firstYear": 29242,
+        "secondYear": 30282
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1691619,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.46,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.97,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.02,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0108,
+        "longHaulFlights": 640,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BDL",
+      "name": "Bradley International Airport",
+      "municipality": "Hartford",
+      "state": "CT",
+      "region": "New England",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3122212,
+        "secondYear": 3285194
+      },
+      "flights": {
+        "firstYear": 21389,
+        "secondYear": 22002
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1642597,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.35,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.33,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.22,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0097,
+        "longHaulFlights": 420,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "CHS",
+      "name": "Charleston International Airport",
+      "municipality": "Charleston",
+      "state": "SC",
+      "region": "South Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 3032768,
+        "secondYear": 3115194
+      },
+      "flights": {
+        "firstYear": 24241,
+        "secondYear": 25263
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1557597,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.5,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.96,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.72,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.023,
+        "longHaulFlights": 1137,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MKE",
+      "name": "General Mitchell International Airport",
+      "municipality": "Milwaukee",
+      "state": "WI",
+      "region": "East North Central",
+      "peerGroup": "medium",
+      "runwayCount": 5,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2959840,
+        "secondYear": 3104054
+      },
+      "flights": {
+        "firstYear": 25759,
+        "secondYear": 28292
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 620811,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -4.96,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.21,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.87,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ANC",
+      "name": "Ted Stevens Anchorage International Airport",
+      "municipality": "Anchorage",
+      "state": "AK",
+      "region": "Pacific",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2681818,
+        "secondYear": 2767856
+      },
+      "flights": {
+        "firstYear": 17648,
+        "secondYear": 18266
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 922619,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.29,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.21,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.21,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.2436,
+        "longHaulFlights": 8750,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ABQ",
+      "name": "Albuquerque International Sunport",
+      "municipality": "Albuquerque",
+      "state": "NM",
+      "region": "Mountain",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2605163,
+        "secondYear": 2690218
+      },
+      "flights": {
+        "firstYear": 23320,
+        "secondYear": 23896
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 896739,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.79,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.66,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.26,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "OMA",
+      "name": "Eppley Airfield",
+      "municipality": "Omaha",
+      "state": "NE",
+      "region": "West North Central",
+      "peerGroup": "medium",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2464418,
+        "secondYear": 2583212
+      },
+      "flights": {
+        "firstYear": 22360,
+        "secondYear": 23478
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 861071,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.18,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.12,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.82,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BUF",
+      "name": "Buffalo Niagara International Airport",
+      "municipality": "Buffalo",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2291995,
+        "secondYear": 2499295
+      },
+      "flights": {
+        "firstYear": 20401,
+        "secondYear": 21674
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1249648,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.8,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.38,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 9.04,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0096,
+        "longHaulFlights": 406,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BOI",
+      "name": "Boise Air Terminal/Gowen Field",
+      "municipality": "Boise",
+      "state": "ID",
+      "region": "Mountain",
+      "peerGroup": "medium",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2369164,
+        "secondYear": 2475370
+      },
+      "flights": {
+        "firstYear": 21008,
+        "secondYear": 22724
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1237685,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -3.69,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.49,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.48,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "RIC",
+      "name": "Richmond International Airport",
+      "municipality": "Richmond",
+      "state": "VA",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2399239,
+        "secondYear": 2456422
+      },
+      "flights": {
+        "firstYear": 18470,
+        "secondYear": 18030
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1228211,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.77,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.42,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.38,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0097,
+        "longHaulFlights": 355,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ORF",
+      "name": "Norfolk International Airport",
+      "municipality": "Norfolk",
+      "state": "VA",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2307899,
+        "secondYear": 2444897
+      },
+      "flights": {
+        "firstYear": 20742,
+        "secondYear": 20761
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1222449,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 5.84,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.45,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.94,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MEM",
+      "name": "Frederick W. Smith International Airport",
+      "municipality": "Memphis",
+      "state": "TN",
+      "region": "East South Central",
+      "peerGroup": "small",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2399876,
+        "secondYear": 2439366
+      },
+      "flights": {
+        "firstYear": 22726,
+        "secondYear": 22318
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 609842,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.44,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.65,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 1.65,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "RNO",
+      "name": "Reno Tahoe International Airport",
+      "municipality": "Reno",
+      "state": "NV",
+      "region": "Mountain",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2251825,
+        "secondYear": 2377780
+      },
+      "flights": {
+        "firstYear": 19477,
+        "secondYear": 20736
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 792593,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.87,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.35,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.59,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0062,
+        "longHaulFlights": 251,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SDF",
+      "name": "Louisville Muhammad Ali International Airport",
+      "municipality": "Louisville",
+      "state": "KY",
+      "region": "East South Central",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2268034,
+        "secondYear": 2343305
+      },
+      "flights": {
+        "firstYear": 23078,
+        "secondYear": 23863
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 781102,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.08,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.76,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.32,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "OKC",
+      "name": "OKC Will Rogers World Airport",
+      "municipality": "Oklahoma City",
+      "state": "OK",
+      "region": "West South Central",
+      "peerGroup": "small",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2135106,
+        "secondYear": 2243575
+      },
+      "flights": {
+        "firstYear": 21125,
+        "secondYear": 22565
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 560894,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.74,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.52,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.08,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SRQ",
+      "name": "Sarasota Bradenton International Airport",
+      "municipality": "Sarasota/Bradenton",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2144736,
+        "secondYear": 2112417
+      },
+      "flights": {
+        "firstYear": 15433,
+        "secondYear": 15630
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1056209,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.78,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.7,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -1.51,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ELP",
+      "name": "El Paso International Airport",
+      "municipality": "El Paso",
+      "state": "TX",
+      "region": "West South Central",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2018137,
+        "secondYear": 2071894
+      },
+      "flights": {
+        "firstYear": 16875,
+        "secondYear": 17348
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 690631,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.14,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.47,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.66,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "GRR",
+      "name": "Gerald R. Ford International Airport",
+      "municipality": "Grand Rapids",
+      "state": "MI",
+      "region": "East North Central",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1899740,
+        "secondYear": 2065053
+      },
+      "flights": {
+        "firstYear": 16331,
+        "secondYear": 17946
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 688351,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.19,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.06,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.7,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "GEG",
+      "name": "Spokane International Airport",
+      "municipality": "Spokane",
+      "state": "WA",
+      "region": "Pacific",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2002286,
+        "secondYear": 2064142
+      },
+      "flights": {
+        "firstYear": 16457,
+        "secondYear": 17400
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1032071,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.64,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.4,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.09,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0027,
+        "longHaulFlights": 90,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "LGB",
+      "name": "Long Beach International Airport",
+      "municipality": "Long Beach",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1837634,
+        "secondYear": 2031810
+      },
+      "flights": {
+        "firstYear": 16365,
+        "secondYear": 17559
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 677270,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.27,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 8.25,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 10.57,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0674,
+        "longHaulFlights": 2285,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "KOA",
+      "name": "Ellison Onizuka Kona International Airport at Keāhole",
+      "municipality": "Kailua-Kona",
+      "state": "HI",
+      "region": "Pacific",
+      "peerGroup": "small",
+      "runwayCount": 1,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 2097042,
+        "secondYear": 2023899
+      },
+      "flights": {
+        "firstYear": 17165,
+        "secondYear": 16143
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 2023899,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.47,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 8.42,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -3.49,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.3948,
+        "longHaulFlights": 13150,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SAV",
+      "name": "Savannah Hilton Head International Airport",
+      "municipality": "Savannah",
+      "state": "GA",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1909590,
+        "secondYear": 2020753
+      },
+      "flights": {
+        "firstYear": 17200,
+        "secondYear": 18845
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1010377,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -3.74,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.95,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.82,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PVD",
+      "name": "Rhode Island T. F. Green International Airport",
+      "municipality": "Providence/Warwick",
+      "state": "RI",
+      "region": "New England",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1732909,
+        "secondYear": 1984916
+      },
+      "flights": {
+        "firstYear": 14142,
+        "secondYear": 14678
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 992458,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 10.75,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.47,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 14.54,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "TUS",
+      "name": "Tucson International Airport",
+      "municipality": "Tucson",
+      "state": "AZ",
+      "region": "Mountain",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1925546,
+        "secondYear": 1959789
+      },
+      "flights": {
+        "firstYear": 16632,
+        "secondYear": 18995
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 979895,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -12.43,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 12.76,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 1.78,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MYR",
+      "name": "Myrtle Beach International Airport",
+      "municipality": "Myrtle Beach",
+      "state": "SC",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 1,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1658984,
+        "secondYear": 1894929
+      },
+      "flights": {
+        "firstYear": 14201,
+        "secondYear": 15684
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1894929,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 3.78,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.76,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 14.22,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "LIH",
+      "name": "Lihue Airport",
+      "municipality": "Lihue, Kauai",
+      "state": "HI",
+      "region": "Pacific",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1814359,
+        "secondYear": 1776627
+      },
+      "flights": {
+        "firstYear": 15992,
+        "secondYear": 15809
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 888314,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.94,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 6.97,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -2.08,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.3475,
+        "longHaulFlights": 11050,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "TYS",
+      "name": "McGhee Tyson Airport",
+      "municipality": "Knoxville/Maryville",
+      "state": "TN",
+      "region": "East South Central",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1382197,
+        "secondYear": 1639080
+      },
+      "flights": {
+        "firstYear": 13821,
+        "secondYear": 16024
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 819540,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.65,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.46,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 18.59,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "TUL",
+      "name": "Tulsa International Airport",
+      "municipality": "Tulsa",
+      "state": "OK",
+      "region": "West South Central",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1571600,
+        "secondYear": 1627181
+      },
+      "flights": {
+        "firstYear": 16064,
+        "secondYear": 16984
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 542394,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -2.19,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.68,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 3.54,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PSP",
+      "name": "Palm Springs International Airport",
+      "municipality": "Palm Springs",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1625327,
+        "secondYear": 1617586
+      },
+      "flights": {
+        "firstYear": 13784,
+        "secondYear": 13668
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 808793,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.37,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.66,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -0.48,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0157,
+        "longHaulFlights": 431,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BHM",
+      "name": "Birmingham-Shuttlesworth International Airport",
+      "municipality": "Birmingham",
+      "state": "AL",
+      "region": "East South Central",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1499027,
+        "secondYear": 1596510
+      },
+      "flights": {
+        "firstYear": 15756,
+        "secondYear": 17024
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 798255,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.54,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.21,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 6.5,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "DSM",
+      "name": "Des Moines International Airport",
+      "municipality": "Des Moines",
+      "state": "IA",
+      "region": "West North Central",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1519262,
+        "secondYear": 1555454
+      },
+      "flights": {
+        "firstYear": 14468,
+        "secondYear": 15063
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 777727,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -1.73,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.4,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.38,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PNS",
+      "name": "Pensacola International Airport",
+      "municipality": "Pensacola",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1365976,
+        "secondYear": 1528204
+      },
+      "flights": {
+        "firstYear": 11296,
+        "secondYear": 13197
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 764102,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -4.95,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.52,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 11.88,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ALB",
+      "name": "Albany International Airport",
+      "municipality": "Albany",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1376492,
+        "secondYear": 1490673
+      },
+      "flights": {
+        "firstYear": 11691,
+        "secondYear": 11888
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 745337,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 6.61,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.38,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 8.3,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0033,
+        "longHaulFlights": 77,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SYR",
+      "name": "Syracuse Hancock International Airport",
+      "municipality": "Syracuse",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1412853,
+        "secondYear": 1486554
+      },
+      "flights": {
+        "firstYear": 13037,
+        "secondYear": 13174
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 743277,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.17,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 15.28,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 5.22,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "SFB",
+      "name": "Orlando Sanford International Airport",
+      "municipality": "Orlando",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1446884,
+        "secondYear": 1412954
+      },
+      "flights": {
+        "firstYear": 9062,
+        "secondYear": 9343
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 353239,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -5.45,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 24.71,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -2.35,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.0024,
+        "longHaulFlights": 44,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "GSP",
+      "name": "Greenville-Spartanburg International Airport",
+      "municipality": "Greenville/Greer/Spartanburg",
+      "state": "SC",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 1,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1258724,
+        "secondYear": 1412702
+      },
+      "flights": {
+        "firstYear": 13297,
+        "secondYear": 16090
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 1412702,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -8.77,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.22,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 12.23,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "ROC",
+      "name": "Frederick Douglass Greater Rochester International Airport",
+      "municipality": "Rochester",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1325357,
+        "secondYear": 1331837
+      },
+      "flights": {
+        "firstYear": 12820,
+        "secondYear": 11730
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 443946,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 8.99,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.69,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 0.49,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0.002,
+        "longHaulFlights": 49,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "BZN",
+      "name": "Bozeman Yellowstone International Airport",
+      "municipality": "Bozeman",
+      "state": "MT",
+      "region": "Mountain",
+      "peerGroup": "small",
+      "runwayCount": 4,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1230110,
+        "secondYear": 1321790
+      },
+      "flights": {
+        "firstYear": 9455,
+        "secondYear": 10121
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 330448,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 0.41,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 11.99,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 7.45,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "FAT",
+      "name": "Fresno Yosemite International Airport",
+      "municipality": "Fresno",
+      "state": "CA",
+      "region": "Pacific",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1201789,
+        "secondYear": 1318250
+      },
+      "flights": {
+        "firstYear": 11098,
+        "secondYear": 11707
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 659125,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 4.2,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 13.56,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 9.69,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "COS",
+      "name": "City of Colorado Springs Municipal Airport",
+      "municipality": "Colorado Springs",
+      "state": "CO",
+      "region": "Mountain",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1192123,
+        "secondYear": 1248261
+      },
+      "flights": {
+        "firstYear": 11421,
+        "secondYear": 12514
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 416087,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -4.86,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.29,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.71,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PIE",
+      "name": "St. Petersburg Clearwater International Airport",
+      "municipality": "Pinellas Park",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1246323,
+        "secondYear": 1228048
+      },
+      "flights": {
+        "firstYear": 7676,
+        "secondYear": 8085
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 614024,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -6.79,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 22.86,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": -1.47,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "PWM",
+      "name": "Portland International Jetport",
+      "municipality": "Portland",
+      "state": "ME",
+      "region": "New England",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1114714,
+        "secondYear": 1221913
+      },
+      "flights": {
+        "firstYear": 10691,
+        "secondYear": 11422
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 610957,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 2.78,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.13,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 9.62,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "HPN",
+      "name": "Westchester County Airport",
+      "municipality": "White Plains",
+      "state": "NY",
+      "region": "Middle Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1156719,
+        "secondYear": 1182384
+      },
+      "flights": {
+        "firstYear": 12724,
+        "secondYear": 12121
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 591192,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": 6.96,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 18.69,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 2.22,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "VPS",
+      "name": "Destin-Fort Walton Beach Airport",
+      "municipality": "Valparaiso",
+      "state": "FL",
+      "region": "South Atlantic",
+      "peerGroup": "small",
+      "runwayCount": 2,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1116717,
+        "secondYear": 1164880
+      },
+      "flights": {
+        "firstYear": 8985,
+        "secondYear": 9780
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 582440,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -4.54,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.98,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.31,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "MSN",
+      "name": "Dane County Regional Truax Field",
+      "municipality": "Madison",
+      "state": "WI",
+      "region": "East North Central",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1037983,
+        "secondYear": 1156399
+      },
+      "flights": {
+        "firstYear": 10370,
+        "secondYear": 11632
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 385466,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -0.76,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 16.87,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 11.41,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    },
+    {
+      "iata": "LIT",
+      "name": "Bill & Hillary Clinton National Airport/Adams Field",
+      "municipality": "Little Rock",
+      "state": "AR",
+      "region": "West South Central",
+      "peerGroup": "small",
+      "runwayCount": 3,
+      "slotLimit": null,
+      "enplanements": {
+        "firstYear": 1097472,
+        "secondYear": 1145693
+      },
+      "flights": {
+        "firstYear": 11546,
+        "secondYear": 12527
+      },
+      "inputs": {
+        "congestion": {
+          "raw": 381898,
+          "coverage": "present"
+        },
+        "unmetFlightDemand": {
+          "raw": -4.1,
+          "coverage": "present"
+        },
+        "delay": {
+          "raw": 14.62,
+          "coverage": "present"
+        },
+        "growth": {
+          "raw": 4.39,
+          "coverage": "present"
+        }
+      },
+      "longHaulShare": {
+        "share": 0,
+        "longHaulFlights": 0,
+        "coverage": "present"
+      }
+    }
+  ]
+}
