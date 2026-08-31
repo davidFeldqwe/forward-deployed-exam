@@ -227,7 +227,7 @@ There is no prior test suite in this repo; scoring tests are the first.
 
 ## Out of Scope
 
-- Voice, PDF export, heat-map-as-a-page, 3D map route, public guest chat
+- Voice input, cloud TTS, PDF export, heat-map-as-a-page, 3D map route, public guest chat (browser `speechSynthesis` on the last assistant prose is reopened by [exam edges](https://github.com/davidFeldqwe/forward-deployed-exam/issues/24); it adds no vendor and no key)
 - Live aviation HTTP at query time (document the vintage instead)
 - Universe beyond the top ~100
 - Airports, scores, or ingest output stored in Convex

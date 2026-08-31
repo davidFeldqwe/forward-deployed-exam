@@ -1,9 +1,11 @@
 import { carriedContext, type CarriedContext as CarriedContextView } from "@/app/carried-context";
 import { rankingView, type RankingView } from "@/app/ranking-view";
+import { spokenProse } from "@/app/read-aloud";
 import type { ThreadMessage } from "@/app/thread-messages";
 import { CarriedContext } from "@/components/answers/CarriedContext";
 import { Caveats } from "@/components/answers/Caveats";
 import { Ranking } from "@/components/answers/Ranking";
+import { ReadAloud } from "@/components/answers/ReadAloud";
 import { ResolvedSet } from "@/components/answers/ResolvedSet";
 import { ToolRow } from "@/components/answers/ToolRow";
 import { Prose, RoleLabel } from "@/components/Turn";
@@ -23,7 +25,11 @@ export function Transcript({ messages }: { messages: readonly ThreadMessage[] })
         <li key={index} className="flex flex-col gap-3">
           <RoleLabel role={message.role} />
           {message.role === "assistant" ? (
-            <Answer message={message} carried={carriedContext(messages, index)} />
+            <Answer
+              message={message}
+              carried={carriedContext(messages, index)}
+              spoken={spokenProse(messages, index)}
+            />
           ) : (
             <Prose text={message.text} />
           )}
@@ -36,9 +42,12 @@ export function Transcript({ messages }: { messages: readonly ThreadMessage[] })
 function Answer({
   message,
   carried,
+  spoken,
 }: {
   message: ThreadMessage;
   carried: CarriedContextView | null;
+  /** This answer's prose, when it is the one the read-aloud control speaks. */
+  spoken: string | null;
 }) {
   const rankings = message.toolCalls
     .map((call) => rankingView(call))
@@ -66,6 +75,9 @@ function Answer({
             </span>
           ) : null}
           <Prose text={message.text} />
+          {/* Read aloud sits with the prose it speaks, under it and above the
+              table it does not. */}
+          {spoken === null ? null : <ReadAloud text={spoken} />}
         </div>
       ) : null}
       {rankings.map((view, index) => (
