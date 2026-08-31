@@ -246,3 +246,88 @@ export const FIXTURE: AirportSnapshot = airportSnapshotSchema.parse({
     },
   ],
 });
+
+// The same slice plus three nonhub rows, the fourth FAA hub size. It is a second
+// snapshot rather than three more airports in the one above because the ten-row
+// slice is what the query tests pin their orders and counts against, and because
+// scoring both files is itself the check that a nonhub row does not move a large
+// hub's percentile: the ten shared rows have to come back identical.
+//
+// Three rows, not two, so every component has a nonhub distribution to rank in
+// even where BGR's BTS delay hole leaves it out — which is also why BGR is
+// Partial inputs: the fourth hub size does not get a 3-of-4 composite either.
+//
+// The numbers stay internally coherent the same way the slice's do: congestion is
+// enplanements per open runway, growth is the window change in enplanements, and
+// unmet flight demand is that growth minus the departure growth `flights` implies.
+export const NONHUB_FIXTURE: AirportSnapshot = airportSnapshotSchema.parse({
+  ...FIXTURE,
+  gaps: ["Fixture gap: this slice is thirteen airports, not the top 100."],
+  airports: [
+    ...FIXTURE.airports,
+    {
+      iata: "BGR",
+      name: "Bangor International Airport",
+      municipality: "Bangor",
+      state: "ME",
+      region: "New England",
+      latitude: 44.8074,
+      longitude: -68.8281,
+      peerGroup: "nonhub",
+      runwayCount: 1,
+      slotLimit: null,
+      enplanements: { firstYear: 130000, secondYear: 140400 },
+      flights: { firstYear: 3000, secondYear: 3300 },
+      inputs: {
+        congestion: { raw: 140400, coverage: "present" },
+        unmetFlightDemand: { raw: -2, coverage: "present" },
+        delay: { raw: null, coverage: "missing" },
+        growth: { raw: 8, coverage: "present" },
+      },
+      longHaulShare: { share: null, longHaulFlights: null, coverage: "missing" },
+    },
+    {
+      iata: "ITH",
+      name: "Ithaca Tompkins International Airport",
+      municipality: "Ithaca",
+      state: "NY",
+      region: "Middle Atlantic",
+      latitude: 42.491,
+      longitude: -76.4584,
+      peerGroup: "nonhub",
+      runwayCount: 1,
+      slotLimit: null,
+      enplanements: { firstYear: 100000, secondYear: 105000 },
+      flights: { firstYear: 4000, secondYear: 4160 },
+      inputs: {
+        congestion: { raw: 105000, coverage: "present" },
+        unmetFlightDemand: { raw: 1, coverage: "present" },
+        delay: { raw: 14, coverage: "present" },
+        growth: { raw: 5, coverage: "present" },
+      },
+      // A measured zero, not a blank: no departure crosses the 2,000-mile cutoff.
+      longHaulShare: { share: 0, longHaulFlights: 0, coverage: "present" },
+    },
+    {
+      iata: "MVY",
+      name: "Martha's Vineyard Airport",
+      municipality: "Vineyard Haven",
+      state: "MA",
+      region: "New England",
+      latitude: 41.3931,
+      longitude: -70.6143,
+      peerGroup: "nonhub",
+      runwayCount: 2,
+      slotLimit: null,
+      enplanements: { firstYear: 80000, secondYear: 76000 },
+      flights: { firstYear: 5000, secondYear: 4650 },
+      inputs: {
+        congestion: { raw: 38000, coverage: "present" },
+        unmetFlightDemand: { raw: 2, coverage: "present" },
+        delay: { raw: 9.5, coverage: "present" },
+        growth: { raw: -5, coverage: "present" },
+      },
+      longHaulShare: { share: 0, longHaulFlights: 0, coverage: "present" },
+    },
+  ],
+});

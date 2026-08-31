@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { COMPONENTS, WEIGHTS, candidateLamp, scoreUniverse } from "../src/index.ts";
-import { FIXTURE } from "./fixture.ts";
+import {
+  COMPONENTS,
+  WEIGHTS,
+  candidateLamp,
+  scoreUniverse,
+  type ScoredAirport,
+} from "../src/index.ts";
+import { FIXTURE, NONHUB_FIXTURE } from "./fixture.ts";
 import { rowLookup } from "./rows.ts";
 
 const scored = scoreUniverse(FIXTURE);
 const row = rowLookup(scored);
+
+const nonhubScored = scoreUniverse(NONHUB_FIXTURE);
+const nonhubRow = rowLookup(nonhubScored);
 
 function percentiles(iata: string) {
   const { scoreVector } = row(iata);
@@ -16,6 +25,22 @@ function percentiles(iata: string) {
     delay: scoreVector.delay.percentile,
     growth: scoreVector.growth.percentile,
   };
+}
+
+function nonhubPercentiles(iata: string) {
+  const { scoreVector } = nonhubRow(iata);
+  return {
+    congestion: scoreVector.congestion.percentile,
+    unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
+    delay: scoreVector.delay.percentile,
+    growth: scoreVector.growth.percentile,
+  };
+}
+
+/** The numbers scoring computes for one row, apart from the snapshot it read. */
+function scoredNumbers(scoredRow: ScoredAirport) {
+  const { scoreVector, composite, candidateLamp: lamp } = scoredRow;
+  return { scoreVector, composite, candidateLamp: lamp };
 }
 
 test("the weights are the locked 35/35/20/10 and sum to 100", () => {
@@ -96,6 +121,67 @@ test("a peer group of one is the median of itself, not the top of the country", 
     growth: 50,
   });
   assert.equal(row("ORH").composite, 50);
+});
+
+// #70 / #68 stories 9, 10 and 56: nonhub is the fourth FAA hub size, and its
+// rows rank among nonhub peers. BGR carries the smallest congestion raw in the
+// slice and the highest nonhub congestion rank, which is the Santa Ana versus
+// Los Angeles rule one hub size further down.
+test("a nonhub airport's percentiles are ranks among nonhub peers, not national ones", () => {
+  for (const iata of ["BGR", "ITH", "MVY"]) {
+    assert.equal(nonhubRow(iata).peerGroup, "nonhub");
+  }
+  assert.deepEqual(nonhubPercentiles("BGR"), {
+    congestion: 83, // 140,400 pax/runway — highest of three nonhub airports
+    unmetFlightDemand: 17, // -2.0 pp — lowest of the three
+    delay: null, // a BTS delay hole, so BGR is not in the nonhub delay field
+    growth: 83, // +8.0% — highest of the three
+  });
+  assert.deepEqual(nonhubPercentiles("ITH"), {
+    congestion: 50,
+    unmetFlightDemand: 50,
+    delay: 75, // 14.0 min — higher of the two nonhub airports with delay data
+    growth: 50,
+  });
+  assert.deepEqual(nonhubPercentiles("MVY"), {
+    congestion: 17,
+    unmetFlightDemand: 83,
+    delay: 25,
+    growth: 17,
+  });
+
+  // BGR is under a fraction of ORD's load per runway and outranks it, because
+  // neither number is a reading of the other's field.
+  const bgr = nonhubRow("BGR");
+  const ord = nonhubRow("ORD");
+  assert.ok(bgr.scoreVector.congestion.raw! < ord.scoreVector.congestion.raw!);
+  assert.ok(bgr.scoreVector.congestion.percentile! > ord.scoreVector.congestion.percentile!);
+  assert.equal(ord.scoreVector.congestion.percentile, 50); // middle of five large hubs
+});
+
+// The fourth hub size ranks in a field of its own, so the other three cannot
+// feel it: scoring the slice with and without the nonhub rows has to hand the
+// ten shared airports the same vectors, composites and lamps.
+test("nonhub rows leave the large, medium and small percentiles exactly as they were", () => {
+  for (const { iata } of FIXTURE.airports) {
+    assert.deepEqual(scoredNumbers(nonhubRow(iata)), scoredNumbers(row(iata)), iata);
+  }
+});
+
+test("a nonhub row with a missing component withholds its composite, like any other", () => {
+  const bgr = nonhubRow("BGR");
+  assert.equal(bgr.composite, null);
+  assert.equal(bgr.candidateLamp, "Partial inputs");
+  assert.notEqual(bgr.composite, 0);
+  // The three present components are still nonhub ranks an analyst can read.
+  assert.equal(bgr.scoreVector.congestion.percentile, 83);
+
+  // ITH: 0.35*50 + 0.35*50 + 0.20*75 + 0.10*50 = 55, on nonhub ranks alone.
+  assert.equal(nonhubRow("ITH").composite, 55);
+  assert.equal(nonhubRow("ITH").candidateLamp, "Mixed vector");
+  // MVY: 0.35*17 + 0.35*83 + 0.20*25 + 0.10*17 = 41.7.
+  assert.equal(nonhubRow("MVY").composite, 42);
+  assert.equal(nonhubRow("MVY").candidateLamp, "Mixed vector");
 });
 
 test("a missing component is withheld, never zero-filled or re-weighted", () => {

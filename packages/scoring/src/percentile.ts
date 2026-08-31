@@ -42,6 +42,7 @@ export function peerDistributions(airports: readonly SnapshotAirport[]): PeerDis
     large: emptyDistribution(),
     medium: emptyDistribution(),
     small: emptyDistribution(),
+    nonhub: emptyDistribution(),
   };
   for (const airport of airports) {
     const distribution = distributions[airport.peerGroup];

@@ -42,6 +42,7 @@ const isPeerGroup = isLabelIn<ScoredAirport["peerGroup"]>({
   large: true,
   medium: true,
   small: true,
+  nonhub: true,
 });
 
 const isSlotLevel = isLabelIn<NonNullable<ScoredAirport["slotLimit"]>>({
