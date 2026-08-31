@@ -285,6 +285,11 @@ a:focus-visible {
   line-height: 1.4;
 }
 
+.question-card:hover {
+  border-color: var(--meta);
+  color: var(--text);
+}
+
 .question-arrow {
   flex: none;
   color: var(--meta);
@@ -400,6 +405,36 @@ a:focus-visible {
   justify-content: space-between;
   gap: 16px;
   padding: 0 24px;
+}
+
+.chat-header-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-sign-out {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 510;
+  cursor: pointer;
+}
+
+.chat-sign-out:hover {
+  color: var(--accent-hover);
+}
+
+.chat-sign-out:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px rgba(var(--accent-rgb), 0.4),
+    0 0 0 4px rgba(var(--accent-rgb), 0.2);
 }
 
 .chat-comparison-window {
@@ -522,6 +557,191 @@ a:focus-visible {
 
 .chat-send:focus-visible {
   outline: none;
+  box-shadow:
+    0 0 0 2px rgba(var(--accent-rgb), 0.4),
+    0 0 0 4px rgba(var(--accent-rgb), 0.2);
+}
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.login-header {
+  flex: none;
+  height: 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--header);
+}
+
+.login-column {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.login-header-inner {
+  max-width: 720px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.login-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 48px 0 64px;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px 22px;
+}
+
+.login-heading {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 510;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.login-subtitle {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--meta);
+}
+
+.login-carried {
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+.login-carried-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--meta);
+}
+
+.login-carried-prompt {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field label {
+  font-size: 12px;
+  font-weight: 510;
+  color: var(--meta);
+}
+
+.login-field input {
+  height: 36px;
+  padding: 0 12px;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.login-field input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
+}
+
+.login-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--body);
+}
+
+.login-submit {
+  height: 34px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 510;
+  cursor: pointer;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.login-submit:disabled {
+  background: var(--raised);
+  color: var(--meta);
+  cursor: default;
+}
+
+.login-submit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(var(--accent-rgb), 0.4),
+    0 0 0 4px rgba(var(--accent-rgb), 0.2);
+}
+
+.login-switch {
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--meta);
+}
+
+.login-switch-action {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 510;
+  cursor: pointer;
+}
+
+.login-switch-action:hover {
+  color: var(--accent-hover);
+}
+
+.login-switch-action:focus-visible {
+  outline: none;
+  border-radius: 4px;
   box-shadow:
     0 0 0 2px rgba(var(--accent-rgb), 0.4),
     0 0 0 4px rgba(var(--accent-rgb), 0.2);

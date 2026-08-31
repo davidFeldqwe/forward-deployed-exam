@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 
+import { signOut } from "@/app/auth-actions";
 import { chatCopy } from "@/app/chat-copy";
 
-export function Chat() {
-  const [draft, setDraft] = useState("");
+export function Chat({ initialPrompt }: { initialPrompt: string | null }) {
+  const [draft, setDraft] = useState(initialPrompt ?? "");
   const ready = draft.trim().length > 0;
 
   return (
@@ -16,7 +17,16 @@ export function Chat() {
             <span className="wordmark-mark" aria-hidden="true" />
             <span className="wordmark-name">{chatCopy.wordmark}</span>
           </div>
-          <span className="chat-comparison-window">{chatCopy.comparisonWindow}</span>
+          <div className="chat-header-actions">
+            <span className="chat-comparison-window">
+              {chatCopy.comparisonWindow}
+            </span>
+            <form action={signOut}>
+              <button type="submit" className="chat-sign-out">
+                {chatCopy.signOutLabel}
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { chatPathWithPrompt } from "@/app/auth-gate";
 import { landingCopy } from "@/app/landing-copy";
 
 export function Landing() {
@@ -79,11 +80,13 @@ export function Landing() {
           </h2>
           <ul className="question-list">
             {suggestedQuestions.map((question) => (
-              <li key={question} className="question-card">
-                <span>{question}</span>
-                <span className="question-arrow" aria-hidden="true">
-                  →
-                </span>
+              <li key={question}>
+                <Link className="question-card" href={chatPathWithPrompt(question)}>
+                  <span>{question}</span>
+                  <span className="question-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
