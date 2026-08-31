@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
 
-import { LAMP_LEGEND_NOTE, lampPill } from "./lamp-hue.ts";
+import { LAMP_LEGEND_NOTE, lampMarker, lampPill } from "./lamp-hue.ts";
 
 const HUE_CLASS = /(?:text|bg|border)-lamp-/;
 
@@ -27,6 +27,19 @@ test("Partial inputs and No data are grey or outline, and never red", () => {
 test("every lamp word has a pill, so no row can print words with no pill", () => {
   for (const lamp of CANDIDATE_LAMPS) {
     assert.match(lampPill(lamp), /border/);
+  }
+});
+
+test("a map marker lights the same hue its row's lamp does, and missing is not red", () => {
+  // The marker takes the row's own lamp, so the two cannot disagree; the map
+  // legend prints the words, which is what lets the marker be a dot at all.
+  assert.match(lampMarker("Strong candidate"), /lamp-strong/);
+  assert.match(lampMarker("Mixed vector"), /lamp-mixed/);
+  assert.match(lampMarker("Weak candidate"), /lamp-weak/);
+
+  for (const lamp of ["Partial inputs", "No data"] as const) {
+    assert.doesNotMatch(lampMarker(lamp), /lamp-/);
+    assert.match(lampMarker(lamp), /muted-foreground/);
   }
 });
 

@@ -71,6 +71,24 @@ export function assistantMessage(
 }
 
 /**
+ * The question an answer replies to: the nearest user turn above it, or null
+ * when there is none. Both the carried context and the map gate read *this*
+ * message and no other, so they read it the same way.
+ */
+export function previousQuestion(
+  messages: readonly ThreadMessage[],
+  index: number,
+): string | null {
+  for (let at = index - 1; at >= 0; at -= 1) {
+    const message = messages[at];
+    if (message?.role === "user") {
+      return message.text;
+    }
+  }
+  return null;
+}
+
+/**
  * The rows a persisted `queryAirports` call re-renders from, or null when the
  * call is not a ranking. `parseThreadMessage` has already checked every field
  * of every row against `ScoredAirport` (`RANKING_ROW_CHECKS`), so the cast is
