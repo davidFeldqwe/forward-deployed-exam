@@ -36,6 +36,10 @@ objects — needs no key at all.
 | `OPENAI_MODEL` | override the default OpenAI model (`gpt-4o`, falling back to `gpt-4o-mini` if the account cannot see it). |
 | `AUTH_SECRET` | signs the session cookie. Required when `NODE_ENV` is `production`; development falls back to a dev-only secret. |
 
+The root `.env.example` is that table with empty values. Copy it to
+`apps/web/.env.local` — that is where Next loads it from, and `.gitignore`
+refuses every `.env` file but the example — then fill in what you need.
+
 Those two key names are the only LLM credentials this repo reads
 (`apps/web/app/agent-provider.ts`). A Claude Code subscription credential is not
 an API key and nothing here looks for one — paste a vendor API key or leave both
