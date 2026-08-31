@@ -80,18 +80,23 @@ function scriptedModel(script: readonly ScriptedTurn[]): AgentLanguageModel {
   };
 }
 
+/** The scripted call itself, so both loops are handed the same one. */
+function toolCallPart({ name, input }: NonNullable<ScriptedTurn["toolCall"]>, turn: number) {
+  return {
+    type: "tool-call" as const,
+    toolCallId: `call-${turn}`,
+    toolName: name,
+    input: JSON.stringify(input),
+  };
+}
+
 function content(scripted: ScriptedTurn, turn: number): ModelContent[] {
   const parts: ModelContent[] = [];
   if (scripted.text !== undefined) {
     parts.push({ type: "text", text: scripted.text });
   }
   if (scripted.toolCall) {
-    parts.push({
-      type: "tool-call",
-      toolCallId: `call-${turn}`,
-      toolName: scripted.toolCall.name,
-      input: JSON.stringify(scripted.toolCall.input),
-    });
+    parts.push(toolCallPart(scripted.toolCall, turn));
   }
   return parts;
 }
@@ -108,12 +113,7 @@ function streamParts(scripted: ScriptedTurn, turn: number): ModelStreamPart[] {
     );
   }
   if (scripted.toolCall) {
-    parts.push({
-      type: "tool-call",
-      toolCallId: `call-${turn}`,
-      toolName: scripted.toolCall.name,
-      input: JSON.stringify(scripted.toolCall.input),
-    });
+    parts.push(toolCallPart(scripted.toolCall, turn));
   }
   return [...parts, { type: "finish", finishReason: finishReason(scripted), usage: USAGE }];
 }
@@ -127,6 +127,11 @@ function streamOf(parts: ModelStreamPart[]): ReadableStream<ModelStreamPart> {
       controller.close();
     },
   });
+}
+
+/** A model whose stream is written out by hand, for a failure no script says. */
+function failingModel(doStream: AgentLanguageModel["doStream"]): AgentLanguageModel {
+  return { ...scriptedModel([]), doStream };
 }
 
 /** The answer as the store holds it: a duration is a measurement, not a value. */
@@ -172,10 +177,25 @@ test("the streamed loop stops at the step cap, however long the model keeps call
 });
 
 test("a stream that fails throws the model's own error, so the fallback can read it", async () => {
-  const unavailable = {
-    ...scriptedModel([]),
-    doStream: () => Promise.reject(new Error("model_not_found")),
-  };
+  const unavailable = failingModel(() => Promise.reject(new Error("model_not_found")));
 
   await assert.rejects(streamModelAnswer(unavailable, REQUEST), /model_not_found/);
+});
+
+test("a stream that fails after prose throws rather than storing the half answer", async () => {
+  // `streamText` resolves the prose it did read, so the loop's own guard is the
+  // only thing standing between an interrupted answer and the thread.
+  const stoppedMidAnswer = failingModel(() =>
+    Promise.resolve({
+      stream: streamOf([
+        { type: "stream-start", warnings: [] },
+        { type: "text-start", id: "text-1" },
+        { type: "text-delta", id: "text-1", delta: PROSE },
+        { type: "error", error: new Error("overloaded_error") },
+        { type: "finish", finishReason: "stop", usage: USAGE },
+      ]),
+    }),
+  );
+
+  await assert.rejects(streamModelAnswer(stoppedMidAnswer, REQUEST), /overloaded_error/);
 });
