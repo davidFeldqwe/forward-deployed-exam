@@ -19,11 +19,14 @@ export function clip(text: string, maxLength: number): string {
 /**
  * Where a phrase begins in a text, as words rather than as letters inside a
  * longer one, or -1. Letters bound it on both sides — `\p{L}`, so an accented
- * name is one word — which keeps "Virginia" out of a "West Virginia" question
- * and "ME" out of "come". The bounds are lookarounds and match no character of
- * their own, so the index returned is the phrase's own: callers that compare
- * two of them are comparing where the two phrases start. A blank phrase is
- * nowhere: it would otherwise match the gap between any two characters.
+ * name is one word — which keeps "ME" out of "come" and "Ohio" out of "Ohioan".
+ * A phrase that is a whole word inside a longer name still matches, "Virginia"
+ * in "West Virginia" among them: which of two overlapping names a caller wants
+ * is the caller's to decide, from the indices this returns. The bounds are
+ * lookarounds and match no character of their own, so the index returned is the
+ * phrase's own: callers that compare two of them are comparing where the two
+ * phrases start. A blank phrase is nowhere: it would otherwise match the gap
+ * between any two characters.
  */
 export function indexOfPhrase(text: string, phrase: string): number {
   if (phrase.trim().length === 0) {
