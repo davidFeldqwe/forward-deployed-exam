@@ -50,6 +50,19 @@ function tags(parts: readonly ThreadAnswerPart[]): ThreadAnswerTag[] {
   return parts.map((part) => part.tag);
 }
 
+/** The Thread answer for a thread of one question and the answer to it. */
+function answerTurn(answer: ThreadMessage): ThreadAnswerPart[] {
+  return threadAnswer([userMessage("Which ones?"), answer], 1);
+}
+
+/** A ranking answer, and the follow-up whose reference the thread resolved. */
+const followUpThread: ThreadMessage[] = [
+  userMessage("Which airports in New England are renovation-investment candidates?"),
+  assistantMessage("PVD leads the set.", [newEngland]),
+  userMessage("Tell me more about the second one."),
+  assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
+];
+
 // The locked grouped order (issue #35), asserted on the list the transcript
 // draws rather than on the order components happen to be written in.
 test("a stored ranking turn is one list: tool, resolved set, prose, table, caveats", () => {
@@ -68,13 +81,7 @@ test("a stored ranking turn is one list: tool, resolved set, prose, table, cavea
 });
 
 test("carried context sits before the resolved airport set and the table", () => {
-  const messages = [
-    userMessage("Which airports in New England are renovation-investment candidates?"),
-    assistantMessage("PVD leads the set.", [newEngland]),
-    userMessage("Tell me more about the second one."),
-    assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
-  ];
-  const list = tags(threadAnswer(messages, 3));
+  const list = tags(threadAnswer(followUpThread, 3));
 
   assert.deepEqual(list, ["tool", "carried", "resolved", "prose", "ranking", "caveats"]);
   assert.ok(list.indexOf("carried") < list.indexOf("resolved"));
@@ -135,8 +142,7 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
 
 test("the prose heading is drawn only where a table sits under it", () => {
   const heading = (message: ThreadMessage) =>
-    threadAnswer([userMessage("Which ones?"), message], 1).find((part) => part.tag === "prose")
-      ?.heading;
+    answerTurn(message).find((part) => part.tag === "prose")?.heading;
 
   assert.equal(heading(assistantMessage("PVD leads.", [newEngland])), PROSE_HEADING);
   assert.equal(heading(assistantMessage("Congestion is 35.", [methodology])), null);
@@ -146,21 +152,6 @@ test("the prose heading is drawn only where a table sits under it", () => {
   // One call of two matched rows: there is a table under the prose, so the
   // label is drawn.
   assert.equal(heading(assistantMessage("PVD leads.", [matchedNothing, newEngland])), PROSE_HEADING);
-});
-
-test("read aloud rides on the prose tag of the last speaking turn only", () => {
-  const messages: ThreadMessage[] = [
-    userMessage("New England?"),
-    assistantMessage("PVD leads.", [newEngland]),
-    userMessage("And the second one?"),
-    assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
-  ];
-
-  assert.equal(threadAnswer(messages, 1).find((part) => part.tag === "prose")?.spoken, null);
-  assert.equal(
-    threadAnswer(messages, 3).find((part) => part.tag === "prose")?.spoken,
-    "Bradley's delay percentile is the reason.",
-  );
 });
 
 test("only an assistant turn has a Thread answer", () => {
@@ -176,16 +167,9 @@ test("the pending Thread answer is one pending row and nothing else", () => {
   assert.deepEqual(tags(PENDING_THREAD_ANSWER), ["pending"]);
 
   const [row] = PENDING_THREAD_ANSWER;
-  assert.ok(row);
   // It holds the copy it draws and no field a score could arrive in — no
   // composite, no candidate lamp, no score vector, no rows.
-  assert.deepEqual(Object.keys(row).sort(), [
-    "airportLabel",
-    "label",
-    "note",
-    "rowLabel",
-    "tag",
-  ]);
+  assert.deepEqual(Object.keys(row).sort(), ["airportLabel", "label", "note", "rowLabel", "tag"]);
   assert.equal(row.rowLabel, pendingAnswer.rowLabel);
   // Not a withheld composite either: the screen has not run.
   assert.doesNotMatch(JSON.stringify(row), new RegExp(WITHHELD_COMPOSITE));
@@ -196,21 +180,12 @@ test("the pending Thread answer is one pending row and nothing else", () => {
 // one turn's sequence; this pins the rule they are examples of, including for
 // the turns nobody wrote an example for.
 test("every Thread answer reads down the locked tag order", () => {
-  const follow = [
-    userMessage("Which airports in New England are renovation-investment candidates?"),
-    assistantMessage("PVD leads the set.", [newEngland]),
-    userMessage("Tell me more about the second one."),
-    assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
-  ];
   const turns: ThreadAnswerPart[][] = [
-    ...follow.map((_, at) => threadAnswer(follow, at)),
-    threadAnswer(
-      [userMessage("Both?"), assistantMessage("Two sets.", [newEngland, matchedNothing])],
-      1,
-    ),
-    threadAnswer([userMessage("Weights?"), assistantMessage("Congestion is 35.", [methodology])], 1),
-    threadAnswer([userMessage("Nunavut?"), assistantMessage("Nothing matched.", [matchedNothing])], 1),
-    threadAnswer([userMessage("Hello."), assistantMessage("Ask about an airport.")], 1),
+    ...followUpThread.map((_, at) => threadAnswer(followUpThread, at)),
+    answerTurn(assistantMessage("Two sets.", [newEngland, matchedNothing])),
+    answerTurn(assistantMessage("Congestion is 35.", [methodology])),
+    answerTurn(assistantMessage("Nothing matched.", [matchedNothing])),
+    answerTurn(assistantMessage("Ask about an airport.")),
     [...PENDING_THREAD_ANSWER],
   ];
 

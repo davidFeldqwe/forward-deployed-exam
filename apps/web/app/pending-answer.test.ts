@@ -48,6 +48,7 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   // the composer that submits it are inside the one form.
   assert.ok(form > 0 && pending > form, "the pending answer is inside the composer's form");
   assert.ok(composer > pending, "the transcript's pending row is drawn above the composer");
-  // Chat decides the form is in flight; nothing under the Thread answer does.
+  // The pending answer is what reads the form status; nothing under the Thread
+  // answer it draws does.
   assert.match(source("components/answers/PendingAnswer.tsx"), /useFormStatus/);
 });

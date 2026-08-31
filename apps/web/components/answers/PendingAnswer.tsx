@@ -7,10 +7,10 @@ import { ThreadAnswer } from "@/components/answers/ThreadAnswer";
 import { Prose, RoleLabel } from "@/components/Turn";
 
 /**
- * The question on its way, and the Thread answer under it (PRD story 35). Chat
- * decides the form is in flight; the question it drew is a user turn, and the
- * answer beside it is `PENDING_THREAD_ANSWER` — a pending row, and no tag that
- * could hold a composite, a candidate lamp or a score vector.
+ * The question on its way, and the Thread answer under it (PRD story 35). It is
+ * drawn only while the composer's form is in flight: the question is a user
+ * turn, and the answer under it is `PENDING_THREAD_ANSWER` — a pending row, and
+ * no tag that could hold a composite, a candidate lamp or a score vector.
  */
 export function PendingAnswer({ question }: { question: string }) {
   const { pending } = useFormStatus();

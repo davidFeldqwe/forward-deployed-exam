@@ -35,7 +35,10 @@ export type ThreadAnswerPart =
       text: string;
       /** The boundary label, or null where there is no table to tell it from. */
       heading: string | null;
-      /** This prose, when it is the one the read-aloud control speaks. */
+      /**
+       * This prose, when it is the one the read-aloud control speaks —
+       * `read-aloud.ts` decides which turn that is.
+       */
       spoken: string | null;
     }
   | { tag: "ranking"; rows: RankingRowView[]; lookup: RankingView["lookup"]; sortLabel: string }
@@ -80,8 +83,8 @@ export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
  * lamp and no score vector in this list — not even the withheld-composite mark,
  * which says the screen ran and held a number back, and nothing has run yet.
  *
- * The in-flight question is a user turn, not part of this list, and Chat is
- * what decides the form is in flight.
+ * The in-flight question is a user turn, not part of this list, and the
+ * composer's form is what says the answer is still on its way.
  */
 export const PENDING_THREAD_ANSWER: readonly [PendingRowPart] = [
   { tag: "pending", ...pendingAnswer },
@@ -101,7 +104,7 @@ export function threadAnswer(
   }
   const views = message.toolCalls
     .map((call) => rankingView(call))
-    .filter((view): view is RankingView => view !== null);
+    .filter((view) => view !== null);
   // A query that matched nothing has a resolved set to show and no table, so
   // the tables are their own list: what the prose is labelled off from.
   const tables = views.filter((view) => view.rows.length > 0);
