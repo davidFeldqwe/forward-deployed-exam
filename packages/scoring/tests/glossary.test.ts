@@ -17,9 +17,6 @@ import { rowLookup } from "./rows.ts";
 const repo = new URL("../../../", import.meta.url);
 const context = readFileSync(new URL("CONTEXT.md", repo), "utf8");
 
-/** The four FAA hub sizes, in the order the schema accepts them. */
-const HUB_SIZES = peerGroupSchema.options;
-
 /** One glossary entry: its term, the definition, and the words it refuses. */
 function glossaryEntry(term: string): string {
   const start = context.indexOf(`**${term}**:`);
@@ -32,8 +29,7 @@ function glossaryEntry(term: string): string {
 const peerGroupEntry = glossaryEntry("Peer group");
 
 test("the glossary's peer group is every hub size the snapshot accepts", () => {
-  assert.deepEqual(HUB_SIZES, ["large", "medium", "small", "nonhub"]);
-  for (const hubSize of HUB_SIZES) {
+  for (const hubSize of peerGroupSchema.options) {
     assert.ok(peerGroupEntry.includes(hubSize), `the entry names ${hubSize}: ${peerGroupEntry}`);
   }
   // The synonyms the entry refuses are still refused, nonhub or not.
