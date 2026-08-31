@@ -1,0 +1,19 @@
+{
+  "name": "@repo/scoring",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "eslint": "9.39.4",
+    "jiti": "2.7.0",
+    "typescript": "5.9.3"
+  }
+}
