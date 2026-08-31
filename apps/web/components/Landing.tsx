@@ -138,7 +138,10 @@ export function Landing() {
           >
             Try one of these questions
           </h2>
-          <PromptChips questions={suggestedQuestions} href={chatPathWithPrompt} />
+          <PromptChips
+            questions={suggestedQuestions}
+            href={suggestedQuestions.map(chatPathWithPrompt)}
+          />
         </section>
 
         <section

@@ -16,7 +16,7 @@ const chipMotion =
 type PromptChipsProps = {
   questions: readonly string[];
 } & (
-  | { href: string | ((question: string) => string); onSelect?: never }
+  | { href: string | readonly string[]; onSelect?: never }
   | { href?: never; onSelect: (question: string) => void }
 );
 
@@ -24,7 +24,7 @@ export function PromptChips({ questions, href, onSelect }: PromptChipsProps) {
   return (
     <ul className="flex list-none flex-col gap-2 p-0">
       {questions.map((question, index) => {
-        const chipHref = typeof href === "function" ? href(question) : href;
+        const chipHref = Array.isArray(href) ? href[index] : href;
         return (
           <li key={question}>
             <Item
