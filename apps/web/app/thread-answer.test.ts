@@ -38,6 +38,14 @@ const methodology: ToolCall = {
 
 const newEngland = query({ region: "New England" });
 
+/** A query the screen ran and matched nothing with: a resolved set, no rows. */
+const matchedNothing: ToolCall = {
+  tool: "queryAirports",
+  args: { region: "New England" },
+  result: { rows: [], matched: 0, resolvedIata: [], sortBy: "composite", limit: 10 },
+  durationMs: 4,
+};
+
 function tags(parts: readonly ThreadAnswerPart[]): ThreadAnswerTag[] {
   return parts.map((part) => part.tag);
 }
@@ -112,13 +120,10 @@ test("a methodology-only turn is tool and prose, and nothing it has no rows for"
 });
 
 test("an empty tag is omitted: no rows is no table and no caveats", () => {
-  const empty: ToolCall = {
-    tool: "queryAirports",
-    args: { region: "New England" },
-    result: { rows: [], matched: 0, resolvedIata: [], sortBy: "composite", limit: 10 },
-    durationMs: 4,
-  };
-  const messages = [userMessage("Anything in Nunavut?"), assistantMessage("Nothing matched.", [empty])];
+  const messages = [
+    userMessage("Anything in Nunavut?"),
+    assistantMessage("Nothing matched.", [matchedNothing]),
+  ];
 
   // The resolved set still speaks — it is what says nothing matched.
   assert.deepEqual(tags(threadAnswer(messages, 1)), ["tool", "resolved", "prose"]);
@@ -129,17 +134,18 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
 });
 
 test("the prose heading is drawn only where a table sits under it", () => {
-  const withTable = threadAnswer(
-    [userMessage("New England?"), assistantMessage("PVD leads.", [newEngland])],
-    1,
-  );
-  const alone = threadAnswer(
-    [userMessage("Weights?"), assistantMessage("Congestion is 35.", [methodology])],
-    1,
-  );
+  const heading = (message: ThreadMessage) =>
+    threadAnswer([userMessage("Which ones?"), message], 1).find((part) => part.tag === "prose")
+      ?.heading;
 
-  assert.equal(withTable.find((part) => part.tag === "prose")?.heading, PROSE_HEADING);
-  assert.equal(alone.find((part) => part.tag === "prose")?.heading, null);
+  assert.equal(heading(assistantMessage("PVD leads.", [newEngland])), PROSE_HEADING);
+  assert.equal(heading(assistantMessage("Congestion is 35.", [methodology])), null);
+  // A query that matched nothing draws no table, so the boundary the label
+  // marks has nothing on the other side of it: no label either.
+  assert.equal(heading(assistantMessage("Nothing matched.", [matchedNothing])), null);
+  // One call of two matched rows: there is a table under the prose, so the
+  // label is drawn.
+  assert.equal(heading(assistantMessage("PVD leads.", [matchedNothing, newEngland])), PROSE_HEADING);
 });
 
 test("read aloud rides on the prose tag of the last speaking turn only", () => {

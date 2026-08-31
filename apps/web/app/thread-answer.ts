@@ -101,6 +101,9 @@ export function threadAnswer(
   const views = message.toolCalls
     .map((call) => rankingView(call))
     .filter((view): view is RankingView => view !== null);
+  // A query that matched nothing has a resolved set to show and no table, so
+  // the tables are their own list: what the prose is labelled off from.
+  const tables = views.filter((view) => view.rows.length > 0);
   const carried = carriedContext(messages, index);
 
   // The locked order, one group per block, each one skipped where it is empty.
@@ -120,20 +123,17 @@ export function threadAnswer(
     parts.push({
       tag: "prose",
       text: message.text,
-      heading: views.length > 0 ? PROSE_HEADING : null,
+      heading: tables.length > 0 ? PROSE_HEADING : null,
       spoken: spokenProse(messages, index),
     });
   }
-  for (const view of views) {
-    // A query that matched nothing has a resolved set to show and no table.
-    if (view.rows.length > 0) {
-      parts.push({
-        tag: "ranking",
-        rows: view.rows,
-        lookup: view.lookup,
-        sortLabel: view.sortLabel,
-      });
-    }
+  for (const view of tables) {
+    parts.push({
+      tag: "ranking",
+      rows: view.rows,
+      lookup: view.lookup,
+      sortLabel: view.sortLabel,
+    });
   }
   const assumptions = mergedLines(views, "assumptions");
   const gaps = mergedLines(views, "gaps");
