@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
+import { CANDIDATE_LAMPS } from "@repo/scoring";
+
 import { pendingAnswer } from "./pending-answer.ts";
 import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
 
@@ -36,6 +38,13 @@ test("the pending row draws no composite, no lamp pill and no hue", () => {
   // be typed in here, and no answer object is in reach to read one from.
   assert.match(row, /row\.rowLabel/);
   assert.doesNotMatch(row, /ranking-view|scoreVector/);
+  // Nor typed in as words. A lamp word is a coverage state the screen decided,
+  // and this row is drawn before it ran — "Partial inputs" is a scored row with
+  // a component missing, which is not the same absence as a row with no screen
+  // behind it at all.
+  for (const lamp of CANDIDATE_LAMPS) {
+    assert.doesNotMatch(row, new RegExp(lamp, "i"), lamp);
+  }
 });
 
 test("the composer's form is what the pending answer is drawn inside", () => {

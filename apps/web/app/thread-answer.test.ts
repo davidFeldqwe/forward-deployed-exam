@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
+import { CANDIDATE_LAMPS } from "@repo/scoring";
+
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { pendingAnswer } from "./pending-answer.ts";
 import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
@@ -173,6 +175,13 @@ test("the pending Thread answer is one pending row and nothing else", () => {
   assert.equal(row.rowLabel, pendingAnswer.rowLabel);
   // Not a withheld composite either: the screen has not run.
   assert.doesNotMatch(JSON.stringify(row), new RegExp(WITHHELD_COMPOSITE));
+  // And not a candidate lamp: the one pill this row draws sits in the lamp
+  // column, so a lamp word in its copy would read as a coverage state the
+  // screen decided — "Partial inputs" most of all, which says a row was scored
+  // with a component missing. Nothing has been scored.
+  for (const lamp of CANDIDATE_LAMPS) {
+    assert.doesNotMatch(JSON.stringify(row), new RegExp(lamp, "i"), lamp);
+  }
 });
 
 // `THREAD_ANSWER_TAGS` is the locked order itself, not a bag of names: every
