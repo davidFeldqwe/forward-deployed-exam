@@ -21,6 +21,7 @@ import {
   type SortBy,
 } from "@repo/scoring";
 
+import { unknownIataRefusal, unknownPlaceRefusal } from "./refusals.ts";
 import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./thread-messages.ts";
 
 /**
@@ -72,6 +73,13 @@ export type ResolvedSet = {
 export type RankingUnknowns = {
   iata: string[];
   place: { field: string; value: string }[];
+  /**
+   * The locked refusals for what did not resolve, or null when everything did.
+   * They are on the answer object rather than left to the prose, so an analyst
+   * is told what the screen accepts even when the model does not say it.
+   */
+  placeRefusal: string | null;
+  iataRefusal: string | null;
 };
 
 export type RankingView = {
@@ -117,10 +125,7 @@ export function rankingView(call: ToolCall | undefined): RankingView | null {
     sortLabel,
     assumptions: uniqueLines(rows, "assumptions"),
     gaps: uniqueLines(rows, "gaps"),
-    unknown: {
-      iata: stringsOf(result.unknownIata) ?? [],
-      place: unknownPlacesOf(result.unknownPlace),
-    },
+    unknown: unknownsOf(result),
   };
 }
 
@@ -261,6 +266,18 @@ function uniqueLines(rows: readonly ScoredAirport[], key: "assumptions" | "gaps"
     for (const line of row[key]) lines.add(line);
   }
   return [...lines];
+}
+
+/** What the query could not resolve, with the refusal each one is owed. */
+function unknownsOf(result: JsonObject): RankingUnknowns {
+  const iata = stringsOf(result.unknownIata) ?? [];
+  const place = unknownPlacesOf(result.unknownPlace);
+  return {
+    iata,
+    place,
+    placeRefusal: unknownPlaceRefusal(place),
+    iataRefusal: unknownIataRefusal(iata),
+  };
 }
 
 function unknownPlacesOf(value: JsonValue | undefined): { field: string; value: string }[] {

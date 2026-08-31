@@ -261,3 +261,38 @@ test("a real ranking off the committed screen renders every row it was handed", 
     result.rows.map((row) => row.iata),
   );
 });
+
+// Story 28: Los Angeles vs Santa Ana is two airports, and the screen has no city
+// market to merge them into. The compare is drawn as two rows off the committed
+// universe, with the peer-group caveat visible on each of them.
+test("a compare keeps LAX and SNA as two rows, in two peer groups", () => {
+  const result = runAgentTool("queryAirports", { iata: ["LAX", "SNA"] });
+  const view = rankingView({
+    tool: "queryAirports",
+    args: { iata: ["LAX", "SNA"] },
+    result: JSON.parse(JSON.stringify(result)),
+    durationMs: 5,
+  });
+
+  assert.deepEqual(view?.resolved.codes, result.resolvedIata);
+  assert.equal(view?.rows.length, 2);
+  assert.deepEqual(
+    view?.rows.map((row) => row.iata).sort(),
+    ["LAX", "SNA"],
+  );
+  assert.equal(new Set(view?.rows.map((row) => row.name)).size, 2);
+  // Different FAA hub sizes, so the two composites are not like-for-like — the
+  // row says which peer group it was ranked in.
+  assert.deepEqual(
+    view?.rows.map((row) => row.peerLabel).sort(),
+    ["large FAA hubs", "medium FAA hubs"],
+  );
+  assert.equal(view?.resolved.phrase, "LAX · SNA");
+});
+
+test("the municipality Los Angeles is one airport, not a metro that swallows SNA", () => {
+  const losAngeles = runAgentTool("queryAirports", { municipality: "Los Angeles" });
+
+  assert.deepEqual(losAngeles.resolvedIata, ["LAX"]);
+  assert.deepEqual(losAngeles.unknownPlace, []);
+});
