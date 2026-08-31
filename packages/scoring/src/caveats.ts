@@ -1,13 +1,17 @@
+// Caveats ride on the row, not in a global footer: the answer that shows a
+// number shows the assumptions behind that number.
 import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
 
 import { COMPONENTS, COMPONENT_LABELS } from "./types.ts";
 import { WEIGHTS } from "./weights.ts";
 
-// Caveats ride on the row, not in a global footer: the answer that shows a
-// number shows the assumptions behind that number.
 const OUT_OF_SCOPE =
   "Construction cost, ROI, land availability, politics, and airline leases are outside this capacity-pressure screen.";
 
+/**
+ * The caveats every row in one snapshot carries. Built once per snapshot and
+ * handed to `assumptionsFor`, so a hundred rows do not re-derive the same lines.
+ */
 export function sharedAssumptions(snapshot: AirportSnapshot): string[] {
   const { firstYear, secondYear } = snapshot.comparisonWindow;
   const { units, longHaulShare } = snapshot.methodology;
@@ -22,6 +26,11 @@ export function sharedAssumptions(snapshot: AirportSnapshot): string[] {
   ];
 }
 
+/**
+ * One row's assumptions: the snapshot-wide lines, plus a note naming the blanks
+ * when the row is missing an input, so the withheld composite is read as absent
+ * data rather than a low score.
+ */
 export function assumptionsFor(shared: readonly string[], airport: SnapshotAirport): string[] {
   const missing = COMPONENTS.filter(
     (component) => airport.inputs[component].coverage === "missing",
@@ -35,6 +44,10 @@ export function assumptionsFor(shared: readonly string[], airport: SnapshotAirpo
   ];
 }
 
+/**
+ * One row's data gaps: the snapshot's own gap list, plus the ones that are true
+ * of this airport alone.
+ */
 export function gapsFor(snapshot: AirportSnapshot, airport: SnapshotAirport): string[] {
   const gaps = [...snapshot.gaps];
   if (airport.region === null) {

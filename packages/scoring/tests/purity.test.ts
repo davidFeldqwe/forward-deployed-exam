@@ -10,6 +10,10 @@ const modules = readdirSync(src, { encoding: "utf8", recursive: true }).filter((
   file.endsWith(".ts"),
 );
 
+function sourceOf(file: string): string {
+  return readFileSync(new URL(file, src), "utf8");
+}
+
 const FORBIDDEN = [
   "fetch(",
   "xmlhttprequest",
@@ -35,7 +39,7 @@ test("every scoring module is checked, not a pinned list", () => {
 
 test("scoring imports neither an LLM, the network, nor Convex", () => {
   for (const file of modules) {
-    const source = readFileSync(new URL(file, src), "utf8").toLowerCase();
+    const source = sourceOf(file).toLowerCase();
     for (const forbidden of FORBIDDEN) {
       assert.equal(
         source.includes(forbidden),
@@ -51,11 +55,13 @@ test("the only module scoring reaches outside itself is the snapshot's types", (
   // import does, so both keywords are scanned.
   const moduleEdge = /^\s*(?:import|export)\s+(type\s+)?[^"']*from\s+["']([^"']+)["']/gm;
   for (const file of modules) {
-    const source = readFileSync(new URL(file, src), "utf8");
-    for (const [, isType, specifier] of source.matchAll(moduleEdge)) {
+    for (const [, isType, specifier] of sourceOf(file).matchAll(moduleEdge)) {
       if (specifier.startsWith("./") || specifier.startsWith("../")) continue;
       assert.equal(specifier, "@repo/snapshot", `src/${file} imports ${specifier}`);
-      assert.ok(isType, `src/${file} imports @repo/snapshot for types only, so nothing loads at runtime`);
+      assert.ok(
+        isType,
+        `src/${file} imports @repo/snapshot for types only, so nothing loads at runtime`,
+      );
     }
   }
 });

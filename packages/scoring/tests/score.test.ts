@@ -179,7 +179,19 @@ test("rows carry the identity, lookups and caveats the answer objects need", () 
     "assumptions name the peer-group percentile rule",
   );
   assert.ok(lax.gaps.includes(FIXTURE.gaps[0]!), "rows carry the snapshot's data gaps");
-  assert.equal(row("ORH").longHaulShare, null);
+});
+
+// A blank long-haul share is a gap on the row, not a zero: ORH has no share to
+// look up, and the row has to say so rather than read as "no long-haul flying".
+test("a missing lookup is a gap on that row, and never a number", () => {
+  const orh = row("ORH");
+  assert.equal(orh.longHaulShare, null);
+  assert.ok(
+    orh.gaps.some((gap) => gap.includes("Long-haul share") && gap.includes("ORH")),
+    `ORH gaps name the missing lookup: ${JSON.stringify(orh.gaps)}`,
+  );
+  // Every other row keeps the snapshot's gap list untouched.
+  assert.deepEqual(row("LAX").gaps, FIXTURE.gaps);
 });
 
 test("a partial row says why it has no composite, on that row", () => {
