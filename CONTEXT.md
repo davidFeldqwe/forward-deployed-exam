@@ -2,6 +2,12 @@
 
 A glossary for a capacity-pressure screen of US airports. The screen finds renovation-investment candidates.
 
+## Prototype
+
+Answer shape and chat UI — paste-ready full-app design prompt (Linear product chrome, candidate lamp, eleven states):
+
+[prototype/design-prompt.md](prototype/design-prompt.md)
+
 ## Language
 
 ### Thesis
@@ -43,6 +49,14 @@ The latest full calendar year and the year before it. Every airport uses the sam
 
 **Slot limit**:
 An FAA Level 2 or Level 3 schedule constraint. A why-label, not a score-vector number. SFO is Level 2.
+
+**Long-haul share**:
+The share of passengers on origin segments with distance above 2,000 miles, in the comparison window. A lookup, not a score-vector number.
+_Avoid_: score vector, route count
+
+**Coverage**:
+Whether a score-vector component has its inputs in the snapshot. Missing is not a low score.
+_Avoid_: zero-fill, impute
 
 ### Output
 

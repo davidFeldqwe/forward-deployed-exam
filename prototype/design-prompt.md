@@ -1,14 +1,18 @@
-# Design prompt — Airport Investment Intelligence Agent (static UI prototype)
+# Design prompt — Airport Investment Intelligence (full UI mockup)
 
 > Paste everything below the line into Claude. Self-contained: no repo access needed.
+>
+> Output: a **static, clickable full-app UI mockup** (React). Not a marketing page. Not working software.
 
 ---
 
-Design the full UI for a chat-based analyst tool called **Airport Investment Intelligence**. Build it as a **static, clickable React prototype** — no backend, no LLM, no data fetching. Every number and every answer is hardcoded fixture text that I supply or you invent. The output of this exercise is the **shape of an answer**, not working software.
+Design the **full product UI** for a chat-based analyst tool called **Airport Investment Intelligence**. Build it as a **static, clickable React prototype** — no backend, no LLM, no data fetching. Every number and every answer is hardcoded fixture text that you invent and keep internally consistent. The point of this exercise is the **shape of an answer inside a real app shell**.
+
+Do not ask questions first. Make the call, show it, and flag judgement calls in one line after the prototype.
 
 ## Who it is for
 
-Analysts at a firm that invests in US airport modernization. They ask questions in plain English and need to decide which airports are worth funding a terminal renovation. They are numerate, skeptical, and will not trust a paragraph of prose that does not show its work. This is an internal analyst tool, not a consumer product: dense, legible, quiet. Think Bloomberg terminal restraint rather than marketing site.
+Analysts at a firm that invests in US airport modernization. They ask questions in plain English and need to decide which airports are worth funding a terminal renovation. They are numerate, skeptical, and will not trust a paragraph of prose that does not show its work. This is an internal analyst tool, not a consumer product: dense, legible, quiet. Data is the ornament.
 
 ## What the product does
 
@@ -26,60 +30,149 @@ A deterministic scoring engine ranks the ~100 largest US airports as **renovatio
 - **Peer group** — airports of one FAA hub size: large, medium, or small. Los Angeles and Santa Ana are **not** peers.
 - **Region** — one of the nine **US Census divisions**, derived from the airport's state. "New England" is standard-defined, not hand-drawn.
 - **Resolved airport set** — the airports a place phrase maps to. **Every geographic answer names this set before it ranks anything.**
-- **Comparison window** — the latest full calendar year and the year before. Same two years for every airport.
+- **Comparison window** — the latest full calendar year and the year before. Same two years for every airport. Use **2023–2024** in the chrome and in answers.
 - **Slot limit** — an FAA Level 2 / Level 3 schedule constraint. A why-label on an airport, not a scored number.
+- **Long-haul share** — a lookup, not a score-vector component. Never dress it up as an investment recommendation.
+- **Coverage** — whether a score-vector component has its inputs. Missing is not a low score. Do not zero-fill.
 
 Explicitly out of the model: construction cost, ROI, land, politics, airline leases. The UI should say so where a user would otherwise assume it.
 
-## Screens and states to design
+---
 
-One main screen — a chat — plus the states below. Show them all as separate panels or a state switcher in the prototype so I can see each without typing.
+## App shape — chat is the product, with thin product chrome
 
-**1. Empty state.** What the analyst sees first. Must teach the tool's scope in seconds: what it ranks, over what universe, as of what date, and what it does not know. Offer the four sample questions as starters.
+This is a **full app mockup**, not a naked transcript. Chat is still the only product surface. Do not add Rankings, Airport dossier, or Methodology as separate routes. Do not add a persistent right inspector column.
 
-**2. A ranking answer.** Question: *"Which airports in New England are strong candidates for terminal expansion?"*
-Must contain, in this order:
-- the **resolved airport set** — New England → the states → the airports found, with a count, before any ranking
-- a ranked list with **composite score** per airport
-- a per-airport **component breakdown** — the four percentiles, so a reader can see *why* the composite is what it is. Design this: it is the most important object in the product. A number alone is not a reason.
-- **why-labels** where they apply (e.g. slot-limited)
-- **assumptions and data gaps** attached to the answer, not buried in a footer
+```
+┌──────────────────────────────────────────────────────────┐
+│  64px header: wordmark · Methodology popover · 2023–2024 │
+├────────────┬─────────────────────────────────────────────┤
+│ Thread     │  transcript (scroll)                        │
+│ rail       │                                             │
+│ ~200px     ├─────────────────────────────────────────────┤
+│            │  composer                                   │
+└────────────┴─────────────────────────────────────────────┘
+```
 
-**3. A comparison answer.** Question: *"Compare LA and Santa Ana airport congestion levels."*
-The trap: they are in different peer groups, so their percentiles are not comparable and the UI must say that plainly rather than printing two numbers side by side as if they were. Show the raw congestion values too.
+- **Header** — sticky, 64px, `background: rgba(8,9,10,0.85)`, `backdrop-filter: blur(12px) saturate(180%)`, `border-bottom: 1px solid rgba(255,255,255,0.08)`. Left: compact wordmark **AII** plus product name. Right: comparison window as tertiary text. One **Methodology** ghost button (not a page): popover listing universe (~100 largest US airports), peer groups, fixed weights 35/35/20/10, and out-of-scope items.
+- **Thread rail** — 200px, `#0f1011`, `border-right: 1px solid rgba(255,255,255,0.05)`. Inactive labels `#8a8f98` / 14px / weight 510. Active: background `rgba(255,255,255,0.07)`, text `#f7f8f8`. This rail **is the prototype state switcher**: eleven canned threads so every answer state is reachable without typing. No decorative icons.
+- **Main canvas** — `#08090a`. Messages scroll. Composer docked at the bottom: input fill `rgba(255,255,255,0.02)`, border `rgba(255,255,255,0.05)`, 6px radius, 12px 14px padding. **Send is the only indigo fill on the screen** (`#5e6ad2`, hover `#828fff`, text `#f7f8f8`, 14px / 510, 6px radius, 8px 16px padding). Composer may be inert except for looking real; switching threads is how you move.
+- Desktop-first. Below 768px, collapse the rail behind a menu. Do not design a marketing hero, split landing, or feature-card grid.
 
-**4. A single-metric answer.** Question: *"What is the percentage of long haul flights out of Anchorage airport?"*
-Long-haul share is a lookup, **not** a scored component. The answer should be short and not dressed up as an investment recommendation.
+---
 
-**5. A reasoning answer.** Question: *"What is the unmet flight demand in SFO airport and why?"*
-Passenger growth vs flight growth over the window, plus the causal story the numbers support and the honest limit of what they prove.
+## Visual system — Linear the *product*, not linear.app marketing
 
-**6. Inspectable tool calls.** The answer is generated by tool calls against the scoring engine. Design how a skeptical analyst opens up a tool invocation and sees the call and what came back — collapsed by default, expandable, never a wall of raw JSON in the reading flow. This is the seam that proves the numbers were computed, not narrated.
+Dark-first engineering tool. Precise, fast, without ornament. **No** indigo ambient glow, **no** display-xl headlines, **no** gradient text, **no** feature cards, **no** bounce.
 
-**7. A "no data" answer.** An airport where a component is missing. **"No data" must never look like "score is low"** — a missing delay figure and a zero delay figure must be visually unmistakable from each other, and the composite must show that it was computed on partial inputs.
+**Type:** Inter Variable on every UI string. Non-negotiable OpenType on all Inter text: `font-feature-settings: "cv01", "ss03"`. UI labels, nav, buttons, captions: `font-variation-settings: 'wght' 510` — never 500 or 600. Body 16px / 400 / `#d0d6e0`. Headings in-product at most 20–24px / 510 / `#f7f8f8`, tracking about `-0.24px` at 20px. Code and tool payloads: IBM Plex Mono (stand-in for Berkeley Mono) at 12–14px / 510.
 
-**8. An out-of-scope answer.** Question: *"What will a new terminal at DFW cost?"* Cost, ROI, land, and politics are outside the model. The refusal states what the tool does accept, without apologising twice.
+**Color:**
 
-**9. An unresolvable place.** A place phrase that maps to nothing. The tool says what it accepts: states, the nine Census divisions, city names, airport codes.
+| Role | Value |
+|------|--------|
+| Canvas | `#08090a` |
+| Rail / header panel | `#0f1011` |
+| Popover / expanded tool / modal | `#191a1b` |
+| Raised row / card lift | `rgba(255,255,255,0.05)`, hover `0.07` — luminance stacking, **no** dark drop-shadows on rows |
+| Primary text | `#f7f8f8` |
+| Body | `#d0d6e0` |
+| Meta, inactive nav, informational secondary | `#8a8f98` (minimum for real copy) |
+| Placeholder / disabled only | `#62666d` |
+| Interactive only (links, send, focus, active affordances) | `#5e6ad2` / hover `#828fff` |
+| Borders | `rgba(255,255,255,0.02)` micro, `0.05` subtle, `0.08` standard — never solid hex borders |
+| Overlay | `rgba(0,0,0,0.5)` |
 
-**10. Follow-up.** Show a two-turn exchange where the second question depends on the first ("*and what about the second one?*"), so I can see how carried context is made visible rather than guessed at.
+Indigo is **not** a score colour. Do not colour airport names.
 
-**11. Streaming / in-flight.** What the answer looks like mid-generation, including a tool call that is still running.
+**Radius:** buttons and inputs 6px; cards / dropdowns 8px; popovers / panels 12px; status pills and lamp pills `9999px`. Buttons are never pills.
 
-## Design constraints
+**Focus:** `box-shadow: 0 0 0 2px rgba(94,106,210,0.4), 0 0 0 4px rgba(94,106,210,0.2)`.
 
-- Dense and typographic. Data is the ornament. No hero sections, no gradient cards, no emoji, no illustration.
-- Numbers in tabular figures, aligned. Percentiles and raw values must be visually distinct — a reader should never mistake one for the other.
-- Every score has a unit or a scale label. A bare `72` is a bug.
-- Restrained use of colour: reserve it for score intensity and for data-quality signals. Do not colour-code airports.
-- Accessible by default: legible contrast, no meaning carried by hue alone, keyboard-reachable disclosure controls.
-- Light and dark both readable if that is cheap; light only is acceptable.
-- Desktop-first. Analysts are on a laptop.
+**Motion:** 150ms `cubic-bezier(0.25, 0.46, 0.45, 0.94)` for hover; 200ms state; 300ms max for popover enter (`opacity 0→1`, `scale(0.96→1)`, `cubic-bezier(0.165, 0.84, 0.44, 1)`). No spring/bounce. Honor `prefers-reduced-motion`.
+
+**Elevation:** brighter surface = higher. Popovers may use Linear popover shadow: `rgba(0,0,0,0.15) 0 4px 12px, rgba(0,0,0,0.2) 0 8px 24px, inset 0 0 0 1px rgba(255,255,255,0.08)`.
+
+Load Inter Variable (e.g. rsms.me/inter) so weight 510 and the glyph features actually render.
+
+---
+
+## Candidate lamp (red / amber / green)
+
+A **renovation-investment-candidate signal** on an airport that has a composite. It is **not** a data-quality lamp and **not** a provenance lamp.
+
+Visual: a vertical traffic light — three 8px dots, **one** lit for Strong / Mixed / Weak; none lit for Partial / No data. Immediately beside it, a **labelled pill**. Hue never travels alone. `aria-label` speaks the label. Do not recode the airport code or the composite numeral in green/red.
+
+| Lamp | Pill label | When | Dot / pill |
+|------|------------|------|------------|
+| Green | Strong candidate | composite ≥ 70 **and** all four components present | lit `#27a644`; pill `rgba(39,166,68,0.15)` / `#27a644` |
+| Amber | Mixed vector | 40 ≤ composite < 70 **and** all four present | lit `#f59e0b`; pill `rgba(245,158,11,0.15)` / `#f59e0b` |
+| Red | Weak candidate | composite < 40 **and** all four present | lit `#e53935`; pill `rgba(229,57,53,0.1)` / `#e53935` |
+| Hollow | Partial inputs | composite exists but a component is missing | no fill, 1.5px `#8a8f98` ring; pill tertiary text |
+| Empty | No data | no composite | no fill, dashed ring; pill tertiary text |
+
+**Never** use the red lamp for missing delay. A computed zero delay can produce a filled lamp from the composite. A missing delay is Hollow or Empty. Missing ≠ zero ≠ weak.
+
+Pills: 12px / 510, min-height 24px, padding 4px 10px, radius 9999px.
+
+---
+
+## Answer objects (design these; they are the product)
+
+**1. Score vector breakdown** — the most important object. Four rows: component name, **percentile** (tabular figures, 510 weight, scale caption `pctl · {large|medium|small} hub`), **raw value** with unit (tertiary), weight (35 / 35 / 20 / 10). Percentile and raw must be visually distinct. Optional grey luminance bar for percentile length only — not indigo, not green-means-good. Every number has a unit or scale. A bare `72` is a bug.
+
+**2. Resolved airport set** — first block in any geographic ranking: place phrase → Census division / states → airport codes → count. Ranking comes after.
+
+**3. Ranked airport row** — code + name, composite with scale `0–100 · composite`, candidate lamp, why-labels (slot-limited = **neutral** pill, not a lamp), expandable or always-visible vector breakdown.
+
+**4. Tool calls** — collapsed by default: tool name + status. Expand in-place (not a third column): arguments and result as definition lists in mono. Never a wall of raw JSON in the reading flow. This is the seam that proves numbers were computed, not narrated.
+
+**5. Assumptions and data gaps** — attached to that answer, not a global footer.
+
+**6. Prose** — `#d0d6e0`, 16/400, left-aligned. Never the only carrier of a number that also lives in a vector.
+
+---
+
+## Eleven threads (show every state)
+
+The left rail lists these. Invent plausible, **internally consistent** fixtures (if SFO congestion percentile is 88 in one thread, it is 88 in every thread that shows SFO).
+
+1. **Empty.** First-run canvas: what it ranks, over what universe, as of 2023–2024, what it does not know. Four starter questions (the ranking, comparison, Anchorage, SFO prompts below). Starters switch threads.
+
+2. **Ranking.** *"Which airports in New England are strong candidates for terminal expansion?"* Resolved set (New England → CT, ME, MA, NH, RI, VT → the airports found, with a count) **before** any ranking. Ranked list with composite, lamp, vector breakdown, why-labels, assumptions.
+
+3. **Comparison.** *"Compare LA and Santa Ana airport congestion levels."* Different peer groups — say that **before** any side-by-side percentile. Show raw congestion. Do not present two percentiles as comparable.
+
+4. **Single metric.** *"What is the percentage of long haul flights out of Anchorage airport?"* Short lookup. No lamp. Not an investment recommendation.
+
+5. **Reasoning.** *"What is the unmet flight demand in SFO airport and why?"* Passenger growth vs flight growth over the window, the story the numbers support, the limit of what they prove. Lamp comes from the **composite**, not from this one component. SFO is slot-limited Level 2.
+
+6. **Inspectable tools.** Same SFO (or the ranking) with one tool invocation **expanded** so the seam is visible.
+
+7. **No data.** An airport with a missing component. Hollow or Empty lamp. Composite marked partial (say which inputs were used; do not treat the missing component as zero). Missing must be unmistakable from a low score.
+
+8. **Out of scope.** *"What will a new terminal at DFW cost?"* Refusal plus what the tool does accept. No apology loop.
+
+9. **Unresolvable place.** A phrase that maps to nothing. State what it accepts: states, the nine Census divisions, city names, airport codes.
+
+10. **Follow-up.** Two-turn: the New England ranking, then *"and what about the second one?"* Make carried context visible — "second" = the second airport in that ranking (use PVD). Do not look like a guess.
+
+11. **Streaming.** Mid-generation: a tool row still running. No scores yet.
+
+---
+
+## Constraints
+
+- Dense and typographic. No emoji, no illustration, no hero, no gradient cards.
+- Numbers in tabular figures, aligned.
+- Colour: candidate lamp, status/why pills, indigo interaction only.
+- Accessible: WCAG AA for copy; lamp + text, not hue alone; keyboard-reachable disclosure; 44px touch targets on icon-only controls.
+- Dark only for this mockup.
 
 ## What to hand back
 
-- A single React prototype with all states above reachable.
-- Fake but *plausible* numbers, internally consistent across states — if SFO's congestion percentile is 88 in one panel it is 88 everywhere.
-- Where you made a judgement call I did not specify, say so in one line after the prototype. Do not ask me questions first — make the call, show it, and flag it.
+- One React prototype with all eleven threads reachable from the rail.
+- Fake but plausible numbers, consistent across threads.
+- Where you made a judgement call this prompt did not specify, one line after the prototype.
 
-Rough is correct. I am reacting to shape, hierarchy, and honesty about uncertainty — not to polish.
+Rough is correct on interaction completeness. Hierarchy, honesty about uncertainty, the lamp vs missing-data distinction, and Linear *app* restraint are not optional.
