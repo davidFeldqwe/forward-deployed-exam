@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 import type { ScoredAirport } from "@repo/scoring";
 
+import { rankingView } from "./ranking-view.ts";
 import {
   MAP_HEIGHT,
   MAP_LABEL_WIDTH,
@@ -290,6 +291,33 @@ test("a ranked row the snapshot cannot locate is named, not silently dropped", (
   assert.match(map?.caption ?? "", /PWM carries no coordinate in the snapshot and is not drawn/);
   // The table stays the source of truth, and the caption says so.
   assert.match(map?.caption ?? "", /ranking table/i);
+});
+
+test("every marker's lamp is the one the table drew for that row, off one payload", () => {
+  // The acceptance criterion, read end to end rather than by grepping the
+  // component: one stored call, the table's rows and the map's markers, and no
+  // row that means one thing in the table and another under the dots.
+  const payload = call({ region: "New England" }, [
+    BOS,
+    PVD,
+    HYA,
+    airport("PWM", null, null, { candidateLamp: "No data" }),
+  ]);
+  const view = rankingView(payload);
+  const map = resolvedMap(NEW_ENGLAND, payload);
+  assert.ok(view && map);
+
+  const tableLamps = new Map(view.rows.map((row) => [row.iata, row.lamp]));
+  for (const marker of map.markers) {
+    assert.equal(marker.lamp, tableLamps.get(marker.iata), marker.iata);
+  }
+  // Including the coverage states, which are a lamp and not an absent one.
+  assert.deepEqual(
+    map.markers.map((marker) => marker.lamp),
+    ["Strong candidate", "Weak candidate", "Partial inputs"],
+  );
+  // The row the table drew and the map could not place is named, not relabelled.
+  assert.deepEqual(map.unplaced, ["PWM"]);
 });
 
 test("two airports a few miles apart are not zoomed into opposite corners", () => {
