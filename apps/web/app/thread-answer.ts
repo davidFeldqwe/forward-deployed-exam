@@ -26,6 +26,7 @@ import {
 import { spokenProse } from "./read-aloud.ts";
 import type { ThreadMessage, ToolCall } from "./thread-messages.ts";
 
+/** One block of an answer: the tag the transcript draws, and what it draws from. */
 export type ThreadAnswerPart =
   | { tag: "tool"; call: ToolCall }
   | { tag: "carried"; carried: CarriedContext }

@@ -9,8 +9,8 @@ import { Prose, RoleLabel } from "@/components/Turn";
 /**
  * The question on its way, and the Thread answer under it (PRD story 35). It is
  * drawn only while the composer's form is in flight: the question is a user
- * turn, and the answer under it is `PENDING_THREAD_ANSWER` — a pending row, and
- * no tag that could hold a composite, a candidate lamp or a score vector.
+ * turn, and the answer under it is `PENDING_THREAD_ANSWER`, which is what says
+ * there is no number in this turn to read.
  */
 export function PendingAnswer({ question }: { question: string }) {
   const { pending } = useFormStatus();
