@@ -5,7 +5,9 @@
 // page. Verified 2026-08-31.
 export const SLOT_LIMIT_VERIFIED_ON = "2026-08-31";
 
-export type SlotLimit = "Level 2" | "Level 3";
+export const SLOT_LIMIT_LEVELS = ["Level 2", "Level 3"] as const;
+
+export type SlotLimit = (typeof SLOT_LIMIT_LEVELS)[number];
 
 export const SLOT_LIMITS: Readonly<Record<string, SlotLimit>> = {
   ORD: "Level 2",

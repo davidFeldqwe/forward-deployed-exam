@@ -5,7 +5,6 @@ import { censusDivisionOf } from "../src/census-divisions.ts";
 import {
   airportSnapshotSchema,
   type AirportSnapshot,
-  type Coverage,
   type PeerGroup,
   type SnapshotAirport,
 } from "../src/schema.ts";
@@ -34,6 +33,16 @@ const PEER_GROUP_BY_FAA_HUB: Record<string, PeerGroup> = {
   M: "medium",
   S: "small",
 };
+
+// Column letters in the FAA ACAIS enplanement workbook.
+const FAA_COLUMNS = {
+  rank: "A",
+  state: "C",
+  locid: "D",
+  hubSize: "H",
+  secondYearEnplanements: "I",
+  firstYearEnplanements: "J",
+} as const;
 
 type UniverseRow = {
   iata: string;
@@ -76,9 +85,9 @@ async function readUniverse(): Promise<UniverseRow[]> {
   const rows = readWorksheetRows(workbook);
   const universe: UniverseRow[] = [];
   for (const row of rows) {
-    const rank = Number(row.get("A"));
-    const locid = (row.get("D") ?? "").trim().toUpperCase();
-    const hub = row.get("H") ?? "";
+    const rank = Number(row.get(FAA_COLUMNS.rank));
+    const locid = (row.get(FAA_COLUMNS.locid) ?? "").trim().toUpperCase();
+    const hub = row.get(FAA_COLUMNS.hubSize) ?? "";
     // Subtotal rows carry a count but no rank, and a four-character FAA location
     // identifier is not an IATA code, so neither joins into the universe.
     if (!Number.isInteger(rank) || rank < 1 || rank > UNIVERSE_SIZE) {
@@ -94,10 +103,10 @@ async function readUniverse(): Promise<UniverseRow[]> {
     universe.push({
       iata: locid,
       peerGroup,
-      state: (row.get("C") ?? "").trim().toUpperCase(),
+      state: (row.get(FAA_COLUMNS.state) ?? "").trim().toUpperCase(),
       enplanements: {
-        secondYear: Number(row.get("I")),
-        firstYear: Number(row.get("J")),
+        secondYear: Number(row.get(FAA_COLUMNS.secondYearEnplanements)),
+        firstYear: Number(row.get(FAA_COLUMNS.firstYearEnplanements)),
       },
     });
   }
@@ -163,9 +172,10 @@ async function readFlightTotals(
   };
 
   for (let month = 1; month <= 12; month += 1) {
+    const yearMonth = `${year}-${String(month).padStart(2, "0")}`;
     const archive = await download(
       `https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_${year}_${month}.zip`,
-      `bts-on-time-${year}-${String(month).padStart(2, "0")}.zip`,
+      `bts-on-time-${yearMonth}.zip`,
     );
     const csv = readZipEntry(archive, (name) => name.endsWith(".csv"));
     forEachCsvRow(
@@ -191,7 +201,7 @@ async function readFlightTotals(
         }
       },
     );
-    process.stdout.write(`aggregated ${year}-${String(month).padStart(2, "0")}\n`);
+    process.stdout.write(`aggregated ${yearMonth}\n`);
   }
   return totals;
 }
@@ -201,7 +211,7 @@ function round(value: number, digits: number): number {
   return Math.round(value * factor) / factor;
 }
 
-function scoreInput(raw: number | null): { raw: number | null; coverage: Coverage } {
+function scoreInput(raw: number | null): SnapshotAirport["inputs"]["congestion"] {
   return raw === null ? { raw: null, coverage: "missing" } : { raw, coverage: "present" };
 }
 
@@ -212,25 +222,64 @@ function percentChange(first: number | null, second: number | null): number | nu
   return ((second - first) / first) * 100;
 }
 
+// Stand-in for the gate and terminal capacity no free source publishes.
+function congestionPerRunway(enplanements: number, runwayCount: number | null): number | null {
+  return runwayCount === null ? null : Math.round(enplanements / runwayCount);
+}
+
+// Percentage points of enplanement growth that added departures do not explain.
+function unmetFlightDemandPoints(
+  enplanementGrowth: number | null,
+  flightGrowth: number | null,
+): number | null {
+  if (enplanementGrowth === null || flightGrowth === null) {
+    return null;
+  }
+  return round(enplanementGrowth - flightGrowth, 2);
+}
+
+// Weather delay comes out: it is a season, not a capacity signal.
+function delayPerArrival(totals: FlightTotals | undefined): number | null {
+  if (!totals || totals.arrivals <= 0) {
+    return null;
+  }
+  return round((totals.arrivalDelayMinutes - totals.weatherDelayMinutes) / totals.arrivals, 2);
+}
+
+function longHaulShareOf(
+  departures: number,
+  longHaulDepartures: number,
+): SnapshotAirport["longHaulShare"] {
+  if (departures <= 0) {
+    return { share: null, longHaulFlights: null, coverage: "missing" };
+  }
+  return {
+    share: round(longHaulDepartures / departures, 4),
+    longHaulFlights: longHaulDepartures,
+    coverage: "present",
+  };
+}
+
 function buildAirport(
   row: UniverseRow,
   place: Place,
   runwayCount: number | null,
-  firstYear: FlightTotals | undefined,
-  secondYear: FlightTotals | undefined,
+  firstYearTotals: FlightTotals | undefined,
+  secondYearTotals: FlightTotals | undefined,
 ): SnapshotAirport {
   const enplanementGrowth = percentChange(
     row.enplanements.firstYear,
     row.enplanements.secondYear,
   );
   const departures = {
-    firstYear: firstYear?.departures ?? null,
-    secondYear: secondYear?.departures ?? null,
+    firstYear: firstYearTotals?.departures ?? null,
+    secondYear: secondYearTotals?.departures ?? null,
   };
   const flightGrowth = percentChange(departures.firstYear, departures.secondYear);
-  const windowDepartures = (firstYear?.departures ?? 0) + (secondYear?.departures ?? 0);
+  const windowDepartures =
+    (firstYearTotals?.departures ?? 0) + (secondYearTotals?.departures ?? 0);
   const windowLongHaul =
-    (firstYear?.longHaulDepartures ?? 0) + (secondYear?.longHaulDepartures ?? 0);
+    (firstYearTotals?.longHaulDepartures ?? 0) + (secondYearTotals?.longHaulDepartures ?? 0);
 
   return {
     iata: row.iata,
@@ -244,33 +293,12 @@ function buildAirport(
     enplanements: row.enplanements,
     flights: departures,
     inputs: {
-      congestion: scoreInput(
-        runwayCount === null ? null : Math.round(row.enplanements.secondYear / runwayCount),
-      ),
-      unmetFlightDemand: scoreInput(
-        enplanementGrowth === null || flightGrowth === null
-          ? null
-          : round(enplanementGrowth - flightGrowth, 2),
-      ),
-      delay: scoreInput(
-        secondYear && secondYear.arrivals > 0
-          ? round(
-              (secondYear.arrivalDelayMinutes - secondYear.weatherDelayMinutes) /
-                secondYear.arrivals,
-              2,
-            )
-          : null,
-      ),
+      congestion: scoreInput(congestionPerRunway(row.enplanements.secondYear, runwayCount)),
+      unmetFlightDemand: scoreInput(unmetFlightDemandPoints(enplanementGrowth, flightGrowth)),
+      delay: scoreInput(delayPerArrival(secondYearTotals)),
       growth: scoreInput(enplanementGrowth === null ? null : round(enplanementGrowth, 2)),
     },
-    longHaulShare:
-      windowDepartures > 0
-        ? {
-            share: round(windowLongHaul / windowDepartures, 4),
-            longHaulFlights: windowLongHaul,
-            coverage: "present",
-          }
-        : { share: null, longHaulFlights: null, coverage: "missing" },
+    longHaulShare: longHaulShareOf(windowDepartures, windowLongHaul),
   };
 }
 
@@ -288,7 +316,8 @@ async function ingest(): Promise<AirportSnapshot> {
   const firstYearFlights = await readFlightTotals(COMPARISON_WINDOW.firstYear, iataCodes);
   const secondYearFlights = await readFlightTotals(COMPARISON_WINDOW.secondYear, iataCodes);
 
-  const airports = universe
+  const airports = [...universe]
+    .sort((left, right) => right.enplanements.secondYear - left.enplanements.secondYear)
     .map((row) => {
       const place = places.get(OURAIRPORTS_IATA_ALIASES[row.iata] ?? row.iata);
       if (!place) {
@@ -301,8 +330,7 @@ async function ingest(): Promise<AirportSnapshot> {
         firstYearFlights.get(row.iata),
         secondYearFlights.get(row.iata),
       );
-    })
-    .sort((left, right) => (right.enplanements.secondYear ?? 0) - (left.enplanements.secondYear ?? 0));
+    });
 
   return airportSnapshotSchema.parse({
     schemaVersion: 1,

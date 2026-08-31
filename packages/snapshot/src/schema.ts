@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 import { CENSUS_DIVISIONS } from "./census-divisions.ts";
+import { SLOT_LIMIT_LEVELS } from "./slot-limits.ts";
 
 export const coverageSchema = z.enum(["present", "missing"]);
 export const peerGroupSchema = z.enum(["large", "medium", "small"]);
-export const slotLimitSchema = z.enum(["Level 2", "Level 3"]);
+export const slotLimitSchema = z.enum(SLOT_LIMIT_LEVELS);
 
 // Missing is not a low score: an absent input keeps `raw` null and flags
 // coverage, so scoring can withhold the composite instead of zero-filling.
@@ -53,7 +54,7 @@ const yearSchema = z.number().int().min(2000).max(2100);
 const sourceSchema = z.strictObject({
   id: z.string().min(1),
   name: z.string().min(1),
-  url: z.string().url(),
+  url: z.url(),
   vintage: z.string().min(1),
 });
 

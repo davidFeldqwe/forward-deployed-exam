@@ -14,10 +14,12 @@ function trimCarriageReturn(buffer: Buffer, start: number, end: number): number 
   return end > start && buffer[end - 1] === CARRIAGE_RETURN ? end - 1 : end;
 }
 
-function splitFirstRecord(buffer: Buffer): string[] {
+// The header record plus where the first data row starts, so the body walk below
+// does not have to locate the first line feed a second time.
+function readHeader(buffer: Buffer): { columns: string[]; bodyStart: number } {
   const lineFeed = buffer.indexOf(LINE_FEED);
   const end = trimCarriageReturn(buffer, 0, lineFeed < 0 ? buffer.length : lineFeed);
-  const fields: string[] = [];
+  const columns: string[] = [];
   let start = 0;
   let quoted = false;
   for (let index = 0; index <= end; index += 1) {
@@ -25,11 +27,11 @@ function splitFirstRecord(buffer: Buffer): string[] {
     if (byte === QUOTE) {
       quoted = !quoted;
     } else if (byte === COMMA && !quoted) {
-      fields.push(decodeField(buffer, start, index));
+      columns.push(decodeField(buffer, start, index));
       start = index + 1;
     }
   }
-  return fields;
+  return { columns, bodyStart: lineFeed < 0 ? buffer.length : lineFeed + 1 };
 }
 
 // Walks a whole CSV buffer once and hands the callback only the requested
@@ -40,10 +42,13 @@ export function forEachCsvRow(
   columns: readonly string[],
   onRow: (values: readonly string[]) => void,
 ): void {
-  const header = splitFirstRecord(buffer);
-  const positionByFieldIndex = header.map(() => -1);
+  const header = readHeader(buffer);
+  // Field index in the file to its position in the values array, -1 for every
+  // column the caller did not ask for: an array keeps that lookup cheap on a
+  // walk this long.
+  const positionByFieldIndex: number[] = new Array(header.columns.length).fill(-1);
   columns.forEach((column, position) => {
-    const fieldIndex = header.indexOf(column);
+    const fieldIndex = header.columns.indexOf(column);
     if (fieldIndex < 0) {
       throw new Error(`column ${column} is missing from the CSV header`);
     }
@@ -51,15 +56,15 @@ export function forEachCsvRow(
   });
 
   const values: string[] = columns.map(() => "");
-  const lineFeed = buffer.indexOf(LINE_FEED);
-  let fieldStart = lineFeed < 0 ? buffer.length : lineFeed + 1;
+  let fieldStart = header.bodyStart;
   let fieldIndex = 0;
   let quoted = false;
 
   const endField = (end: number) => {
     const position = positionByFieldIndex[fieldIndex] ?? -1;
     if (position >= 0) {
-      values[position] = decodeField(buffer, fieldStart, trimCarriageReturn(buffer, fieldStart, end));
+      const fieldEnd = trimCarriageReturn(buffer, fieldStart, end);
+      values[position] = decodeField(buffer, fieldStart, fieldEnd);
     }
     fieldStart = end + 1;
     fieldIndex += 1;

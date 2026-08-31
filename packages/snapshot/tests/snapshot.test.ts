@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { CENSUS_DIVISIONS, SLOT_LIMITS, loadSnapshot } from "../src/index.ts";
@@ -122,14 +122,13 @@ test("the snapshot names its sources and gaps", () => {
 });
 
 test("the runtime snapshot module reads the committed file and never the network", () => {
-  for (const file of ["index.ts", "schema.ts", "census-divisions.ts", "slot-limits.ts"]) {
-    const source = readFileSync(new URL(`../src/${file}`, import.meta.url), "utf8");
+  const src = new URL("../src/", import.meta.url);
+  const modules = readdirSync(src).filter((file) => file.endsWith(".ts"));
+  assert.ok(modules.length >= 4, "every runtime module is checked, not a pinned list");
+  for (const file of modules) {
+    const source = readFileSync(new URL(file, src), "utf8").toLowerCase();
     for (const forbidden of ["fetch(", "node:http", "undici", "convex", "openai", "anthropic"]) {
-      assert.equal(
-        source.toLowerCase().includes(forbidden),
-        false,
-        `src/${file} must not reference ${forbidden}`,
-      );
+      assert.equal(source.includes(forbidden), false, `src/${file} must not reference ${forbidden}`);
     }
   }
 });
