@@ -65,8 +65,9 @@ function matches(value: string | null, wanted: string | undefined): boolean {
   return value !== null && value.toLowerCase() === wanted.trim().toLowerCase();
 }
 
-function resolveLimit(requested: number | undefined, fallback: number): number {
-  const asked = requested === undefined || !Number.isFinite(requested) ? fallback : Math.trunc(requested);
+function resolveLimit(requested: number | undefined, whenUnset: number): number {
+  const asked =
+    requested !== undefined && Number.isFinite(requested) ? Math.trunc(requested) : whenUnset;
   return Math.min(Math.max(asked, 1), MAX_LIMIT);
 }
 

@@ -1,4 +1,4 @@
-import type { SnapshotAirport } from "@repo/snapshot";
+import type { PeerGroup, SnapshotAirport } from "@repo/snapshot";
 
 import { COMPONENTS, type Component } from "./types.ts";
 
@@ -9,7 +9,8 @@ import { COMPONENTS, type Component } from "./types.ts";
  *
  * Rounded to an integer so the score vector an analyst reads is the score
  * vector the composite is computed from. `values` always holds `value`, because
- * both come from the same peer group, so it is never empty here.
+ * a raw value is pushed onto its own peer group's distribution below, so it is
+ * never empty here.
  */
 export function percentileRank(value: number, values: readonly number[]): number {
   let below = 0;
@@ -21,27 +22,37 @@ export function percentileRank(value: number, values: readonly number[]): number
   return Math.round((100 * (below + tied / 2)) / values.length);
 }
 
+/** The raw values one peer group is ranked against, per component. */
 export type PeerDistribution = Record<Component, number[]>;
+
+/**
+ * Keyed by every hub size, so an airport's distribution is always present: the
+ * keys are pinned to the snapshot's `PeerGroup`, and adding a hub size there
+ * fails to typecheck here rather than silently ranking against nothing.
+ */
+export type PeerDistributions = Record<PeerGroup, PeerDistribution>;
 
 /**
  * The raw values each peer group is ranked against, per component. Missing
  * inputs are left out of the distribution rather than counted as zero, so one
  * airport's blank never moves its peers' percentiles.
  */
-export function peerDistributions(
-  airports: readonly SnapshotAirport[],
-): Map<string, PeerDistribution> {
-  const distributions = new Map<string, PeerDistribution>();
+export function peerDistributions(airports: readonly SnapshotAirport[]): PeerDistributions {
+  const distributions: PeerDistributions = {
+    large: emptyDistribution(),
+    medium: emptyDistribution(),
+    small: emptyDistribution(),
+  };
   for (const airport of airports) {
-    let distribution = distributions.get(airport.peerGroup);
-    if (distribution === undefined) {
-      distribution = { congestion: [], unmetFlightDemand: [], delay: [], growth: [] };
-      distributions.set(airport.peerGroup, distribution);
-    }
+    const distribution = distributions[airport.peerGroup];
     for (const component of COMPONENTS) {
       const { raw } = airport.inputs[component];
       if (raw !== null) distribution[component].push(raw);
     }
   }
   return distributions;
+}
+
+function emptyDistribution(): PeerDistribution {
+  return { congestion: [], unmetFlightDemand: [], delay: [], growth: [] };
 }

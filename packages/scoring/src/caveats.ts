@@ -28,11 +28,10 @@ export function assumptionsFor(shared: readonly string[], airport: SnapshotAirpo
   );
   if (missing.length === 0) return [...shared];
   const labels = missing.map((component) => COMPONENT_LABELS[component]);
-  const named = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
   const verb = labels.length === 1 ? "is" : "are";
   return [
     ...shared,
-    `${named} ${verb} missing for ${airport.iata}, so it has no composite because the input is absent, not because it scored low.`,
+    `${listPhrase(labels)} ${verb} missing for ${airport.iata}, so it has no composite because the input is absent, not because it scored low.`,
   ];
 }
 
@@ -47,4 +46,12 @@ export function gapsFor(snapshot: AirportSnapshot, airport: SnapshotAirport): st
     gaps.push(`Long-haul share is not available for ${airport.iata}.`);
   }
   return gaps;
+}
+
+// "Delay", then "Delay and Growth", then "Congestion, Delay and Growth": the
+// component names read as a sentence, so a caveat naming two blanks is one line.
+function listPhrase(labels: readonly string[]): string {
+  const last = labels.at(-1) ?? "";
+  if (labels.length <= 1) return last;
+  return `${labels.slice(0, -1).join(", ")} and ${last}`;
 }

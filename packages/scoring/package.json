@@ -10,6 +10,9 @@
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
+  "dependencies": {
+    "@repo/snapshot": "workspace:*"
+  },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
@@ -17,8 +20,5 @@
     "eslint": "9.39.4",
     "jiti": "2.7.0",
     "typescript": "5.9.3"
-  },
-  "dependencies": {
-    "@repo/snapshot": "workspace:*"
   }
 }

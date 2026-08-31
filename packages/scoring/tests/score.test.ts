@@ -207,6 +207,15 @@ test("a partial row says why it has no composite, on that row", () => {
   );
 });
 
+test("a row missing every component names them all in one sentence", () => {
+  assert.ok(
+    row("HYA").assumptions.some((line) =>
+      line.includes("Congestion, Unmet flight demand, Delay and Growth are missing for HYA"),
+    ),
+    `HYA assumptions name every blank: ${JSON.stringify(row("HYA").assumptions)}`,
+  );
+});
+
 test("scoring keeps the snapshot's row order and does not mutate it", () => {
   assert.deepEqual(
     scored.map((candidate) => candidate.iata),

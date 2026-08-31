@@ -44,10 +44,12 @@ test("scoring imports neither an LLM, the network, nor Convex", () => {
 });
 
 test("the only module scoring reaches outside itself is the snapshot's types", () => {
-  const importLine = /^\s*import\s+(type\s+)?[^"']*from\s+["']([^"']+)["']/gm;
+  // Re-exports count: `export { x } from "convex"` pulls a module in just as an
+  // import does, so both keywords are scanned.
+  const moduleEdge = /^\s*(?:import|export)\s+(type\s+)?[^"']*from\s+["']([^"']+)["']/gm;
   for (const file of modules) {
     const source = readFileSync(new URL(file, src), "utf8");
-    for (const [, isType, specifier] of source.matchAll(importLine)) {
+    for (const [, isType, specifier] of source.matchAll(moduleEdge)) {
       if (specifier.startsWith("./") || specifier.startsWith("../")) continue;
       assert.equal(specifier, "@repo/snapshot", `src/${file} imports ${specifier}`);
       assert.ok(isType, `src/${file} imports @repo/snapshot for types only, so nothing loads at runtime`);

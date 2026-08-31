@@ -26,7 +26,7 @@ export function scoreUniverse(snapshot: AirportSnapshot): ScoredAirport[] {
   const shared = sharedAssumptions(snapshot);
 
   return snapshot.airports.map((airport) => {
-    const peers = distributions.get(airport.peerGroup);
+    const peers = distributions[airport.peerGroup];
     const scoreVector: ScoreVector = {
       congestion: rank(airport, "congestion", peers),
       unmetFlightDemand: rank(airport, "unmetFlightDemand", peers),
@@ -56,11 +56,11 @@ export function scoreUniverse(snapshot: AirportSnapshot): ScoredAirport[] {
 function rank(
   airport: SnapshotAirport,
   component: Component,
-  peers: PeerDistribution | undefined,
+  peers: PeerDistribution,
 ): ScoreComponent {
   const { raw, coverage } = airport.inputs[component];
   return {
-    percentile: raw === null ? null : percentileRank(raw, peers?.[component] ?? []),
+    percentile: raw === null ? null : percentileRank(raw, peers[component]),
     raw,
     coverage,
   };
@@ -81,6 +81,11 @@ function compositeOf(scoreVector: ScoreVector): number | null {
   return Math.round(weighted / 100);
 }
 
+/**
+ * The lamp for one row, read off that row alone. Coverage outranks the number:
+ * a 3-of-4 row is Partial inputs even when it is handed a composite, because
+ * missing is not a low score.
+ */
 export function candidateLamp(
   row: Pick<ScoredAirport, "composite" | "scoreVector">,
 ): CandidateLamp {
