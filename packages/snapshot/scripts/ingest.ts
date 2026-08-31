@@ -11,7 +11,7 @@ import { SLOT_LIMITS, SLOT_LIMIT_VERIFIED_ON, slotLimitOf } from "../src/slot-li
 import { download } from "./lib/cache.ts";
 import { forEachCsvRow } from "./lib/csv.ts";
 import { readFaaUniverse, type FaaUniverseRow } from "./lib/faa-workbook.ts";
-import { placeFor, stateOf, type Place } from "./lib/ourairports.ts";
+import { coordinatesOf, placeFor, stateOf, type Place } from "./lib/ourairports.ts";
 import { readWorksheetRows } from "./lib/xlsx.ts";
 import { readZipEntry } from "./lib/zip.ts";
 
@@ -65,12 +65,27 @@ async function readPlaces(): Promise<Map<string, Place>> {
   const places = new Map<string, Place>();
   forEachCsvRow(
     csv,
-    ["ident", "name", "municipality", "iso_country", "iso_region", "iata_code"],
-    ([ident, name, municipality, country, region, iata]) => {
+    [
+      "ident",
+      "name",
+      "municipality",
+      "iso_country",
+      "iso_region",
+      "iata_code",
+      "latitude_deg",
+      "longitude_deg",
+    ],
+    ([ident, name, municipality, country, region, iata, latitude, longitude]) => {
       if (!US_COUNTRY_CODES.has(country) || iata.length !== 3) {
         return;
       }
-      places.set(iata, { ident, name, municipality, state: stateOf(country, region) });
+      places.set(iata, {
+        ident,
+        name,
+        municipality,
+        state: stateOf(country, region),
+        ...coordinatesOf(ident, latitude, longitude),
+      });
     },
   );
   return places;
@@ -222,6 +237,8 @@ function buildAirport(
     municipality: place.municipality,
     state: row.state,
     region: censusDivisionOf(row.state),
+    latitude: place.latitude,
+    longitude: place.longitude,
     peerGroup: row.peerGroup,
     runwayCount,
     slotLimit: slotLimitOf(row.iata),
