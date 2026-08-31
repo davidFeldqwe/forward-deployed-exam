@@ -134,11 +134,6 @@ export function Chat({
 }
 
 /**
- * The two years every airport in an answer is compared over, in the header
- * beside the shared actions. The phrase says what the years are; a phone-width
- * bar keeps the years and drops the phrase rather than the whole pill.
- */
-/**
  * Send, held while the question is on its way into the Thread. The composer
  * only clears once the transcript comes back with the question in it, so until
  * then a second click would post the same question again and append it twice.

@@ -155,6 +155,27 @@ function ground(outlines: readonly PlacedOutline[], palette: Palette): THREE.Obj
   );
 }
 
+/** The marks that share one geometry and one colour: a shape and a lamp word. */
+type MarkGroup = {
+  shape: MapMark["shape"];
+  lamp: CandidateLamp;
+  members: MapMark[];
+};
+
+function groupByShapeAndLamp(all: readonly MapMark[]): MarkGroup[] {
+  const groups = new Map<string, MarkGroup>();
+  for (const mark of all) {
+    const key = `${mark.shape}:${mark.lamp}`;
+    const group = groups.get(key);
+    if (group) {
+      group.members.push(mark);
+    } else {
+      groups.set(key, { shape: mark.shape, lamp: mark.lamp, members: [mark] });
+    }
+  }
+  return [...groups.values()];
+}
+
 /**
  * One instanced mesh per lamp word and shape, so a mesh's colour is its lamp
  * and nothing else can set it. A column is a cylinder of the one radius scaled
@@ -162,28 +183,18 @@ function ground(outlines: readonly PlacedOutline[], palette: Palette): THREE.Obj
  * with no height to scale at all.
  */
 function marks(all: readonly MapMark[], palette: Palette): THREE.Object3D[] {
-  const groups = new Map<string, MapMark[]>();
-  for (const mark of all) {
-    const group = groups.get(`${mark.shape}:${mark.lamp}`);
-    if (group) group.push(mark);
-    else groups.set(`${mark.shape}:${mark.lamp}`, [mark]);
-  }
-
-  return [...groups.values()].map((group) => {
+  return groupByShapeAndLamp(all).map(({ shape, lamp, members }) => {
     const mesh = new THREE.InstancedMesh(
-      shapeGeometry(group[0].shape),
-      new THREE.MeshLambertMaterial({
-        color: palette.lamp[group[0].lamp],
-        side: THREE.DoubleSide,
-      }),
-      group.length,
+      shapeGeometry(shape),
+      new THREE.MeshLambertMaterial({ color: palette.lamp[lamp], side: THREE.DoubleSide }),
+      members.length,
     );
 
+    // A ring keeps its own scale and sits just clear of the ground lines; a
+    // column is stretched from its base by the height the mark carries.
+    const isRing = shape === "ring";
     const placement = new THREE.Matrix4();
-    group.forEach((mark, index) => {
-      // A ring keeps its own scale and sits just clear of the ground lines; a
-      // column is stretched from its base by the height the mark carries.
-      const isRing = mark.shape === "ring";
+    members.forEach((mark, index) => {
       placement.makeScale(1, isRing ? 1 : mark.height, 1);
       placement.setPosition(mark.x, isRing ? RING_LIFT : 0, mark.z);
       mesh.setMatrixAt(index, placement);
@@ -193,10 +204,12 @@ function marks(all: readonly MapMark[], palette: Palette): THREE.Object3D[] {
 }
 
 function shapeGeometry(shape: MapMark["shape"]): THREE.BufferGeometry {
-  return shape === "ring"
-    ? new THREE.RingGeometry(RING_INNER_RADIUS, RING_OUTER_RADIUS, 24).rotateX(-Math.PI / 2)
-    : // A unit-tall cylinder, sat on the ground by its own half-height below.
-      new THREE.CylinderGeometry(COLUMN_RADIUS, COLUMN_RADIUS, 1, 18).translate(0, 0.5, 0);
+  if (shape === "ring") {
+    // Flat on the ground plane: a ring lies where a column would stand.
+    return new THREE.RingGeometry(RING_INNER_RADIUS, RING_OUTER_RADIUS, 24).rotateX(-Math.PI / 2);
+  }
+  // A unit-tall cylinder, sat on the ground by its own half-height below.
+  return new THREE.CylinderGeometry(COLUMN_RADIUS, COLUMN_RADIUS, 1, 18).translate(0, 0.5, 0);
 }
 
 /**

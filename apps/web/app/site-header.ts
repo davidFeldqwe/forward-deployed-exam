@@ -1,12 +1,12 @@
 /**
- * The shared site header (issue #53; PRD stories 2, 8, 16). Landing and chat
- * wear one bar, so the product does not read as two apps: the same identity on
- * the left, the same actions on the right, always on screen.
+ * The shared site header (issue #53; PRD stories 2, 8, 16). Landing, chat and
+ * `/map` wear one bar, so the product does not read as three apps: the same
+ * identity on the left, the same actions on the right, always on screen.
  *
- * This module is what is in the bar — the one product name, the two links, and
- * which way the profile control goes. `components/SiteHeader.tsx` is how it
- * looks, and the chat-only chrome (comparison window, recents drawer control)
- * is passed in by the surface that has it.
+ * This module is what is in the bar — the one product name, the three actions,
+ * which of them the visitor is already on, and which way the profile control
+ * goes. `components/SiteHeader.tsx` is how it looks, and the chrome a single
+ * surface brings (chat's recents drawer control) is passed in by that surface.
  *
  * The profile control is one icon with two behaviours rather than a menu:
  * signed out it is the way into `/login`, signed in it is the way out of the

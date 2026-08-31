@@ -2,8 +2,8 @@ import { scoreUniverse } from "@repo/scoring";
 import { loadSnapshot } from "@repo/snapshot";
 
 import { currentSession } from "@/app/auth-session";
-import { mapMarks } from "@/app/map-view";
 import { mapCopy } from "@/app/map-copy";
+import { mapMarks } from "@/app/map-view";
 import { Skyline } from "@/components/Skyline";
 
 export const metadata = {

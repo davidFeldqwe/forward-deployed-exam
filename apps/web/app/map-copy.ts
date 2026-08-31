@@ -17,8 +17,9 @@ export type LampLegendEntry = {
 };
 
 /**
- * The two coverage states lie flat: missing is not a low composite, so the key
- * gives them a shape of their own rather than a hue at the bottom of a scale.
+ * What each lamp word draws, and the band of composites behind it. The two
+ * coverage states lie flat: missing is not a low composite, so the key gives
+ * them a shape of their own rather than a hue at the bottom of a scale.
  */
 const LEGEND_MEANINGS: Readonly<Record<CandidateLamp, string>> = {
   "Strong candidate": "column, composite 70 and over",
@@ -38,8 +39,6 @@ export const mapCopy = {
     "twice the column of 40. Every column is the same width, so FAA hub size is " +
     "not a second thing to read off the canvas.",
   legendHeading: "Candidate lamp",
-  // The two coverage states lie flat: missing is not a low composite, so the
-  // key gives them a shape of their own rather than a hue at the bottom.
   legend: CANDIDATE_LAMPS.map((lamp) => ({
     lamp,
     meaning: LEGEND_MEANINGS[lamp],

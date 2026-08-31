@@ -13,6 +13,7 @@ import {
 import { Wordmark } from "@/components/Wordmark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * Site chrome: pinned to the top of the viewport, edge to edge, with the bar's
@@ -24,6 +25,11 @@ import { Button } from "@/components/ui/button";
 const barClass =
   "sticky top-0 z-30 flex h-12 w-full shrink-0 items-center gap-1.5 border-b bg-header px-4 md:gap-3 md:px-6";
 
+/** The action a visitor is already on takes the foreground; the rest stay grey. */
+const actionClass = "px-2 md:px-3";
+const currentActionClass = "text-foreground";
+const restingActionClass = "text-muted-foreground";
+
 /** The glyph for each action, so the pure module holds no components. */
 const LINK_ICONS = {
   chat: MessageSquareIcon,
@@ -32,10 +38,10 @@ const LINK_ICONS = {
 } as const;
 
 /**
- * The header Landing and chat share (issue #53): identity on the left, chat,
- * GitHub and the profile control on the right. A surface with chrome of its own
- * hands it in — chat's recents drawer control leads the bar, beside the rail it
- * opens, and the comparison window sits with the actions.
+ * The header Landing, chat and `/map` share (issue #53): identity on the left,
+ * chat, Map, GitHub and the profile control on the right. A surface with chrome
+ * of its own hands it in — chat's recents drawer control leads the bar, beside
+ * the rail it opens, and the comparison window sits with the actions.
  */
 export function SiteHeader({
   signedIn,
@@ -89,11 +95,7 @@ function HeaderAction({ link }: { link: HeaderLink }) {
       size="sm"
       nativeButton={false}
       aria-current={link.current ? "page" : undefined}
-      className={
-        link.current
-          ? "px-2 text-foreground md:px-3"
-          : "px-2 text-muted-foreground md:px-3"
-      }
+      className={cn(actionClass, link.current ? currentActionClass : restingActionClass)}
       render={
         link.external ? (
           <a href={link.href} target="_blank" rel="noreferrer" />

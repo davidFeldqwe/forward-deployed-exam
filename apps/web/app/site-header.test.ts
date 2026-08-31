@@ -41,12 +41,28 @@ test("the product name is one string, and both surfaces wear the same header", (
   }
 });
 
-test("chat is the first action, and stays inside the product", () => {
-  const chat = link(false, "chat");
+test("every surface offers the same three actions, in one order", () => {
+  for (const signedIn of [false, true]) {
+    assert.deepEqual(
+      siteHeader(signedIn).links.map((action) => action.key),
+      ["chat", "map", "github"],
+    );
+  }
 
+  // Chat leads and stays inside the product; the map is the public surface
+  // beside it.
+  const chat = link(false, "chat");
   assert.equal(chat.label, "Chat");
   assert.equal(chat.href, CHAT_PATH);
   assert.equal(chat.external, false);
+
+  const map = link(false, "map");
+  assert.equal(map.label, "Map");
+  assert.equal(map.href, MAP_PATH);
+  assert.equal(map.external, false);
+  // The map is a public surface, so the gate does not accept it as somewhere to
+  // land after signing in: only chat paths are honoured there.
+  assert.equal(postLoginPath(MAP_PATH), CHAT_PATH);
 });
 
 test("GitHub opens this repository, and leaves the product to do it", () => {
@@ -141,39 +157,6 @@ test("chat fills both header slots: the drawer control and the window", () => {
   assert.match(chat, /status=\{<ComparisonWindow/);
 });
 
-test("the PRD and the coding standards describe the shared header", () => {
-  const prd = doc("PRD.md");
-  const standards = doc(".sandcastle/CODING_STANDARDS.md");
-
-  // GitHub is header chrome on both surfaces now, not a footer link only.
-  const story8 = prd.split("\n").find((line) => line.startsWith("8. "));
-  assert.ok(story8, "story 8");
-  assert.doesNotMatch(story8, /only as a footer link/i);
-  assert.match(story8, /header/i);
-
-  for (const text of [prd, standards]) {
-    assert.match(text, /sticky/i);
-    assert.match(text, /profile control/i);
-  }
-});
-
-test("every surface offers the same three actions, in one order", () => {
-  for (const signedIn of [false, true]) {
-    assert.deepEqual(
-      siteHeader(signedIn).links.map((action) => action.key),
-      ["chat", "map", "github"],
-    );
-  }
-
-  const map = link(false, "map");
-  assert.equal(map.label, "Map");
-  assert.equal(map.href, MAP_PATH);
-  assert.equal(map.external, false);
-  // The map is a public surface, so the gate does not accept it as somewhere to
-  // land after signing in: only chat paths are honoured there.
-  assert.equal(postLoginPath(MAP_PATH), CHAT_PATH);
-});
-
 test("a surface marks its own control current, and nothing else's", () => {
   const onMap = siteHeader(false, "map").links;
 
@@ -202,4 +185,20 @@ test("the current control says so to a screen reader, not only in the palette", 
 test("both surfaces hand the header the one they are", () => {
   assert.match(source("components/Chat.tsx"), /current="chat"/);
   assert.match(source("components/Skyline.tsx"), /current="map"/);
+});
+
+test("the PRD and the coding standards describe the shared header", () => {
+  const prd = doc("PRD.md");
+  const standards = doc(".sandcastle/CODING_STANDARDS.md");
+
+  // GitHub is header chrome on both surfaces now, not a footer link only.
+  const story8 = prd.split("\n").find((line) => line.startsWith("8. "));
+  assert.ok(story8, "story 8");
+  assert.doesNotMatch(story8, /only as a footer link/i);
+  assert.match(story8, /header/i);
+
+  for (const text of [prd, standards]) {
+    assert.match(text, /sticky/i);
+    assert.match(text, /profile control/i);
+  }
 });

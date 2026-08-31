@@ -3,9 +3,8 @@ import { clip } from "./text.ts";
 export const LOGIN_PATH = "/login";
 export const CHAT_PATH = "/chat";
 /**
- * The public capacity-pressure skyline (issue #69). It is here with the paths
- * the gate decides about so that "which surfaces need a session" is one list:
- * this is the one that does not. Nothing below sends a visitor to login for it,
+ * The public capacity-pressure skyline (issue #69): the one surface in this
+ * list that needs no session. Nothing below sends a visitor to login for it,
  * and `postLoginPath` still honours chat paths only.
  */
 export const MAP_PATH = "/map";

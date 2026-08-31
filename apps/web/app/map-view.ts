@@ -23,8 +23,9 @@ export const COLUMN_RADIUS = 0.32;
  * narrowed by the cosine of that latitude so the country is not stretched east
  * to west. Nothing here moves an airport off its own coordinates.
  */
-export const GROUND_ORIGIN = { latitude: 39.5, longitude: -98.35 } as const;
-export const UNITS_PER_DEGREE = 0.34;
+const GROUND_ORIGIN = { latitude: 39.5, longitude: -98.35 } as const;
+const UNITS_PER_DEGREE = 0.34;
+const LONGITUDE_NARROWING = Math.cos((GROUND_ORIGIN.latitude * Math.PI) / 180);
 
 /** What one airport becomes on the canvas: a column, or a ring on the ground. */
 export type MapMark = {
@@ -62,9 +63,8 @@ export function columnHeight(composite: number): number {
  * a column cannot stand off the state it is in.
  */
 export function groundPoint(at: { latitude: number; longitude: number }): { x: number; z: number } {
-  const narrowing = Math.cos((GROUND_ORIGIN.latitude * Math.PI) / 180);
   return {
-    x: (at.longitude - GROUND_ORIGIN.longitude) * narrowing * UNITS_PER_DEGREE,
+    x: (at.longitude - GROUND_ORIGIN.longitude) * LONGITUDE_NARROWING * UNITS_PER_DEGREE,
     // North is away from a camera that looks down the +z axis.
     z: -(at.latitude - GROUND_ORIGIN.latitude) * UNITS_PER_DEGREE,
   };

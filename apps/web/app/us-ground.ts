@@ -2,9 +2,8 @@
  * The ground plane under the `/map` skyline (issue #69 / #68): US state
  * outlines, committed rather than fetched, so the page draws a country with no
  * basemap token and no tile request. The geometry is US Census Bureau
- * cartographic boundaries (public domain), simplified to about a tenth of a
- * degree — a country at this camera distance is an outline, not a coastline
- * survey.
+ * cartographic boundaries (public domain), simplified to 0.07° — a country at
+ * this camera distance is an outline, not a coastline survey.
  *
  * The file is parsed rather than cast, for the reason the snapshot is: a
  * committed JSON is still data the module did not compute, and a ring of one

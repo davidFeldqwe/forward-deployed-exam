@@ -63,7 +63,15 @@ function reachableFrom(entry: string): string[] {
 const graph = reachableFrom(ENTRY);
 
 test("the walk reaches the modules the map is made of", () => {
-  for (const file of [ENTRY, "components/Skyline.tsx", "components/SkylineCanvas.tsx", "app/skyline-scene.ts", "app/map-view.ts"]) {
+  const made = [
+    ENTRY,
+    "components/Skyline.tsx",
+    "components/SkylineCanvas.tsx",
+    "app/skyline-scene.ts",
+    "app/map-view.ts",
+  ];
+
+  for (const file of made) {
     assert.ok(graph.includes(file), file);
   }
 });
@@ -108,7 +116,8 @@ test("the columns are the scoring module's rows, not a second screen", () => {
 test("the map has one renderer: no SVG twin to disagree with the canvas", () => {
   // The header's wordmark glyph is an SVG and stays one; what may not exist is
   // a second drawing of the country.
-  for (const file of ["components/Skyline.tsx", "components/SkylineCanvas.tsx", "app/skyline-scene.ts"]) {
+  const drawn = ["components/Skyline.tsx", "components/SkylineCanvas.tsx", "app/skyline-scene.ts"];
+  for (const file of drawn) {
     assert.doesNotMatch(source(file), /<svg\b/i, file);
   }
   // One place asks for a WebGL context, and the empty state is what it returns.
