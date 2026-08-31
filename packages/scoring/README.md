@@ -80,13 +80,22 @@ itself.
   so a two-code compare returns both rows. A limit below 1 is raised to 1 and a
   fraction truncates, so a stray number narrows the answer rather than emptying
   it; one that is not a finite number falls back to the default.
+- Every argument is optional, and `null` means the same as leaving it out:
+  `searchParams.get` returns `null` for a query parameter nobody passed, and a
+  model omits a tool field by sending `null` as often as by dropping it, so
+  neither is allowed to crash a filter or refuse a sort key. An empty string is
+  not the same thing — it is a place phrase or a sort key that was supplied and
+  resolves to nothing. Values of the wrong *type* stay the caller's problem: the
+  tool schema and the query-string parser validate those (a `limit` of `"3"` is
+  not a number and falls back to the default).
 - Returns `{ rows, matched, sortBy, limit, unknownIata }`; `matched` is the count
   before the limit. `unknownIata` lists requested codes with no airport in the
   scored universe, in the order asked: "LAX vs ITH" comes back as one row, and
   the caller has to be able to tell that from a compare that returned both. It
   means outside the top-100 screen, not filtered out — a code the place filters
   excluded is not listed. Both key sets, the row's and the result's, are pinned
-  by tests, so the rank HTTP can assert its body equals the module output.
+  by tests, and so is the fact that the result survives `JSON.parse(JSON.stringify(...))`
+  unchanged, so the rank HTTP can assert its body equals the module output.
 
 Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,

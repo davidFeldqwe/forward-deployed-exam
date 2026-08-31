@@ -238,3 +238,42 @@ test("a code filter that matches nothing at all reports every code it was given"
   assert.equal(result.matched, 0);
   assert.deepEqual(result.unknownIata, ["ITH", "BUR"]);
 });
+
+// #19 reads these arguments off a query string, where `searchParams.get` returns
+// `null` for a parameter nobody passed, and #21 takes them from a model that
+// spells "not asked for" as `null` as often as it leaves the key out. Every null
+// filter used to die as `TypeError: Cannot read properties of null (reading
+// 'trim')`, and `sortBy: null` was refused as an off-list key.
+test("a null argument means the same as omitting it", () => {
+  assert.deepEqual(
+    queryAirports(scored, {
+      iata: null,
+      region: null,
+      state: null,
+      municipality: null,
+      peerGroup: null,
+      sortBy: null,
+      limit: null,
+    }),
+    queryAirports(scored),
+  );
+  // A null beside a real filter leaves the real one doing the work, and null
+  // codes are no codes at all, so the default limit is not lifted to the cap.
+  assert.deepEqual(codes({ region: "New England", state: null }), [
+    "BDL",
+    "BOS",
+    "ORH",
+    "PVD",
+    "HYA",
+  ]);
+  assert.equal(queryAirports(scored, { iata: null }).limit, DEFAULT_LIMIT);
+  assert.deepEqual(codes({ iata: ["ATL", "ORD"], sortBy: null, limit: null }), ["ATL", "ORD"]);
+});
+
+// `null` says nothing was asked for; an empty string is a supplied place phrase
+// or sort key that resolves to nothing, which is a different answer. Neither is
+// allowed to become a ranking the analyst did not ask for.
+test("an empty string is a value the caller supplied, not an omitted one", () => {
+  assert.equal(queryAirports(scored, { region: "" }).matched, 0);
+  assert.throws(() => queryAirports(scored, { sortBy: "" as SortBy }), RangeError);
+});

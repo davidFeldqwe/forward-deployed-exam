@@ -4,15 +4,23 @@ import { SORT_KEYS, type ScoredAirport, type SortBy } from "./types.ts";
 export const DEFAULT_LIMIT = 10;
 export const MAX_LIMIT = 25;
 
+/**
+ * Every field is optional, and `null` means the same as leaving the key out: the
+ * rank HTTP reads these off a query string, where `searchParams.get` returns
+ * `null` for a parameter nobody supplied, and the agent tool takes them from a
+ * model that spells "not asked for" as `null` as often as it omits the field.
+ * A value of the wrong *type* is still the caller's problem, caught by the tool
+ * schema and the query-string parser before this call.
+ */
 export type QueryAirportsArgs = {
   /** One code or a list; a compare passes two. Filtering by code lifts the default limit. */
-  iata?: string | readonly string[];
-  region?: string;
-  state?: string;
-  municipality?: string;
-  peerGroup?: string;
-  sortBy?: SortBy;
-  limit?: number;
+  iata?: string | readonly string[] | null;
+  region?: string | null;
+  state?: string | null;
+  municipality?: string | null;
+  peerGroup?: string | null;
+  sortBy?: SortBy | null;
+  limit?: number | null;
 };
 
 export type QueryResult = {
@@ -71,11 +79,18 @@ export function queryAirports(
   };
 }
 
+// The two spellings of "the caller did not ask": an omitted key and JSON's null.
+// An empty string is neither — it is a place phrase or a sort key that was
+// supplied and resolves to nothing, which is a different answer.
+function unspecified(value: unknown): value is null | undefined {
+  return value === null || value === undefined;
+}
+
 // `sortBy` reaches this module from a query string and from the model, where the
 // compile-time type is no help. An unknown key is named rather than left to fail
 // as a TypeError inside the comparator, so the caller can correct it.
-function resolveSortBy(requested: SortBy | undefined): SortBy {
-  if (requested === undefined) return "composite";
+function resolveSortBy(requested: SortBy | null | undefined): SortBy {
+  if (unspecified(requested)) return "composite";
   if (SORT_KEYS.includes(requested)) return requested;
   throw new RangeError(
     `sortBy must be one of ${SORT_KEYS.join(", ")}; received ${JSON.stringify(requested)}`,
@@ -87,7 +102,7 @@ function resolveSortBy(requested: SortBy | undefined): SortBy {
 // was asked. An explicitly empty list asks for no airports, which is not the
 // same as passing no `iata` at all.
 function requestedCodes(iata: QueryAirportsArgs["iata"]): string[] | null {
-  if (iata === undefined) return null;
+  if (unspecified(iata)) return null;
   const codes = typeof iata === "string" ? [iata] : iata;
   return [...new Set(codes.map((code) => code.trim().toUpperCase()))];
 }
@@ -101,14 +116,14 @@ function unknownCodes(codes: readonly string[], scored: readonly ScoredAirport[]
 
 // Place phrases are resolved to snapshot values before the query, so matching is
 // exact apart from case and padding: this function never guesses a place.
-function matches(value: string | null, wanted: string | undefined): boolean {
-  if (wanted === undefined) return true;
+function matches(value: string | null, wanted: string | null | undefined): boolean {
+  if (unspecified(wanted)) return true;
   return value !== null && value.toLowerCase() === wanted.trim().toLowerCase();
 }
 
-function resolveLimit(requested: number | undefined, fallback: number): number {
+function resolveLimit(requested: number | null | undefined, fallback: number): number {
   const asked =
-    requested !== undefined && Number.isFinite(requested) ? Math.trunc(requested) : fallback;
+    !unspecified(requested) && Number.isFinite(requested) ? Math.trunc(requested) : fallback;
   return Math.min(Math.max(asked, 1), MAX_LIMIT);
 }
 

@@ -191,3 +191,19 @@ test("a query result is exactly the locked payload, no more and no less", () => 
     "unknownIata",
   ]);
 });
+
+test("a query result survives JSON unchanged, so an HTTP body can equal it", () => {
+  // #19 curls a ranking and asserts the body equals this object. That only holds
+  // if nothing in the payload changes shape on the way through JSON: an
+  // `undefined` would be dropped, a non-finite number would become null, and a
+  // Map or Set would come back as `{}`. A withheld composite has to stay null.
+  for (const args of [
+    {},
+    { region: "New England" },
+    { iata: ["LAX", "ITH"] },
+    { sortBy: "delay", limit: MAX_LIMIT },
+  ] as const) {
+    const result = queryAirports(scored, args);
+    assert.deepEqual(JSON.parse(JSON.stringify(result)), result, JSON.stringify(args));
+  }
+});
