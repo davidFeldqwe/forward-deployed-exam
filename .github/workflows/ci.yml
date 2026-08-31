@@ -1,0 +1,43 @@
+name: CI
+
+# Issue #23 / PRD story 39: this job proves the capacity-pressure screen without
+# a paid LLM key. No repository secret is passed to any step, so the tests that
+# matter — the scoring numbers, the committed snapshot, scoring purity, and the
+# one-module LLM boundary — run on what a fresh clone holds. The guard step fails
+# the run if a key is in the environment anyway.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: typecheck, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version input: pnpm comes from `packageManager` in the root manifest,
+      # which `.npmrc` also requires to match exactly.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Refuse an LLM credential
+        run: |
+          for name in ANTHROPIC_API_KEY OPENAI_API_KEY; do
+            if [ -n "${!name:-}" ]; then
+              echo "::error::$name is set; CI proves this screen without a paid key"
+              exit 1
+            fi
+          done
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
