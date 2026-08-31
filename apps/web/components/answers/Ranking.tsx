@@ -1,4 +1,9 @@
-import type { LampTone, RankingRowView, VectorCell } from "@/app/ranking-view";
+import {
+  WITHHELD_COMPOSITE,
+  type LampTone,
+  type RankingRowView,
+  type VectorCell,
+} from "@/app/ranking-view";
 
 /**
  * The ranking table (PRD stories 23-24), rendered from the `queryAirports`
@@ -62,7 +67,7 @@ function Row({ row }: { row: RankingRowView }) {
         </span>
         <span className="flex items-baseline justify-end gap-1">
           <span className="font-mono text-[15px] font-medium text-foreground">{row.composite}</span>
-          {row.composite === "—" ? null : (
+          {row.composite === WITHHELD_COMPOSITE ? null : (
             <span className="text-[10px] text-muted-foreground/70">/100</span>
           )}
         </span>

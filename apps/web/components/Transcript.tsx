@@ -46,8 +46,8 @@ function Answer({ message }: { message: ThreadMessage }) {
       {message.toolCalls.map((call, index) => (
         <ToolRow key={`${call.tool}-${index}`} call={call} />
       ))}
-      {rankings.map((view) => (
-        <ResolvedSet key={view.resolved.phrase} resolved={view.resolved} unknown={view.unknown} />
+      {rankings.map((view, index) => (
+        <ResolvedSet key={index} resolved={view.resolved} unknown={view.unknown} />
       ))}
       {message.text ? (
         <div className="flex flex-col gap-2">
@@ -62,8 +62,8 @@ function Answer({ message }: { message: ThreadMessage }) {
           <Prose text={message.text} />
         </div>
       ) : null}
-      {rankings.map((view) => (
-        <Ranking key={view.resolved.phrase} rows={view.rows} sortLabel={view.sortLabel} />
+      {rankings.map((view, index) => (
+        <Ranking key={index} rows={view.rows} sortLabel={view.sortLabel} />
       ))}
       <Caveats
         assumptions={mergedLines(rankings, "assumptions")}
@@ -74,9 +74,7 @@ function Answer({ message }: { message: ThreadMessage }) {
 }
 
 function Prose({ text }: { text: string }) {
-  return (
-    <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">{text}</p>
-  );
+  return <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-body">{text}</p>;
 }
 
 // One caveats block per answer, even when the answer ran two queries.

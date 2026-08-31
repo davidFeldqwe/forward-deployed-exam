@@ -55,10 +55,11 @@ function Pane({ label, children }: { label: string; children: React.ReactNode })
 function argumentLines(args: JsonObject): [string, string][] {
   const lines = Object.entries(args)
     .filter(([, value]) => value !== null)
-    .map(([key, value]): [string, string] => [key, scalar(value)]);
+    .map(([key, value]): [string, string] => [key, argumentText(value)]);
   return lines.length === 0 ? [["(no arguments)", ""]] : lines;
 }
 
-function scalar(value: JsonValue): string {
+/** A code list stays JSON; a place phrase is shown as the model wrote it. */
+function argumentText(value: JsonValue): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }

@@ -34,15 +34,13 @@ test("a ranking payload survives the store the transcript re-renders from", () =
 });
 
 test("the schema refuses an off-list sort key before the screen throws on one", () => {
-  assert.equal(AGENT_TOOL_SPECS.queryAirports.inputSchema.safeParse({ sortBy: "roi" }).success, false);
-  assert.equal(AGENT_TOOL_SPECS.queryAirports.inputSchema.safeParse({ iata: "BOSTON" }).success, false);
-  assert.equal(AGENT_TOOL_SPECS.queryAirports.inputSchema.safeParse({ limit: 500 }).success, false);
+  const { inputSchema } = AGENT_TOOL_SPECS.queryAirports;
+
+  assert.equal(inputSchema.safeParse({ sortBy: "roi" }).success, false);
+  assert.equal(inputSchema.safeParse({ iata: "BOSTON" }).success, false);
+  assert.equal(inputSchema.safeParse({ limit: 500 }).success, false);
   // `null` is how a model spells "not asked for"; it must not refuse the call.
-  assert.equal(
-    AGENT_TOOL_SPECS.queryAirports.inputSchema.safeParse({ region: "New England", state: null })
-      .success,
-    true,
-  );
+  assert.equal(inputSchema.safeParse({ region: "New England", state: null }).success, true);
 });
 
 test("describeMethodology names the window, the weights, the lamp bands and the accepted phrases", () => {

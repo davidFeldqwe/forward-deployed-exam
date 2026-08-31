@@ -9,7 +9,12 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
 
-import { AGENT_MAX_STEPS, NO_PROVIDER_ANSWER, chooseProvider } from "./agent-provider.ts";
+import {
+  AGENT_MAX_STEPS,
+  NO_PROVIDER_ANSWER,
+  chooseProvider,
+  type ProviderChoice,
+} from "./agent-provider.ts";
 import { AGENT_TOOL_SPECS, runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { AGENT_TOOLS, type JsonObject, type ToolCall } from "./thread-messages.ts";
 
@@ -41,27 +46,21 @@ export async function runAgentModel(request: AgentRequest): Promise<ModelAnswer>
   }
 
   try {
-    return await generate(choice.model, choice.apiKey, choice.vendor, request);
+    return await generate(choice, request);
   } catch (error) {
     // The PRD names one OpenAI fallback: a deployment whose account cannot see
     // `gpt-4o` should answer on `gpt-4o-mini` rather than not answer at all.
     if (choice.fallbackModel === null || !isModelUnavailable(error)) {
       throw error;
     }
-    return await generate(choice.fallbackModel, choice.apiKey, choice.vendor, request);
+    return await generate({ ...choice, model: choice.fallbackModel }, request);
   }
 }
 
-async function generate(
-  model: string,
-  apiKey: string,
-  vendor: "anthropic" | "openai",
-  request: AgentRequest,
-): Promise<ModelAnswer> {
+async function generate(choice: ProviderChoice, request: AgentRequest): Promise<ModelAnswer> {
   const toolCalls: ToolCall[] = [];
   const { text } = await generateText({
-    model:
-      vendor === "anthropic" ? createAnthropic({ apiKey })(model) : createOpenAI({ apiKey })(model),
+    model: languageModel(choice),
     system: request.system,
     messages: request.messages.map(
       (turn): ModelMessage => ({ role: turn.role, content: turn.content }),
@@ -71,6 +70,12 @@ async function generate(
     stopWhen: stepCountIs(AGENT_MAX_STEPS),
   });
   return { text, toolCalls };
+}
+
+/** The one place either vendor's client is constructed. */
+function languageModel({ vendor, apiKey, model }: ProviderChoice) {
+  const provider = vendor === "anthropic" ? createAnthropic({ apiKey }) : createOpenAI({ apiKey });
+  return provider(model);
 }
 
 /**

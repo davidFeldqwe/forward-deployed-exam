@@ -4,8 +4,13 @@
  * ranking re-renders from. No SDK import — `app/agent-model.ts` owns that edge,
  * which is also why the runner is a parameter here.
  */
+import {
+  NoProviderError,
+  runAgentModel,
+  type AgentRequest,
+  type ModelAnswer,
+} from "./agent-model.ts";
 import { NO_PROVIDER_ANSWER } from "./agent-provider.ts";
-import { NoProviderError, runAgentModel, type AgentRequest, type ModelAnswer } from "./agent-model.ts";
 import { assistantMessage, type ThreadMessage } from "./thread-messages.ts";
 
 export type AgentRunner = (request: AgentRequest) => Promise<ModelAnswer>;
@@ -51,6 +56,8 @@ export const AGENT_ERROR_ANSWER =
  * The answer to the newest question in `messages`. Prose and tool calls both
  * come back on one assistant message: the message list is the only record of an
  * answer, so a payload that is not stored here cannot be re-rendered later.
+ * Every path returns a message the store will accept, so a thread never comes
+ * back with a question and no reply under it.
  */
 export async function answerQuestion(
   messages: readonly ThreadMessage[],
@@ -61,8 +68,16 @@ export async function answerQuestion(
       system: AGENT_SYSTEM_PROMPT,
       messages: messages.map((message) => ({ role: message.role, content: message.text })),
     });
-    return assistantMessage(answer.text.trim(), answer.toolCalls);
+    const text = answer.text.trim();
+    // A turn with neither prose nor a payload draws nothing, and the store
+    // refuses it — so it is the same silence a failed model leaves, and reads
+    // as one.
+    if (text.length === 0 && answer.toolCalls.length === 0) {
+      return assistantMessage(AGENT_ERROR_ANSWER);
+    }
+    return assistantMessage(text, answer.toolCalls);
   } catch (error) {
-    return assistantMessage(error instanceof NoProviderError ? NO_PROVIDER_ANSWER : AGENT_ERROR_ANSWER);
+    const failure = error instanceof NoProviderError ? NO_PROVIDER_ANSWER : AGENT_ERROR_ANSWER;
+    return assistantMessage(failure);
   }
 }

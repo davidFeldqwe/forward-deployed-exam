@@ -15,6 +15,9 @@ export {
 } from "./slot-limits.ts";
 export {
   airportSnapshotSchema,
+  // The peer-group enum itself, so the agent's tool schema validates a hub size
+  // against the snapshot's own list rather than re-typing the three names.
+  peerGroupSchema,
   type AirportSnapshot,
   type Coverage,
   type PeerGroup,

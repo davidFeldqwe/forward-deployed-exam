@@ -35,7 +35,10 @@ test("either model can be named, and a blank key is no key at all", () => {
     "gpt-4.1",
   );
   // A key set to "" in a deploy config would otherwise pick a vendor that 401s.
-  assert.equal(chooseProvider({ ANTHROPIC_API_KEY: "  ", OPENAI_API_KEY: "sk-oai" })?.vendor, "openai");
+  assert.equal(
+    chooseProvider({ ANTHROPIC_API_KEY: "  ", OPENAI_API_KEY: "sk-oai" })?.vendor,
+    "openai",
+  );
   assert.equal(chooseProvider({}), null);
 });
 

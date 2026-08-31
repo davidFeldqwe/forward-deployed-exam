@@ -8,6 +8,7 @@
  * `app/agent-model.ts` is the one module that imports a vendor SDK.
  */
 import {
+  CANDIDATE_LAMPS,
   COMPONENTS,
   COMPONENT_LABELS,
   MAX_LIMIT,
@@ -25,10 +26,10 @@ import {
   type QueryResult,
   type ScoredAirport,
 } from "@repo/scoring";
-import { loadSnapshot } from "@repo/snapshot";
+import { loadSnapshot, peerGroupSchema } from "@repo/snapshot";
 import { z } from "zod";
 
-import { AGENT_TOOLS, type AgentTool, type JsonValue } from "./thread-messages.ts";
+import type { AgentTool, JsonValue } from "./thread-messages.ts";
 
 /**
  * The screen, scored once per process. `queryAirports` filters these rows; it
@@ -58,7 +59,7 @@ const queryAirportsInput = z.object({
   region: z.string().nullish(),
   state: z.string().nullish(),
   municipality: z.string().nullish(),
-  peerGroup: z.enum(["large", "medium", "small"]).nullish(),
+  peerGroup: peerGroupSchema.nullish(),
   sortBy: z.enum(SORT_KEYS).nullish(),
   limit: z.number().int().min(1).max(MAX_LIMIT).nullish(),
 });
@@ -125,21 +126,16 @@ export const AGENT_TOOL_SPECS = {
  */
 export function runAgentTool<Name extends AgentTool>(name: Name, args: unknown): ToolPayload[Name] {
   const spec = AGENT_TOOL_SPECS[name];
-  const parsed = spec.inputSchema.parse(args ?? {});
-  return (
-    name === "queryAirports"
-      ? queryAirports(scoredUniverse(), parsed as QueryAirportsInput)
-      : methodologyReport()
-  ) as ToolPayload[Name];
+  // The spec's `execute` is typed per tool; `name` is generic here, so the one
+  // cast stands for "this tool's schema output goes to this tool's execute".
+  const execute = spec.execute as (input: unknown) => ToolPayload[Name];
+  return execute(spec.inputSchema.parse(args ?? {}));
 }
 
 /** The payload as the store will hold it: the JSON round trip is real, not a cast. */
 export function toolPayloadJson(payload: unknown): JsonValue {
   return JSON.parse(JSON.stringify(payload)) as JsonValue;
 }
-
-/** Named so a caller can assert the tool list and the transcript's list agree. */
-export const AGENT_TOOL_NAMES: readonly AgentTool[] = AGENT_TOOLS;
 
 function methodologyReport(): MethodologyReport {
   const snapshot = loadSnapshot();
@@ -161,10 +157,7 @@ function methodologyReport(): MethodologyReport {
     composite:
       "The weighted mean of the four percentiles, rounded. Every component must be present; " +
       "a missing input is never zero-filled and the rest are never re-weighted.",
-    candidateLamp: Object.entries(LAMP_RULES).map(([lamp, when]) => ({
-      lamp: lamp as CandidateLamp,
-      when,
-    })),
+    candidateLamp: CANDIDATE_LAMPS.map((lamp) => ({ lamp, when: LAMP_RULES[lamp] })),
     longHaulShare: {
       ...snapshot.methodology.longHaulShare,
       note: "A lookup, not a score-vector component, and never part of the composite.",

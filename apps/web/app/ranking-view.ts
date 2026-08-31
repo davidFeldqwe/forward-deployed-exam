@@ -19,6 +19,12 @@ import {
 
 import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./thread-messages.ts";
 
+/**
+ * A composite the screen withheld, as the table prints it. Named because the
+ * ranking table reads it back to know there is no number to put "/100" after.
+ */
+export const WITHHELD_COMPOSITE = "—";
+
 /** Which lamp hue a row lights. Never drawn without the lamp's words beside it. */
 export type LampTone = "strong" | "mixed" | "weak" | "none";
 
@@ -38,7 +44,7 @@ export type RankingRowView = {
   rank: number;
   iata: string;
   name: string;
-  /** The composite, or "—" when it is withheld. Missing is not a low score. */
+  /** The composite, or `WITHHELD_COMPOSITE`. Missing is not a low score. */
   composite: string;
   lamp: CandidateLamp;
   tone: LampTone;
@@ -89,7 +95,9 @@ export function rankingView(call: ToolCall | undefined): RankingView | null {
   if (!call || !rows) {
     return null;
   }
-  const result = call.result as JsonObject;
+  // Rows only come back for an object payload, so this reads the rest of that
+  // same object — the matched set, the sort key, the unknowns — off it.
+  const result = isObject(call.result) ? call.result : {};
   const resolvedIata = stringsOf(result.resolvedIata) ?? rows.map((row) => row.iata);
   const sortBy = sortKeyOf(result.sortBy);
   const sortLabel = sortBy === "composite" ? "composite" : COMPONENT_LABELS[sortBy].toLowerCase();
@@ -120,7 +128,7 @@ function rowView(row: ScoredAirport, rank: number): RankingRowView {
     rank,
     iata: row.iata,
     name: row.name,
-    composite: row.composite === null ? "—" : String(row.composite),
+    composite: row.composite === null ? WITHHELD_COMPOSITE : String(row.composite),
     lamp: row.candidateLamp,
     tone: LAMP_TONES[row.candidateLamp],
     whyLabels: whyLabels(row),
@@ -200,9 +208,13 @@ function phraseOf(args: JsonObject): string {
     if (typeof value !== "string" || value.trim().length === 0) continue;
     parts.push(field === "peerGroup" ? `${value} hubs` : value);
   }
-  const codes = stringsOf(args.iata) ?? (typeof args.iata === "string" ? [args.iata] : []);
-  parts.push(...codes);
+  parts.push(...codesOf(args.iata));
   return parts.length === 0 ? "Every airport in the screen" : parts.join(" · ");
+}
+
+/** One code or a list of them, the two shapes `queryAirports` accepts. */
+function codesOf(value: JsonValue | undefined): string[] {
+  return typeof value === "string" ? [value] : (stringsOf(value) ?? []);
 }
 
 function summaryOf(matched: number, shown: number, sortLabel: string): string {
@@ -237,9 +249,14 @@ function sortKeyOf(value: JsonValue | undefined): SortBy {
 }
 
 function stringsOf(value: JsonValue | undefined): string[] | null {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string")
-    ? (value as string[])
-    : null;
+  if (!Array.isArray(value) || !value.every(isString)) {
+    return null;
+  }
+  return value;
+}
+
+function isString(value: JsonValue): value is string {
+  return typeof value === "string";
 }
 
 function isObject(value: JsonValue): value is JsonObject {
