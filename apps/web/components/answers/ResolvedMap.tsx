@@ -27,7 +27,9 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
         <span className="text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
           Resolved set, placed
         </span>
-        <span className="text-[13px] text-body">{map.place}</span>
+        {/* The place, where the rows are all in one: a heading is a claim
+            about the dots under it, so a set spanning two is left unnamed. */}
+        {map.place ? <span className="text-[13px] text-body">{map.place}</span> : null}
       </div>
       <div className="px-4">
         <svg

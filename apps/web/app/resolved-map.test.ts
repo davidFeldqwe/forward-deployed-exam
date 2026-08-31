@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import type { CandidateLamp, ScoredAirport } from "@repo/scoring";
+import type { ScoredAirport } from "@repo/scoring";
 
 import {
   MAP_HEIGHT,
@@ -36,19 +36,27 @@ const base: ScoredAirport = {
   gaps: [],
 };
 
-/** One row of the payload the table draws: a code, a point, and a lamp. */
+/**
+ * One row of the payload the table draws: a code, a point, and whatever else
+ * this case turns on — the lamp a marker lights, or the state and division the
+ * map reads to know which place its rows are actually in.
+ */
 function airport(
   iata: string,
   latitude: number | null,
   longitude: number | null,
-  candidateLamp: CandidateLamp = "Strong candidate",
+  extra: Partial<ScoredAirport> = {},
 ): ScoredAirport {
-  return { ...base, iata, name: `${iata} airport`, latitude, longitude, candidateLamp };
+  return { ...base, iata, name: `${iata} airport`, latitude, longitude, ...extra };
 }
 
 const BOS = airport("BOS", 42.3643, -71.0052);
-const PVD = airport("PVD", 41.7267, -71.4327, "Weak candidate");
-const HYA = airport("HYA", 41.6693, -70.2804, "Partial inputs");
+const PVD = airport("PVD", 41.7267, -71.4327, { candidateLamp: "Weak candidate", state: "RI" });
+const HYA = airport("HYA", 41.6693, -70.2804, { candidateLamp: "Partial inputs" });
+
+/** Rows the snapshot files outside New England, for the cases about the label. */
+const CALIFORNIA = { state: "CA", region: "Pacific" } as const;
+const NEW_YORK = { state: "NY", region: "Middle Atlantic" } as const;
 
 function call(args: JsonObject, rows: readonly ScoredAirport[]): ToolCall {
   return {
@@ -104,8 +112,8 @@ test("an IATA compare is two codes, not a place", () => {
   const map = resolvedMap(
     "Compare congestion at LAX and SNA",
     call({ iata: ["LAX", "SNA"] }, [
-      airport("LAX", 33.9425, -118.408),
-      airport("SNA", 33.6757, -117.868),
+      airport("LAX", 33.9425, -118.408, CALIFORNIA),
+      airport("SNA", 33.6757, -117.868, CALIFORNIA),
     ]),
   );
 
@@ -159,8 +167,8 @@ test("an answer that is not a ranking has nothing to place", () => {
 const NEW_ENGLAND_SET = [
   BOS,
   PVD,
-  airport("BDL", 41.9389, -72.6832),
-  airport("BTV", 44.472, -73.1533),
+  airport("BDL", 41.9389, -72.6832, { state: "CT" }),
+  airport("BTV", 44.472, -73.1533, { state: "VT" }),
 ];
 
 function newEnglandMap() {
@@ -196,9 +204,9 @@ test("an edge airport keeps its code inside the drawing, on whichever side fits"
   const map = resolvedMap(
     "Which New York airports are constrained?",
     call({ state: "NY" }, [
-      airport("BUF", 42.9405, -78.7322),
-      airport("ROC", 43.1189, -77.6724),
-      airport("ALB", 42.7483, -73.8017),
+      airport("BUF", 42.9405, -78.7322, NEW_YORK),
+      airport("ROC", 43.1189, -77.6724, NEW_YORK),
+      airport("ALB", 42.7483, -73.8017, NEW_YORK),
     ]),
   );
   assert.ok(map);
@@ -230,6 +238,47 @@ test("north is up and east is right", () => {
   assert.equal(Math.min(...newEnglandMap().markers.map((marker) => marker.y)), btv.y);
 });
 
+test("the map names the place its rows are in, not another the message mentions", () => {
+  // Two places in one sentence, and the turn answered the second: a heading
+  // reading "New England" over Californian dots is a picture claiming a
+  // geography the answer does not have.
+  const map = resolvedMap(
+    "How do New England airports compare with California?",
+    call({ state: "CA" }, [
+      airport("LAX", 33.9425, -118.408, CALIFORNIA),
+      airport("SFO", 37.6188, -122.375, CALIFORNIA),
+    ]),
+  );
+
+  assert.equal(map?.place, "California");
+  assert.match(map?.caption ?? "", /coordinates for California/);
+});
+
+test("a state question answered with the whole division is labelled by the rows", () => {
+  // Story 19 lets the two halves of the gate disagree about which row they
+  // name — the message says Massachusetts, the model filtered the division —
+  // so the label follows the rows: six states of dots are not Massachusetts.
+  const map = resolvedMap(
+    "Massachusetts airports by delay",
+    call({ region: "New England" }, [BOS, PVD]),
+  );
+
+  assert.equal(map?.place, "New England");
+});
+
+test("rows that share no place leave the map claiming none", () => {
+  const map = resolvedMap(
+    NEW_ENGLAND,
+    call({ region: "New England" }, [BOS, airport("LAX", 33.9425, -118.408, CALIFORNIA)]),
+  );
+
+  // Still a map of the rows the table drew, but with no place in the caption:
+  // there is no true one-word answer to what these two are a set of.
+  assert.equal(map?.markers.length, 2);
+  assert.equal(map?.place, null);
+  assert.match(map?.caption ?? "", /coordinates\./);
+});
+
 test("a ranked row the snapshot cannot locate is named, not silently dropped", () => {
   const map = resolvedMap(
     NEW_ENGLAND,
@@ -246,7 +295,10 @@ test("a ranked row the snapshot cannot locate is named, not silently dropped", (
 test("two airports a few miles apart are not zoomed into opposite corners", () => {
   const map = resolvedMap(
     "Which New York airports are constrained?",
-    call({ state: "NY" }, [airport("LGA", 40.7772, -73.8726), airport("JFK", 40.6398, -73.7789)]),
+    call({ state: "NY" }, [
+      airport("LGA", 40.7772, -73.8726, NEW_YORK),
+      airport("JFK", 40.6398, -73.7789, NEW_YORK),
+    ]),
   );
   const [lga, jfk] = map?.markers ?? [];
 

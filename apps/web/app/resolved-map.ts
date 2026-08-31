@@ -54,8 +54,12 @@ export type MapMarker = {
 };
 
 export type ResolvedMapView = {
-  /** The state or region this message named, spelled as the closed list has it. */
-  place: string;
+  /**
+   * The place the drawn rows are in, spelled as the closed list has it, or null
+   * when they share none. It is not simply the word this message used: a
+   * heading is a claim about the dots under it.
+   */
+  place: string | null;
   markers: MapMarker[];
   /** Ranked rows the snapshot does not locate; named rather than dropped. */
   unplaced: string[];
@@ -76,8 +80,8 @@ export function resolvedMap(
   if (!call || !rows) {
     return null;
   }
-  const place = placeNamed(question);
-  if (place === null || !filtersByStateOrRegion(call.args)) {
+  const named = placesNamed(question);
+  if (named.length === 0 || !filtersByStateOrRegion(call.args)) {
     return null;
   }
   // A lookup withholds the candidate lamp, and a marker is that lamp as a dot,
@@ -90,6 +94,7 @@ export function resolvedMap(
     return null;
   }
   const unplaced = rows.filter((row) => !isLocated(row)).map((row) => row.iata);
+  const place = placeOf(named, located);
 
   return {
     place,
@@ -101,48 +106,81 @@ export function resolvedMap(
 }
 
 /**
- * The nine Census divisions and the fifty states and DC, as an analyst spells
- * them. Two-letter codes are deliberately absent: "in", "or", "me" and "ok" are
- * English words before they are states, and a gate whose list cannot be read
- * aloud is a keyword soup. A message naming a state the model then filtered by
- * `region` (or the other way round) still passes: story 19 asks the two halves
- * of the gate to agree that this is geography, not that they name the same row.
+ * The fifty states and DC as an analyst spells them, each beside the code the
+ * snapshot files its airports under — the name is what a message says and what
+ * a heading prints, the code is what a row carries, and the map needs both.
+ *
+ * Codes are deliberately not accepted as place words: "in", "or", "me" and "ok"
+ * are English words before they are states, and a gate whose list cannot be
+ * read aloud is a keyword soup.
  */
-const US_STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
-  "Delaware", "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois",
-  "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts",
-  "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
-  "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
-  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
-  "West Virginia", "Wisconsin", "Wyoming",
-] as const;
+const STATE_CODES: Readonly<Record<string, string>> = {
+  Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA",
+  Colorado: "CO", Connecticut: "CT", Delaware: "DE", "District of Columbia": "DC",
+  Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN",
+  Iowa: "IA", Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD",
+  Massachusetts: "MA", Michigan: "MI", Minnesota: "MN", Mississippi: "MS", Missouri: "MO",
+  Montana: "MT", Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH", "New Jersey": "NJ",
+  "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND",
+  Ohio: "OH", Oklahoma: "OK", Oregon: "OR", Pennsylvania: "PA", "Rhode Island": "RI",
+  "South Carolina": "SC", "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT",
+  Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI",
+  Wyoming: "WY",
+};
 
 /**
- * Every place word this gate accepts. Longest first, so a name that starts
- * where a longer one does loses the tie rather than shortening the answer.
+ * Every place word this gate accepts. Longest first, so "West Virginia" is read
+ * before the "Virginia" inside it and a name is never shortened.
  */
-const PLACE_NAMES: readonly string[] = [...CENSUS_DIVISIONS, ...US_STATES].sort(
+const PLACE_NAMES: readonly string[] = [...CENSUS_DIVISIONS, ...Object.keys(STATE_CODES)].sort(
   (left, right) => right.length - left.length,
 );
 
 /**
- * The place this message names, or null. The earliest one in the sentence wins,
- * so "New England, not New York" is a New England question.
+ * The places this message names, in the order it names them. Empty is the gate:
+ * a follow-up such as "the second one" names none, so it gets no map even while
+ * the carried context is still New England.
  */
-function placeNamed(question: string | null): string | null {
+function placesNamed(question: string | null): string[] {
   if (question === null) {
-    return null;
+    return [];
   }
-  let found: { place: string; at: number } | null = null;
+  const found: { place: string; at: number }[] = [];
   for (const place of PLACE_NAMES) {
     const at = indexOfPhrase(question, place);
-    if (at !== -1 && (found === null || at < found.at)) {
-      found = { place, at };
+    if (at !== -1) {
+      found.push({ place, at });
     }
   }
-  return found?.place ?? null;
+  return found.sort((left, right) => left.at - right.at).map((entry) => entry.place);
+}
+
+/**
+ * What the drawing is of, as a heading may say it. The first place this message
+ * named that the drawn rows are all actually in — so "New England, not New
+ * York" is New England, and a sentence naming two places is labelled by the one
+ * the turn answered. Failing that, the division every row shares, which is the
+ * true statement left when a message asked about one state and the turn ranked
+ * its whole division. Failing that, nothing: a heading over these dots would be
+ * a geography the answer does not have.
+ */
+function placeOf(named: readonly string[], rows: readonly Located[]): string | null {
+  return named.find((place) => rowsAreIn(place, rows)) ?? sharedRegion(rows);
+}
+
+/** Whether every drawn row is inside one place word: a state, or a division. */
+function rowsAreIn(place: string, rows: readonly Located[]): boolean {
+  const code = STATE_CODES[place];
+  return code === undefined
+    ? rows.every((row) => row.region === place)
+    : rows.every((row) => row.state === code);
+}
+
+/** The one division the rows are all in, or null where they span more than one. */
+function sharedRegion(rows: readonly Located[]): string | null {
+  const [first] = rows;
+  const region = first?.region ?? null;
+  return region !== null && rows.every((row) => row.region === region) ? region : null;
 }
 
 /** Half the gate: the tool call this turn made was a geographic one. */
@@ -229,9 +267,10 @@ function round(value: number): number {
  * than quietly drawing fewer pins than the table has rows, and it says which of
  * the two objects to believe.
  */
-function captionOf(place: string, placed: number, unplaced: readonly string[]): string {
+function captionOf(place: string | null, placed: number, unplaced: readonly string[]): string {
+  const of = place === null ? "" : ` for ${place}`;
   return [
-    `${placed} of this answer's ranked airports, placed from the snapshot's own coordinates for ${place}.`,
+    `${placed} of this answer's ranked airports, placed from the snapshot's own coordinates${of}.`,
     unplacedNote(unplaced),
     "The ranking table above is the source of truth.",
   ]
