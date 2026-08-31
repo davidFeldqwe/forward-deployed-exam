@@ -83,11 +83,19 @@ export function createAccount(email: string, password: string): AccountResult {
   return { ok: true, email: normalized };
 }
 
+/**
+ * The hash of a password nobody holds. An unknown email is checked against it
+ * so sign-in pays the same scrypt cost either way; without it the answer comes
+ * back instantly and the clock enumerates accounts the message will not.
+ */
+const NO_ACCOUNT_HASH = hashPassword(randomBytes(32).toString("hex"));
+
 export function authenticate(email: string, password: string): AccountResult {
   const normalized = normalizeEmail(email);
   const stored = passwordHashByEmail.get(normalized);
+  const matches = verifyPassword(password, stored ?? NO_ACCOUNT_HASH);
   // One message for both cases, so sign-in does not enumerate accounts.
-  if (!stored || !verifyPassword(password, stored)) {
+  if (!stored || !matches) {
     return { ok: false, errors: { email: "Email or password is incorrect." } };
   }
   return { ok: true, email: normalized };

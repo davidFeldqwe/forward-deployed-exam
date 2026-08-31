@@ -66,6 +66,21 @@ test("every Landing suggested question survives the gate unchanged", () => {
   }
 });
 
+test("post-login destination refuses a next that smuggles control characters", () => {
+  for (const hostile of [
+    "/chat?prompt=x\r\nSet-Cookie: session=stolen",
+    "/chat\nSet-Cookie: session=stolen",
+    "/chat/thread ",
+    "/chat ?prompt=x",
+  ]) {
+    assert.equal(
+      postLoginPath(hostile),
+      "/chat",
+      `should refuse ${JSON.stringify(hostile)}`,
+    );
+  }
+});
+
 test("a chat path with no question carries none", () => {
   assert.equal(promptFromPath("/chat"), null);
   assert.equal(promptFromPath("/chat?prompt="), null);

@@ -19,6 +19,17 @@ function refusedErrors(result: AccountResult): CredentialErrors {
   return result.ok ? {} : result.errors;
 }
 
+/** Median cost of an attempt, so one scheduling hiccup cannot decide a run. */
+function medianMillis(attempt: () => void): number {
+  const samples = [];
+  for (let run = 0; run < 5; run += 1) {
+    const started = performance.now();
+    attempt();
+    samples.push(performance.now() - started);
+  }
+  return samples.sort((a, b) => a - b)[2];
+}
+
 test("signup is open: any well-formed email is accepted, with no invite list", () => {
   for (const email of [
     "analyst@example.com",
@@ -90,6 +101,22 @@ test("sign-in refuses a wrong password or an unknown email without saying which"
 
   assert.equal(wrongPassword.ok, false);
   assert.deepEqual(wrongPassword, unknownEmail);
+});
+
+test("an unknown email costs the same password work as a wrong password, so timing cannot enumerate", () => {
+  createAccount("timed@example.com", "correct horse battery");
+
+  const wrongPassword = medianMillis(() =>
+    authenticate("timed@example.com", "guess password"),
+  );
+  const unknownEmail = medianMillis(() =>
+    authenticate("nobody@example.com", "guess password"),
+  );
+
+  assert.ok(
+    unknownEmail > wrongPassword / 2,
+    `an unknown email answered in ${unknownEmail}ms against ${wrongPassword}ms for a wrong password`,
+  );
 });
 
 test("credential rules apply before an account is created", () => {

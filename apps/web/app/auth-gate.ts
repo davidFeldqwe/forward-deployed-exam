@@ -30,9 +30,16 @@ export function postLoginPath(next: QueryValue): string {
   return typeof next === "string" && isChatPath(next) ? next : CHAT_PATH;
 }
 
+/**
+ * Printable ASCII with no spaces. Our own chat links are percent-encoded, so a
+ * `next` outside this set is smuggling — a newline in a redirect target would
+ * otherwise reach the `Location` header.
+ */
+const URL_PATH_CHARACTERS = /^[\x21-\x7e]+$/;
+
 /** `/chat`, `/chat/<thread id>`, or `/chat?<query>`, and nothing else. */
 function isChatPath(path: string): boolean {
-  if (!path.startsWith(CHAT_PATH)) {
+  if (!URL_PATH_CHARACTERS.test(path) || !path.startsWith(CHAT_PATH)) {
     return false;
   }
   const rest = path.slice(CHAT_PATH.length);
