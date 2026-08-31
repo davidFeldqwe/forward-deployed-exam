@@ -11,6 +11,7 @@ import {
   CANDIDATE_LAMPS,
   COMPONENTS,
   COMPONENT_LABELS,
+  LOOKUP_METRICS,
   MAX_LIMIT,
   MIXED_VECTOR_AT,
   SORT_KEYS,
@@ -61,6 +62,7 @@ const queryAirportsInput = z.object({
   municipality: z.string().nullish(),
   peerGroup: peerGroupSchema.nullish(),
   sortBy: z.enum(SORT_KEYS).nullish(),
+  metric: z.enum(LOOKUP_METRICS).nullish(),
   limit: z.number().int().min(1).max(MAX_LIMIT).nullish(),
 });
 
@@ -102,7 +104,9 @@ export const AGENT_TOOL_SPECS = {
       "resolved place values, not phrases to geocode: region is one of the nine US Census " +
       "divisions, state is a two-letter code, municipality is the snapshot's city name, " +
       "peerGroup is an FAA hub size. Percentiles are national within the peer group and are " +
-      "never recomputed for a filtered set. Call describeMethodology for the accepted values.",
+      "never recomputed for a filtered set. Pass metric for a single-metric lookup: one number " +
+      "per airport, such as delay minutes or long-haul share, answered with that number and " +
+      "no composite and no candidate lamp. Call describeMethodology for the accepted values.",
     inputSchema: queryAirportsInput,
     execute: (args: QueryAirportsInput): QueryResult => queryAirports(scoredUniverse(), args),
   },

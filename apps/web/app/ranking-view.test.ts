@@ -173,6 +173,83 @@ test("caveats are this answer's, gathered off the rows it shows", () => {
   ]);
 });
 
+// Story 30: a lookup is one number per airport, so the answer objects drop the
+// composite and the candidate lamp rather than dressing a lookup as an
+// investment recommendation. The stored row still carries both.
+const delayLookup = call({
+  rows: [bos, hya],
+  matched: 2,
+  resolvedIata: ["BOS", "HYA"],
+  sortBy: null,
+  metric: "delay",
+  limit: 10,
+  unknownIata: [],
+  unknownPlace: [],
+});
+
+test("a single-metric lookup shows that number and no candidate lamp", () => {
+  const view = rankingView(delayLookup);
+  const [first, second] = view?.rows ?? [];
+
+  assert.deepEqual(view?.lookup, { key: "delay", label: "Delay" });
+  assert.equal(view?.sortLabel, "delay");
+  assert.equal(first?.lookupValue, "14.8 min");
+  assert.equal(first?.lamp, null);
+  assert.equal(first?.composite, null);
+  // A row with no delay says so in words: a lookup of a missing number is not a
+  // zero, the same way a missing component is not a low score.
+  assert.equal(second?.lookupValue, "Not reported");
+  assert.equal(second?.lamp, null);
+});
+
+test("long-haul share is a lookup the screen never ranks on, printed as a share", () => {
+  const view = rankingView(
+    call({
+      rows: [bos, hya],
+      matched: 2,
+      resolvedIata: ["BOS", "HYA"],
+      sortBy: null,
+      metric: "longHaulShare",
+      limit: 10,
+      unknownIata: [],
+      unknownPlace: [],
+    }),
+  );
+
+  assert.deepEqual(view?.lookup, { key: "longHaulShare", label: "Long-haul share" });
+  assert.deepEqual(
+    view?.rows.map((row) => row.lookupValue),
+    ["24.1%", "Not reported"],
+  );
+  assert.equal(view?.resolved.summary, "2 airports found");
+});
+
+test("a ranking is not a lookup: it keeps the composite and the lamp, and shows no metric", () => {
+  const view = rankingView(twoRows);
+
+  assert.equal(view?.lookup, null);
+  assert.deepEqual(
+    view?.rows.map((row) => row.lookupValue),
+    [null, null],
+  );
+  assert.deepEqual(
+    view?.rows.map((row) => row.lamp),
+    ["Strong candidate", "Partial inputs"],
+  );
+});
+
+test("a lookup off the committed screen is the module's own metric and rows", () => {
+  const result = runAgentTool("queryAirports", { iata: "ANC", metric: "longHaulShare" });
+  const view = rankingView(call(result));
+
+  assert.equal(result.metric, "longHaulShare");
+  assert.equal(view?.lookup?.key, "longHaulShare");
+  assert.deepEqual(
+    view?.rows.map((row) => row.lamp),
+    [null],
+  );
+});
+
 test("a real ranking off the committed screen renders every row it was handed", () => {
   const result = runAgentTool("queryAirports", { region: "New England" });
   const view = rankingView(call(result));

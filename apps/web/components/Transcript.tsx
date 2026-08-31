@@ -63,7 +63,7 @@ function Answer({ message }: { message: ThreadMessage }) {
         </div>
       ) : null}
       {rankings.map((view, index) => (
-        <Ranking key={index} rows={view.rows} sortLabel={view.sortLabel} />
+        <Ranking key={index} rows={view.rows} lookup={view.lookup} sortLabel={view.sortLabel} />
       ))}
       <Caveats
         assumptions={mergedLines(rankings, "assumptions")}

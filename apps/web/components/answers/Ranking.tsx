@@ -1,5 +1,10 @@
 import { lampPill } from "@/app/lamp-hue";
-import { WITHHELD_COMPOSITE, type RankingRowView, type VectorCell } from "@/app/ranking-view";
+import {
+  WITHHELD_COMPOSITE,
+  type RankingRowView,
+  type RankingView,
+  type VectorCell,
+} from "@/app/ranking-view";
 import { LampLegend } from "@/components/answers/LampLegend";
 
 /**
@@ -7,10 +12,41 @@ import { LampLegend } from "@/components/answers/LampLegend";
  * payload. Each row's score vector is collapsed on the row and expands in
  * place: the numbers open under the airport they belong to, not on another
  * screen.
+ *
+ * A single-metric lookup (story 30) is the same rows drawn one column wide: the
+ * number that was asked for, and no composite, no candidate lamp and no legend
+ * for one — a lookup is not an investment recommendation, so it is not dressed
+ * as one.
  */
-export function Ranking({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel: string }) {
+export function Ranking({
+  rows,
+  lookup,
+  sortLabel,
+}: {
+  rows: RankingRowView[];
+  lookup: RankingView["lookup"];
+  sortLabel: string;
+}) {
   if (rows.length === 0) {
     return null;
+  }
+  if (lookup) {
+    return (
+      <section className="overflow-hidden rounded-lg border bg-card">
+        <div className={`${LOOKUP_GRID} border-b bg-row-head px-3.5 py-2.5`}>
+          <HeadCell>#</HeadCell>
+          <HeadCell>Airport</HeadCell>
+          <HeadCell className="text-right">{lookup.label}</HeadCell>
+        </div>
+        {rows.map((row) => (
+          <LookupRow key={row.iata} row={row} />
+        ))}
+        <p className="m-0 border-t border-grid px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
+          A single-metric lookup: {sortLabel} for each airport in the resolved set. No composite and
+          no candidate lamp — one number is not a capacity-pressure screen result.
+        </p>
+      </section>
+    );
   }
   return (
     <section className="overflow-hidden rounded-lg border bg-card">
@@ -34,6 +70,22 @@ export function Ranking({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel
 }
 
 const GRID = "grid grid-cols-[26px_1fr_74px_150px_14px] items-center gap-3";
+
+const LOOKUP_GRID = "grid grid-cols-[26px_1fr_150px] items-center gap-3";
+
+/** One airport and the one number the lookup asked for. Nothing else. */
+function LookupRow({ row }: { row: RankingRowView }) {
+  return (
+    <div className={`${LOOKUP_GRID} border-b border-grid px-3.5 py-3 last:border-b-0`}>
+      <span className="font-mono text-xs text-muted-foreground/70">{row.rank}</span>
+      <span className="flex min-w-0 flex-wrap items-baseline gap-2">
+        <span className="font-mono text-sm font-medium text-foreground">{row.iata}</span>
+        <span className="text-[13.5px] text-body">{row.name}</span>
+      </span>
+      <span className="text-right font-mono text-[13.5px] text-foreground">{row.lookupValue}</span>
+    </div>
+  );
+}
 
 function Row({ row }: { row: RankingRowView }) {
   return (
@@ -62,11 +114,15 @@ function Row({ row }: { row: RankingRowView }) {
         </span>
         {/* Hue on the lamp, never instead of it: the words are always in the
             pill, and the legend under the table names all five of them. */}
-        <span
-          className={`justify-self-start rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${lampPill(row.lamp)}`}
-        >
-          {row.lamp}
-        </span>
+        {row.lamp === null ? (
+          <span />
+        ) : (
+          <span
+            className={`justify-self-start rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${lampPill(row.lamp)}`}
+          >
+            {row.lamp}
+          </span>
+        )}
         <span className="text-[10px] text-muted-foreground/70">
           <span className="group-open:hidden">▸</span>
           <span className="hidden group-open:inline">▾</span>
