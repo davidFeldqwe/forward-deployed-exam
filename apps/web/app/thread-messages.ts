@@ -198,7 +198,7 @@ const RANKING_ROW_CHECKS: {
   name: isNonEmptyString,
   municipality: isString,
   state: isNonEmptyString,
-  region: isNonEmptyString,
+  region: isDivisionOrNone,
   latitude: isDegrees(90),
   longitude: isDegrees(180),
   peerGroup: isNonEmptyString,
@@ -258,6 +258,16 @@ function isScoreComponent(value: unknown): boolean {
 /** A slot limit, or none: an airport under no FAA schedule constraint. */
 function isSlotLimit(value: unknown): boolean {
   return value === null || SLOT_LIMIT_LEVELS.some((level) => level === value);
+}
+
+/**
+ * A Census division, or none: SJU is in Puerto Rico, which the Census Bureau
+ * places in no division at all, and `caveats` says so in words on the row. A
+ * check that demanded a division here would refuse the whole message on
+ * read-back, so a national ranking that reached Puerto Rico would vanish.
+ */
+function isDivisionOrNone(value: unknown): boolean {
+  return value === null || isNonEmptyString(value);
 }
 
 function isString(value: unknown): boolean {

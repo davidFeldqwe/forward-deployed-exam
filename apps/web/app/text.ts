@@ -17,16 +17,18 @@ export function clip(text: string, maxLength: number): string {
 }
 
 /**
- * Where a phrase appears in a text as words rather than inside a longer one, or
- * -1. Letters bound it on both sides — `\p{L}`, so an accented name is one word
- * — which keeps "Virginia" out of a "West Virginia" question and "ME" out of
- * "come". A blank phrase is nowhere: it would otherwise match the gap between
- * any two characters.
+ * Where a phrase begins in a text, as words rather than as letters inside a
+ * longer one, or -1. Letters bound it on both sides — `\p{L}`, so an accented
+ * name is one word — which keeps "Virginia" out of a "West Virginia" question
+ * and "ME" out of "come". The bounds are lookarounds and match no character of
+ * their own, so the index returned is the phrase's own: callers that compare
+ * two of them are comparing where the two phrases start. A blank phrase is
+ * nowhere: it would otherwise match the gap between any two characters.
  */
 export function indexOfPhrase(text: string, phrase: string): number {
   if (phrase.trim().length === 0) {
     return -1;
   }
   const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.search(new RegExp(`(?:^|[^\\p{L}])${escaped}(?:[^\\p{L}]|$)`, "iu"));
+  return text.search(new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, "iu"));
 }

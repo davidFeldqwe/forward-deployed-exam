@@ -121,6 +121,15 @@ test("one pin is not a set, and an unlocated row is not a pin", () => {
   );
 });
 
+test("a place the snapshot cannot resolve has nothing to draw", () => {
+  // Wyoming is on the closed list and the model filtered by it, but the
+  // hundred-airport universe holds none. An empty resolved set is not a
+  // picture: the unresolvable-place refusal is the whole of that answer.
+  const empty = call({ state: "WY" }, []);
+
+  assert.equal(resolvedMap("Which Wyoming airports are constrained?", empty), null);
+});
+
 test("a single-metric lookup gets no map: it withheld the lamp the markers light", () => {
   const lookup = call({ region: "New England", metric: "delay" }, [BOS, PVD]);
 

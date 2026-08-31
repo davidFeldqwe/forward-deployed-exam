@@ -23,9 +23,15 @@ test("a phrase is found as words, not as letters inside a longer word", () => {
   // the map gate (does it name a state?) hang on this distinction.
   assert.ok(indexOfPhrase("Which Maine airports are constrained?", "Maine") !== -1);
   assert.equal(indexOfPhrase("Are these maintained?", "Maine"), -1);
-  assert.equal(indexOfPhrase("Which West Virginia airports?", "Virginia"), 10);
+  assert.equal(indexOfPhrase("Which West Virginia airports?", "Virginia"), 11);
   assert.ok(indexOfPhrase("compare BOS and PVD", "BOS") !== -1);
   assert.equal(indexOfPhrase("compare BOSTON", "BOS"), -1);
+
+  // The index is the phrase's own, not the character that bounds it: the map
+  // gate picks the earliest place a question names by comparing these.
+  const question = "Which West Virginia airports?";
+  assert.equal(question.slice(indexOfPhrase(question, "West Virginia")), "West Virginia airports?");
+  assert.equal(indexOfPhrase("Maine airports", "Maine"), 0);
 });
 
 test("a blank phrase is nowhere, and a phrase of punctuation is read literally", () => {
@@ -33,6 +39,6 @@ test("a blank phrase is nowhere, and a phrase of punctuation is read literally",
   // question, and a place spelled with a dot is not a wildcard.
   assert.equal(indexOfPhrase("any question at all", ""), -1);
   assert.equal(indexOfPhrase("   ", " "), -1);
-  assert.equal(indexOfPhrase("airports in St. Louis", "St. Louis"), 11);
+  assert.equal(indexOfPhrase("airports in St. Louis", "St. Louis"), 12);
   assert.equal(indexOfPhrase("airports in StXLouis", "St. Louis"), -1);
 });

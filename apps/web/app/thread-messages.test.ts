@@ -141,6 +141,22 @@ test("a stored row with half a coordinate, or one off the world, is refused", ()
   assert.notEqual(parseThreadMessage(assistantMessage("prose", [unlocated])), null);
 });
 
+test("an airport the Census Bureau places in no division still survives the store", () => {
+  // SJU is the snapshot's one such row: `region` is nullable on `ScoredAirport`
+  // and `caveats` says so in words, so a national ranking that reaches Puerto
+  // Rico must not be refused whole — the answer would vanish on read-back.
+  const noDivision = structuredClone(rankingCall);
+  Object.assign(storedRow(noDivision), { iata: "SJU", state: "PR", region: null });
+
+  const restored = parseThreadMessage(assistantMessage("SJU at 61.", [noDivision]));
+
+  assert.equal(rankingRows(restored?.toolCalls[0])?.[0]?.region, null);
+  // A state is not nullable, though: every row the table draws names one.
+  const noState = structuredClone(rankingCall);
+  Object.assign(storedRow(noState), { state: null });
+  assert.equal(parseThreadMessage(assistantMessage("prose", [noState])), null);
+});
+
 test("a stored message from an unknown role or tool is refused", () => {
   assert.equal(parseThreadMessage({ role: "system", text: "be nice", toolCalls: [] }), null);
   assert.equal(
