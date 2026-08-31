@@ -39,13 +39,13 @@ export function Chat({
   // landed changes it, and so does opening a different thread.
   const transcriptKey = `${threadId ?? ""}:${messages.length}`;
 
+  // The rail is a drawer only below `md`; from there up the classes ignore it.
+  const [railOpen, setRailOpen] = useState(false);
+
   const [draft, setDraft] = useState(initialPrompt ?? "");
   // Asking inside an open thread redirects back to the same route, so React
   // reconciles rather than remounts and this controlled field would still hold
   // the question that was just sent — one Send away from appending it twice.
-  // The rail is a drawer only below `md`; from there up the classes ignore it.
-  const [railOpen, setRailOpen] = useState(false);
-
   const [clearedFor, setClearedFor] = useState(transcriptKey);
   if (clearedFor !== transcriptKey) {
     setClearedFor(transcriptKey);

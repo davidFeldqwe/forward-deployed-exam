@@ -1,10 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { PlusIcon } from "lucide-react";
 
 import { chatCopy } from "@/app/chat-copy";
-import { threadRail } from "@/app/thread-rail";
+import { threadRail, type RailDestination } from "@/app/thread-rail";
 import type { ThreadSummary } from "@/app/thread-store";
 import { cn } from "@/lib/utils";
 
@@ -61,16 +62,10 @@ export function ThreadRail({
       )}
     >
       <div className="p-2">
-        <Link
-          href={newThread.href}
-          data-thread-row
-          aria-current={newThread.current ? "page" : undefined}
-          onClick={onNavigate}
-          className={cn(rowClass, newThread.current && currentRowClass)}
-        >
+        <RailLink destination={newThread} onNavigate={onNavigate}>
           <PlusIcon aria-hidden="true" className="size-3.5 shrink-0" />
           {chatCopy.newThreadLabel}
-        </Link>
+        </RailLink>
       </div>
 
       <h2
@@ -94,20 +89,41 @@ export function ThreadRail({
           <ul className="flex list-none flex-col p-0">
             {rows.map((row) => (
               <li key={row.id}>
-                <Link
-                  href={row.href}
-                  data-thread-row
-                  aria-current={row.current ? "page" : undefined}
-                  onClick={onNavigate}
-                  className={cn(rowClass, row.current && currentRowClass)}
-                >
+                <RailLink destination={row} onNavigate={onNavigate}>
                   <span className="truncate">{row.title}</span>
-                </Link>
+                </RailLink>
               </li>
             ))}
           </ul>
         )}
       </nav>
     </aside>
+  );
+}
+
+/**
+ * One rail destination, drawn the same whether it is New thread or a recents
+ * row: where it goes, whether the analyst is already there, and the drawer
+ * closing behind the pick on a narrow viewport.
+ */
+function RailLink({
+  destination,
+  onNavigate,
+  children,
+}: {
+  destination: RailDestination;
+  onNavigate: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={destination.href}
+      data-thread-row
+      aria-current={destination.current ? "page" : undefined}
+      onClick={onNavigate}
+      className={cn(rowClass, destination.current && currentRowClass)}
+    >
+      {children}
+    </Link>
   );
 }
