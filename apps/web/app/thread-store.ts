@@ -222,14 +222,14 @@ export async function askOnThread(
     if (!thread) {
       return null;
     }
+    const answered = appendMessage(ownerEmail, thread.id, await answer(thread));
+    if (answered) {
+      return answered;
+    }
     // A refused answer is told, not swallowed: `UNSTORABLE_ANSWER` is prose the
     // store cannot refuse in turn, so the only way back from here with no reply
     // under the question is a thread that stopped existing mid-ask.
-    return (
-      appendMessage(ownerEmail, thread.id, await answer(thread)) ??
-      appendMessage(ownerEmail, thread.id, assistantMessage(UNSTORABLE_ANSWER)) ??
-      thread
-    );
+    return appendMessage(ownerEmail, thread.id, assistantMessage(UNSTORABLE_ANSWER)) ?? thread;
   };
 
   // An ask naming no thread opens one nobody can be holding yet, so it takes no
