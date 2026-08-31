@@ -8,6 +8,7 @@
   --meta: #8a8f98;
   --accent: #5e6ad2;
   --accent-hover: #828fff;
+  --accent-rgb: 94, 106, 210;
   --border: rgba(255, 255, 255, 0.07);
   --row-head: #141516;
   --grid: rgba(255, 255, 255, 0.04);
@@ -44,8 +45,8 @@ a:hover {
 a:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px rgba(94, 106, 210, 0.4),
-    0 0 0 4px rgba(94, 106, 210, 0.2);
+    0 0 0 2px rgba(var(--accent-rgb), 0.4),
+    0 0 0 4px rgba(var(--accent-rgb), 0.2);
 }
 
 .landing {
@@ -145,7 +146,7 @@ a:focus-visible {
   color: var(--body);
 }
 
-.cta {
+.hero-cta {
   display: inline-flex;
   align-items: center;
   height: 32px;
@@ -157,7 +158,7 @@ a:focus-visible {
   font-weight: 510;
 }
 
-.cta:hover {
+.hero-cta:hover {
   background: var(--accent-hover);
   color: var(--text);
 }
@@ -214,7 +215,7 @@ a:focus-visible {
   color: var(--body);
 }
 
-.demo-table .mono {
+.demo-table .numeric {
   font-family: var(--font-mono);
   font-size: 12.5px;
   color: var(--text);
@@ -222,12 +223,13 @@ a:focus-visible {
 
 .built-on {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
   gap: 10px 18px;
   margin-bottom: 48px;
   color: var(--meta);
   font-size: 12px;
+  overflow-x: auto;
 }
 
 .built-on-label {
@@ -237,7 +239,7 @@ a:focus-visible {
 
 .built-on-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px 16px;
   margin: 0;
   padding: 0;
@@ -285,44 +287,52 @@ a:focus-visible {
 
 .question-arrow {
   flex: none;
-  color: var(--accent);
+  color: var(--meta);
   font-family: var(--font-mono);
   font-size: 14px;
 }
 
-.how {
+.how-it-works {
   margin-bottom: 56px;
 }
 
 .how-steps {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  overflow-x: auto;
 }
 
 .how-step {
   display: flex;
-  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
 }
 
 .how-box {
-  padding: 12px 14px;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--card);
   color: var(--text);
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .how-arrow {
+  flex: none;
   color: var(--meta);
   font-family: var(--font-mono);
   font-size: 12px;
-  padding: 6px 0;
-  text-align: center;
+  padding: 0 6px;
 }
 
 .how-caption {
@@ -352,11 +362,4 @@ a:focus-visible {
   padding: 20px 24px 28px;
   text-align: center;
   font-size: 13px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  a,
-  .cta {
-    transition: none;
-  }
 }

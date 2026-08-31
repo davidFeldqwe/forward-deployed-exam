@@ -30,7 +30,7 @@ export function Landing() {
             </h1>
             <p className="hero-subtitle">{hero.subtitle}</p>
             {hero.actions.map((action) => (
-              <Link key={action.href} className="cta" href={action.href}>
+              <Link key={action.href} className="hero-cta" href={action.href}>
                 {action.label}
               </Link>
             ))}
@@ -55,8 +55,8 @@ export function Landing() {
                 {demo.rows.map((row) => (
                   <tr key={row.airport}>
                     <td>{row.airport}</td>
-                    <td className="mono">{row.delayRate}</td>
-                    <td className="mono">{row.avgDelay}</td>
+                    <td className="numeric">{row.delayRate}</td>
+                    <td className="numeric">{row.avgDelay}</td>
                   </tr>
                 ))}
               </tbody>
@@ -89,7 +89,7 @@ export function Landing() {
           </ul>
         </section>
 
-        <section className="landing-column how" aria-labelledby="how-heading">
+        <section className="landing-column how-it-works" aria-labelledby="how-heading">
           <h2 id="how-heading" className="how-heading">
             {howItWorks.heading}
           </h2>
@@ -99,7 +99,7 @@ export function Landing() {
                 <div className="how-box">{step}</div>
                 {index < howItWorks.steps.length - 1 ? (
                   <span className="how-arrow" aria-hidden="true">
-                    ↓
+                    →
                   </span>
                 ) : null}
               </li>

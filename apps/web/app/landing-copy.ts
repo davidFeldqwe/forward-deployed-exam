@@ -1,14 +1,4 @@
 export const landingCopy = {
-  sectionOrder: [
-    "header",
-    "hero",
-    "demo",
-    "builtOn",
-    "suggestedQuestions",
-    "howItWorks",
-    "privacy",
-    "footer",
-  ],
   header: {
     wordmark: "Airport Investment Intelligence Agent",
     actions: [{ label: "Sign in", href: "/login" }],
@@ -16,14 +6,13 @@ export const landingCopy = {
   hero: {
     title: "Airport Investment Intelligence Agent.",
     subtitle:
-      "A capacity-pressure screen: ranked, explained, number-backed answers from public data, with assumptions stated.",
+      "A capacity-pressure screen: ranked, explained, number-backed answers; scores from public data; assumptions stated.",
     actions: [{ label: "Start asking", href: "/chat" }],
   },
   demo: {
-    live: false,
     prompt: "Compare congestion at LAX and SNA.",
     prose:
-      "Los Angeles and Santa Ana stay two rows. These delay figures are composition only.",
+      "Delay is arrival delay minutes with weather removed. Los Angeles and Santa Ana stay two rows.",
     columns: ["Airport", "Delay rate", "Avg delay"],
     rows: [
       { airport: "LAX", delayRate: "22.4%", avgDelay: "14.8 min" },
@@ -47,7 +36,7 @@ export const landingCopy = {
       "Public source vintage",
     ],
     caption:
-      "Answers cite the committed snapshot vintage. This is not a weekly live refresh.",
+      "Answers cite the committed snapshot vintage for the comparison window.",
   },
   privacy:
     "We log account email and the questions you ask. We never sell data.",
@@ -56,31 +45,3 @@ export const landingCopy = {
     githubHref: "https://github.com/davidFeldqwe/forward-deployed-exam",
   },
 } as const;
-
-type LandingCopy = typeof landingCopy;
-
-export function visibleLandingText(copy: LandingCopy): string {
-  return [
-    copy.header.wordmark,
-    ...copy.header.actions.map((action) => action.label),
-    copy.hero.title,
-    copy.hero.subtitle,
-    ...copy.hero.actions.map((action) => action.label),
-    copy.demo.prompt,
-    copy.demo.prose,
-    ...copy.demo.columns,
-    ...copy.demo.rows.flatMap((row) => [
-      row.airport,
-      row.delayRate,
-      row.avgDelay,
-    ]),
-    ...copy.builtOn,
-    ...copy.suggestedQuestions,
-    copy.howItWorks.heading,
-    ...copy.howItWorks.steps,
-    copy.howItWorks.caption,
-    copy.privacy,
-    copy.footer.githubLabel,
-    copy.footer.githubHref,
-  ].join("\n");
-}
