@@ -5,9 +5,6 @@ import type { AirportSnapshot, SnapshotAirport } from "@repo/snapshot";
 import { COMPONENTS, COMPONENT_LABELS } from "./types.ts";
 import { WEIGHTS } from "./weights.ts";
 
-const OUT_OF_SCOPE =
-  "Construction cost, ROI, land availability, politics, and airline leases are outside this capacity-pressure screen.";
-
 /**
  * The caveats every row in one snapshot carries. Built once per snapshot and
  * handed to `assumptionsFor`, so a hundred rows do not re-derive the same lines.
@@ -22,7 +19,7 @@ export function sharedAssumptions(snapshot: AirportSnapshot): string[] {
     `Congestion is ${units.congestion}; unmet flight demand is ${units.unmetFlightDemand}; delay is ${units.delay}; growth is ${units.growth}.`,
     `Long-haul share is a lookup over ${longHaulShare.basis} beyond ${longHaulShare.thresholdMiles} miles, not a score-vector component.`,
     "A missing input is never zero-filled and the remaining components are never re-weighted, so an airport missing any component has no composite.",
-    OUT_OF_SCOPE,
+    "Construction cost, ROI, land availability, politics, and airline leases are outside this capacity-pressure screen.",
   ];
 }
 

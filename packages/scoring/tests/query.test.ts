@@ -13,6 +13,7 @@ import {
   type SortBy,
 } from "../src/index.ts";
 import { FIXTURE } from "./fixture.ts";
+import { rowLookup } from "./rows.ts";
 
 const scored = scoreUniverse(FIXTURE);
 
@@ -57,9 +58,9 @@ test("a region question filters and sorts, it does not re-percentile", () => {
   assert.equal(result.matched, 5);
   assert.deepEqual(result.rows.map((row) => row.iata), ["BDL", "BOS", "ORH", "PVD", "HYA"]);
 
-  const national = new Map(scored.map((row) => [row.iata, row]));
+  const national = rowLookup(scored);
   for (const row of result.rows) {
-    assert.equal(row, national.get(row.iata), `${row.iata} is the national row, unchanged`);
+    assert.equal(row, national(row.iata), `${row.iata} is the national row, unchanged`);
   }
   // BDL leads New England on a medium-hub composite of 57 while its congestion
   // percentile stays 50 nationally; a local re-percentile would have moved it.
@@ -344,7 +345,12 @@ test("the place vocabulary is what the filters accept, sorted and de-duplicated"
   const vocabulary = placeVocabulary(scored);
   assert.deepEqual(Object.keys(vocabulary), [...PLACE_FIELDS]);
   assert.deepEqual(vocabulary.peerGroup, ["large", "medium", "small"]);
-  assert.deepEqual(vocabulary.region, ["East North Central", "New England", "Pacific", "South Atlantic"]);
+  assert.deepEqual(vocabulary.region, [
+    "East North Central",
+    "New England",
+    "Pacific",
+    "South Atlantic",
+  ]);
   assert.deepEqual(vocabulary.state, ["CA", "CT", "GA", "IL", "MA", "RI"]);
   // Chicago is two airports and one place phrase.
   assert.equal(vocabulary.municipality.filter((name) => name === "Chicago").length, 1);

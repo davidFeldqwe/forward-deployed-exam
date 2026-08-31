@@ -54,7 +54,7 @@ export type QueryResult = {
    * Supplied place filters no airport in the scored universe carries, in
    * `PLACE_FIELDS` order. `state: "California"` matches nothing because the
    * snapshot spells a state as two letters, and without this the caller cannot
-   * tell that from a filter combination that is legitimately empty -- so the
+   * tell that from a filter combination that is legitimately empty — so the
    * agent would answer "no airports in California" with LAX in the screen.
    * Unknown means outside the universe, not excluded by another filter: New
    * England and CA are both real places even though no airport is in both.
@@ -73,16 +73,28 @@ export type PlaceVocabulary = Record<PlaceField, string[]>;
  *
  * A blank is not an accepted phrase: SJU has no Census division, so offering one
  * would hand back a filter that matches nothing. Codes are absent for the same
- * reason they are absent from `PLACE_FIELDS` -- an airport is not a place.
+ * reason they are absent from `PLACE_FIELDS` — an airport is not a place.
  */
 export function placeVocabulary(scored: readonly ScoredAirport[]): PlaceVocabulary {
-  const vocabulary = {} as PlaceVocabulary;
-  for (const field of PLACE_FIELDS) {
-    const values = new Set<string>();
-    for (const row of scored) if (row[field] !== null) values.add(row[field]);
-    vocabulary[field] = [...values].sort();
+  // Spelled out rather than built from `PLACE_FIELDS`, so a fifth place filter
+  // fails to typecheck here instead of quietly going unlisted. The key order is
+  // `PLACE_FIELDS`, which is the order an unresolved phrase is reported in.
+  return {
+    region: acceptedValues(scored, "region"),
+    state: acceptedValues(scored, "state"),
+    municipality: acceptedValues(scored, "municipality"),
+    peerGroup: acceptedValues(scored, "peerGroup"),
+  };
+}
+
+// The values one place filter accepts: what the universe carries, de-duplicated
+// and sorted, blanks left out.
+function acceptedValues(scored: readonly ScoredAirport[], field: PlaceField): string[] {
+  const values = new Set<string>();
+  for (const row of scored) {
+    if (row[field] !== null) values.add(row[field]);
   }
-  return vocabulary;
+  return [...values].sort();
 }
 
 /**
@@ -101,11 +113,10 @@ export function queryAirports(
   // Naming codes is an explicit ask for those rows, so it lifts the default to
   // the cap: a two-code compare returns both.
   const limit = resolveLimit(args.limit, codes === null ? DEFAULT_LIMIT : MAX_LIMIT);
-  const requested = codes === null ? null : new Set(codes);
 
   const matchedRows = scored.filter(
     (row) =>
-      (requested === null || requested.has(row.iata)) &&
+      (codes === null || codes.has(row.iata)) &&
       PLACE_FIELDS.every((field) => matches(row[field], args[field])),
   );
   // `filter` already copied, so sorting in place leaves the scored universe
@@ -141,26 +152,26 @@ function resolveSortBy(requested: SortBy | null | undefined): SortBy {
   );
 }
 
-// The codes asked for, normalised and de-duplicated, in the order given: the
-// order is what `unknownIata` is reported in, so it reads back as the question
-// was asked. An explicitly empty list asks for no airports, which is not the
-// same as passing no `iata` at all.
-function requestedCodes(iata: QueryAirportsArgs["iata"]): string[] | null {
+// The codes asked for, normalised. A Set both de-duplicates them and keeps the
+// order they were given in, which is the order `unknownIata` reads back in, so
+// a refusal reads as the question was asked. An explicitly empty list asks for
+// no airports, which is not the same as passing no `iata` at all.
+function requestedCodes(iata: QueryAirportsArgs["iata"]): ReadonlySet<string> | null {
   if (unspecified(iata)) return null;
   const codes = typeof iata === "string" ? [iata] : iata;
-  return [...new Set(codes.map((code) => code.trim().toUpperCase()))];
+  return new Set(codes.map((code) => code.trim().toUpperCase()));
 }
 
 // Outside the screened universe, which is not the same as excluded by a filter:
 // a code the place filters dropped is still an airport this module can score.
-function unknownCodes(codes: readonly string[], scored: readonly ScoredAirport[]): string[] {
+function unknownCodes(codes: ReadonlySet<string>, scored: readonly ScoredAirport[]): string[] {
   const universe = new Set(scored.map((row) => row.iata));
-  return codes.filter((code) => !universe.has(code));
+  return [...codes].filter((code) => !universe.has(code));
 }
 
 // A place phrase the screen cannot resolve, reported rather than refused: an
 // unknown place legitimately has no airports, so zero rows is the honest answer
-// -- it just has to be distinguishable from a real place with no rows. Asked of
+// — it just has to be distinguishable from a real place with no rows. Asked of
 // the whole universe, not the matched rows, so one filter never makes another
 // look unresolved.
 function unknownPlaces(

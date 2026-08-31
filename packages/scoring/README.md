@@ -106,9 +106,10 @@ itself.
   the values each place filter accepts, sorted, derived from the universe rather
   than kept by hand in the app, so "accepted phrases" cannot disagree with what
   is filtered on. A blank is not offered — SJU has no Census division, and a
-  region ranking never returns it. Both key sets, the row's and the result's, are pinned
-  by tests, and so is the fact that the result survives `JSON.parse(JSON.stringify(...))`
-  unchanged, so the rank HTTP can assert its body equals the module output.
+  region ranking never returns it. Both key sets, the row's and the result's,
+  are pinned by tests, and so is the fact that the result survives
+  `JSON.parse(JSON.stringify(...))` unchanged, so the rank HTTP can assert its
+  body equals the module output.
 
 Every row carries `assumptions` and `gaps` for that answer — derived from the
 snapshot's own methodology and gap list — because caveats belong on the answer,
