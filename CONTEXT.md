@@ -97,7 +97,7 @@ The airports that a place phrase maps to. The agent names this set before it ran
 _Avoid_: metro area, grouping
 
 **Candidate lamp**:
-A renovation-investment-candidate signal on an airport that has a composite: Strong candidate, Mixed vector, or Weak candidate. Hue never appears without a text pill. Missing data is Partial inputs or No data, never red.
+A renovation-investment-candidate signal on an airport that has a composite: Strong candidate, Mixed vector, or Weak candidate. Ranking table rows carry hue together with the lamp words — Strong candidate green, Mixed vector yellow, Weak candidate red — and a legend names the five lamp words beside their hue. Hue never appears without a text pill. Missing data is Partial inputs or No data: grey or outline, never red. Percentile bars in the score vector stay grey, and indigo stays send, focus, and links.
 _Avoid_: candidate signal, traffic light, grade, RAG
 
 **Carried context**:

@@ -86,6 +86,15 @@ const LAMP_TONES: Readonly<Record<CandidateLamp, LampTone>> = {
 };
 
 /**
+ * Which hue a lamp word lights (issue #25). Exported because the table's rows
+ * and the legend that names the five words have to read one mapping: a row and
+ * its key cannot disagree about what green means.
+ */
+export function lampTone(lamp: CandidateLamp): LampTone {
+  return LAMP_TONES[lamp];
+}
+
+/**
  * The answer objects for one stored tool call, or null when the call is not a
  * ranking. `rankingRows` has already checked every field of every row against
  * `ScoredAirport`, so nothing here has to guess at a half-written payload.
@@ -130,7 +139,7 @@ function rowView(row: ScoredAirport, rank: number): RankingRowView {
     name: row.name,
     composite: row.composite === null ? WITHHELD_COMPOSITE : String(row.composite),
     lamp: row.candidateLamp,
-    tone: LAMP_TONES[row.candidateLamp],
+    tone: lampTone(row.candidateLamp),
     whyLabels: whyLabels(row),
     peerLabel: `${row.peerGroup} FAA hubs`,
     coverage: `${present} of ${COMPONENTS.length}`,

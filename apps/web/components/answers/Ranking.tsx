@@ -1,9 +1,6 @@
-import {
-  WITHHELD_COMPOSITE,
-  type LampTone,
-  type RankingRowView,
-  type VectorCell,
-} from "@/app/ranking-view";
+import { LAMP_PILL } from "@/app/lamp-hue";
+import { WITHHELD_COMPOSITE, type RankingRowView, type VectorCell } from "@/app/ranking-view";
+import { LampLegend } from "@/components/answers/LampLegend";
 
 /**
  * The ranking table (PRD stories 23-24), rendered from the `queryAirports`
@@ -27,7 +24,8 @@ export function Ranking({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel
       {rows.map((row) => (
         <Row key={row.iata} row={row} />
       ))}
-      <p className="m-0 px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
+      <LampLegend />
+      <p className="m-0 border-t border-grid px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
         Composite 0–100, sorted by {sortLabel} · percentile within the airport&apos;s FAA hub-size
         peer group, computed nationally. Open a row for its score vector.
       </p>
@@ -36,15 +34,6 @@ export function Ranking({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel
 }
 
 const GRID = "grid grid-cols-[26px_1fr_74px_150px_14px] items-center gap-3";
-
-/** Hue on the lamp, never instead of it: the words are always in the pill. */
-const LAMP_HUE: Readonly<Record<LampTone, string>> = {
-  strong: "text-lamp-strong",
-  mixed: "text-lamp-mixed",
-  weak: "text-lamp-weak",
-  // Partial inputs and No data are coverage states, so they take no hue at all.
-  none: "text-muted-foreground",
-};
 
 function Row({ row }: { row: RankingRowView }) {
   return (
@@ -71,8 +60,10 @@ function Row({ row }: { row: RankingRowView }) {
             <span className="text-[10px] text-muted-foreground/70">/100</span>
           )}
         </span>
+        {/* Hue on the lamp, never instead of it: the words are always in the
+            pill, and the legend under the table names all five of them. */}
         <span
-          className={`justify-self-start rounded border bg-raised px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${LAMP_HUE[row.tone]}`}
+          className={`justify-self-start rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${LAMP_PILL[row.tone]}`}
         >
           {row.lamp}
         </span>

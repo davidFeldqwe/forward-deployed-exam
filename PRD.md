@@ -130,7 +130,7 @@ Fixed weights (not a UI knob): congestion 35, unmet flight demand 35, delay 20, 
 - Partial inputs — at least one component missing; withhold composite (`—`); do not emit a 3-of-4 number; do not zero-fill; do not re-weight remaining components into a fake composite
 - No data — no composite available
 
-Hue never without a text pill. Missing is never red.
+Hue never without a text pill. Missing is never red. On the ranking table the lamp words carry hue: Strong candidate green, Mixed vector yellow, Weak candidate red, Partial inputs and No data grey or outline. A legend names those five lamp words beside their hue, so the table reads without colour. Percentile bars inside the score vector stay grey, and indigo stays send, focus, and links. In-thread lamp hue is in scope; a heat-map page and a 3D map route are not.
 
 Module shape (names can move; behavior cannot):
 
@@ -222,7 +222,7 @@ There is no prior test suite in this repo; scoring tests are the first.
 
 ## Out of Scope
 
-- Voice, PDF export, heat maps, 3D map, public guest chat
+- Voice, PDF export, heat-map-as-a-page, 3D map route, public guest chat
 - Live aviation HTTP at query time (document the vintage instead)
 - Universe beyond the top ~100
 - Airports, scores, or ingest output stored in Convex
