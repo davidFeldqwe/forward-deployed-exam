@@ -115,13 +115,25 @@ test("switching threads is instant; only the narrow-viewport drawer slides", () 
 test("the header carries the drawer control and keeps sign-out and the window", () => {
   const chat = source("components/Chat.tsx");
 
-  assert.match(chat, /<ThreadRail/);
+  // `\b` after `ThreadRail`: the rail itself, not the header control for it.
+  assert.match(chat, /<ThreadRail\b/);
+  assert.match(chat, /<ThreadRailToggle/);
   assert.match(chat, /chatCopy\.signOutLabel/);
   assert.match(chat, /chatCopy\.comparisonWindow/);
-  // The drawer control names the list it opens, and says whether it is open.
-  assert.match(chat, /aria-expanded=\{railOpen\}/);
-  assert.match(chat, /aria-controls="thread-rail"/);
-  assert.match(chat, /md:hidden/);
+});
+
+test("the drawer control names the list it opens, and points at that same list", () => {
+  const rail = source("components/ThreadRail.tsx");
+
+  // One id shared by the rail and the control, so `aria-controls` cannot drift
+  // away from the element it names.
+  assert.match(rail, /id=\{RAIL_ID\}/);
+  assert.match(rail, /aria-controls=\{RAIL_ID\}/);
+  // The control says whether the drawer is open, and is gone from `md` up.
+  assert.match(rail, /aria-expanded=\{open\}/);
+  assert.match(rail, /md:hidden/);
+  assert.match(rail, /chatCopy\.showRecentsLabel/);
+  assert.match(rail, /chatCopy\.hideRecentsLabel/);
 });
 
 test("the header recents menu is gone", () => {

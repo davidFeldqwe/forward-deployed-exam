@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { PanelLeftIcon } from "lucide-react";
 
 import { signOut } from "@/app/auth-actions";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
@@ -12,7 +11,7 @@ import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { PromptChips } from "@/components/PromptChips";
 import { PendingAnswer } from "@/components/answers/PendingAnswer";
-import { ThreadRail } from "@/components/ThreadRail";
+import { ThreadRail, ThreadRailToggle } from "@/components/ThreadRail";
 import { Transcript } from "@/components/Transcript";
 import { Wordmark } from "@/components/Wordmark";
 import { Badge } from "@/components/ui/badge";
@@ -70,20 +69,7 @@ export function Chat({
       <header className="h-12 shrink-0 border-b bg-header">
         <div className="flex h-full items-center justify-between gap-4 px-4">
           <div className="flex min-w-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="md:hidden"
-              aria-expanded={railOpen}
-              aria-controls="thread-rail"
-              onClick={() => setRailOpen(!railOpen)}
-            >
-              <PanelLeftIcon aria-hidden="true" />
-              <span className="sr-only">
-                {railOpen ? chatCopy.hideRecentsLabel : chatCopy.showRecentsLabel}
-              </span>
-            </Button>
+            <ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />
             <Wordmark name={chatCopy.wordmark} />
           </div>
           <div className="flex shrink-0 items-center gap-3">
@@ -101,21 +87,13 @@ export function Chat({
 
       {/* The rail is a column of its own from `md` up, and a drawer over the
           transcript below it. */}
-      <div className="relative flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1">
         <ThreadRail
           threads={recents}
           openThreadId={threadId}
           open={railOpen}
-          onNavigate={() => setRailOpen(false)}
+          onClose={() => setRailOpen(false)}
         />
-        {railOpen ? (
-          <button
-            type="button"
-            aria-label={chatCopy.hideRecentsLabel}
-            onClick={() => setRailOpen(false)}
-            className="fixed inset-x-0 top-12 bottom-0 z-10 bg-background/60 md:hidden"
-          />
-        ) : null}
 
         {/* Transcript and composer are one form, so the pending answer above the
             composer can read the same submission `useFormStatus` reports on. */}
