@@ -8,7 +8,9 @@ import {
   DEFAULT_OPENAI_MODEL,
   OPENAI_FALLBACK_MODEL,
   chooseAutocompleteProvider,
+  chooseOpenAIProvider,
   chooseProvider,
+  providerAfterFailure,
 } from "./agent-provider.ts";
 
 test("Anthropic is asked first, so a deployment holding both keys uses it", () => {
@@ -42,6 +44,27 @@ test("either model can be named, and a blank key is no key at all", () => {
     "openai",
   );
   assert.equal(chooseProvider({}), null);
+});
+
+test("a failed Anthropic call falls through to OpenAI when that key is present", () => {
+  const anthropic = chooseProvider({
+    ANTHROPIC_API_KEY: "sk-ant",
+    OPENAI_API_KEY: "sk-oai",
+  });
+  assert.equal(anthropic?.vendor, "anthropic");
+  assert.deepEqual(providerAfterFailure(anthropic!, { OPENAI_API_KEY: "sk-oai" }), {
+    vendor: "openai",
+    model: DEFAULT_OPENAI_MODEL,
+    fallbackModel: OPENAI_FALLBACK_MODEL,
+    apiKey: "sk-oai",
+  });
+  assert.equal(providerAfterFailure(anthropic!, {}), null);
+  assert.deepEqual(chooseOpenAIProvider({ OPENAI_API_KEY: "sk-oai" })?.vendor, "openai");
+});
+
+test("OpenAI has no second vendor after it fails", () => {
+  const openai = chooseProvider({ OPENAI_API_KEY: "sk-oai" });
+  assert.equal(providerAfterFailure(openai!, { OPENAI_API_KEY: "sk-oai" }), null);
 });
 
 test("the tool-step cap is the PRD's eight", () => {

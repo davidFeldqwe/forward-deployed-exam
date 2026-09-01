@@ -37,6 +37,27 @@ export const NO_PROVIDER_ANSWER =
   "committed snapshot scored in this repo.";
 
 /**
+ * OpenAI as the PRD's second vendor: used when Anthropic is absent, and again
+ * when Anthropic was asked and failed. A deploy that only holds this key must
+ * still answer; one that holds a dead Anthropic key must not stay silent.
+ */
+export function chooseOpenAIProvider(
+  env: Record<string, string | undefined>,
+): ProviderChoice | null {
+  const openaiKey = trimmed(env[OPENAI_KEY]);
+  if (!openaiKey) {
+    return null;
+  }
+  const model = trimmed(env.OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL;
+  return {
+    vendor: "openai",
+    model,
+    fallbackModel: model === OPENAI_FALLBACK_MODEL ? null : OPENAI_FALLBACK_MODEL,
+    apiKey: openaiKey,
+  };
+}
+
+/**
  * The vendor to call, or null when the deployment holds no key. Anthropic wins
  * when both are set. A key that is present but blank is not a key: a deploy
  * config that defines the variable empty would otherwise pick a vendor that
@@ -52,17 +73,19 @@ export function chooseProvider(env: Record<string, string | undefined>): Provide
       apiKey: anthropicKey,
     };
   }
-  const openaiKey = trimmed(env[OPENAI_KEY]);
-  if (openaiKey) {
-    const model = trimmed(env.OPENAI_MODEL) ?? DEFAULT_OPENAI_MODEL;
-    return {
-      vendor: "openai",
-      model,
-      fallbackModel: model === OPENAI_FALLBACK_MODEL ? null : OPENAI_FALLBACK_MODEL,
-      apiKey: openaiKey,
-    };
-  }
-  return null;
+  return chooseOpenAIProvider(env);
+}
+
+/**
+ * The next vendor after a failed call. Anthropic has no second model name, so
+ * the retry is OpenAI when that key is present. OpenAI already named its own
+ * cheaper model on the choice; there is no third vendor after that.
+ */
+export function providerAfterFailure(
+  failed: ProviderChoice,
+  env: Record<string, string | undefined>,
+): ProviderChoice | null {
+  return failed.vendor === "anthropic" ? chooseOpenAIProvider(env) : null;
 }
 
 /**

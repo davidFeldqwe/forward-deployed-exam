@@ -21,6 +21,7 @@ import {
   NO_PROVIDER_ANSWER,
   chooseAutocompleteProvider,
   chooseProvider,
+  providerAfterFailure,
   type ProviderChoice,
 } from "./agent-provider.ts";
 import { AGENT_TOOL_SPECS, runAgentTool, toolPayloadJson } from "./agent-tools.ts";
@@ -95,8 +96,10 @@ export async function generateCompletion(
 /**
  * Construct a vendor model and run `work`. The PRD names one OpenAI fallback:
  * a deployment whose account cannot see `gpt-4o` should retry on `gpt-4o-mini`.
- * Autocomplete uses the same retry only when that provider choice still has a
- * fallback — a named cheaper model does not get a second paid call.
+ * Anthropic has no second model, so a failed Anthropic call retries on OpenAI
+ * when that key is present. Autocomplete uses the same retry only when that
+ * provider choice still has a fallback — a named cheaper model does not get a
+ * second paid call.
  */
 async function withProvider<T>(
   choose: (env: Record<string, string | undefined>) => ProviderChoice | null,
@@ -108,9 +111,30 @@ async function withProvider<T>(
   }
 
   try {
+    return await runWithModelFallback(choice, work);
+  } catch (error) {
+    const openai = providerAfterFailure(choice, process.env);
+    if (!openai) {
+      throw error;
+    }
+    return await runWithModelFallback(openai, work);
+  }
+}
+
+async function runWithModelFallback<T>(
+  choice: ProviderChoice,
+  work: WithModel<T>,
+): Promise<T> {
+  try {
     return await work(languageModel(choice));
   } catch (error) {
-    if (choice.fallbackModel === null || !isModelUnavailable(error)) {
+    if (choice.fallbackModel === null) {
+      throw error;
+    }
+    // OpenAI-only deploys must still answer when `gpt-4o` is refused for any
+    // reason; Anthropic has no same-vendor fallback, so the unavailable check
+    // only matters if a later vendor names one.
+    if (choice.vendor !== "openai" && !isModelUnavailable(error)) {
       throw error;
     }
     return await work(languageModel({ ...choice, model: choice.fallbackModel }));
