@@ -2,16 +2,15 @@ import { landingCopy } from "./landing-copy.ts";
 
 type StackName = (typeof landingCopy.builtOn)[number];
 
-/** One product's logomark, filled with the strip's text colour on the zip palette. */
 export type StackMark = {
   viewBox: string;
   path: string;
 };
 
 /**
- * The three products the Landing credits. Paths are the products' own marks
- * (Next.js N-in-circle, Convex chevron, Vercel triangle for the AI SDK), not
- * generic lucide stand-ins.
+ * Logomarks for the products Landing credits (Next.js N-in-circle, Convex
+ * chevron, Vercel triangle for the AI SDK), not generic lucide stand-ins.
+ * Filled with the strip's text colour so they follow the zip palette.
  */
 export const stackMarks: Record<StackName, StackMark> = {
   "Next.js": {

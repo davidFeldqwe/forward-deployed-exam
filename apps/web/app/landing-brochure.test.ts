@@ -3,23 +3,26 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { landingCopy } from "./landing-copy.ts";
+import { siteHeaderCopy } from "./site-header.ts";
 import { stackMarks } from "./stack-marks.ts";
 
 const web = new URL("../", import.meta.url);
+const landing = readFileSync(new URL("components/Landing.tsx", web), "utf8");
 
-function source(file: string): string {
-  return readFileSync(new URL(file, web), "utf8");
+const MOTION = /animate-|fade-in|slide-in/;
+
+/** Inclusive slice of Landing.tsx from `from` up to (not including) `until`. */
+function section(from: string, until: string): string {
+  const start = landing.indexOf(from);
+  const end = landing.indexOf(until);
+  assert.ok(start >= 0, from);
+  assert.ok(end > start, until);
+  assert.equal(start, landing.lastIndexOf(from), `duplicate marker: ${from}`);
+  return landing.slice(start, end);
 }
 
-const landing = source("components/Landing.tsx");
-
-/** The hero block, from the labelled section through the demo card. */
-function section(labelledBy: string, until: string): string {
-  const start = landing.indexOf(labelledBy);
-  const end = landing.indexOf(until);
-  assert.ok(start >= 0, labelledBy);
-  assert.ok(end > start, until);
-  return landing.slice(start, end);
+function assertStill(source: string): void {
+  assert.doesNotMatch(source, MOTION);
 }
 
 test("Start asking is the large primary hero action, and the only one", () => {
@@ -34,7 +37,7 @@ test("Start asking is the large primary hero action, and the only one", () => {
   assert.match(hero, /href=\{action\.href\}/);
   assert.deepEqual(landingCopy.hero.actions, [{ label: "Start asking", href: "/chat" }]);
   // A visit hits this once; it does not enter or leave.
-  assert.doesNotMatch(hero, /animate-|fade-in|slide-in/);
+  assertStill(hero);
 });
 
 test("How it works tiles share width and height; arrows sit between them", () => {
@@ -54,7 +57,7 @@ test("How it works tiles share width and height; arrows sit between them", () =>
   // tiles and make those labels wrap more than the last step.
   assert.match(strip, /<li aria-hidden="true"/);
   assert.ok(strip.indexOf("<li aria-hidden") < strip.indexOf("ArrowRightIcon"));
-  assert.doesNotMatch(strip, /animate-|fade-in|slide-in/);
+  assertStill(strip);
 });
 
 test("Built on shows each product's real mark, not a text-only badge", () => {
@@ -74,7 +77,7 @@ test("Built on shows each product's real mark, not a text-only badge", () => {
   assert.match(strip, /<svg\b/);
   assert.doesNotMatch(strip, /<Badge\b/);
   assert.doesNotMatch(strip, /variant="outline"/);
-  assert.doesNotMatch(strip, /animate-|fade-in|slide-in/);
+  assertStill(strip);
 });
 
 test("the footer GitHub credit wears the same chrome as the header action", () => {
@@ -86,6 +89,7 @@ test("the footer GitHub credit wears the same chrome as the header action", () =
   assert.match(footer, /href=\{footer\.githubHref\}/);
   assert.match(footer, /target="_blank"/);
   assert.match(footer, /rel="noreferrer"/);
+  assert.equal(landingCopy.footer.githubHref, siteHeaderCopy.githubHref);
   assert.equal(
     landingCopy.footer.githubHref,
     "https://github.com/davidFeldqwe/forward-deployed-exam",
@@ -93,5 +97,5 @@ test("the footer GitHub credit wears the same chrome as the header action", () =
 
   // Privacy stays the band above this credit, not a line inside it.
   assert.ok(landing.indexOf('aria-label="Privacy"') < landing.indexOf("<footer"));
-  assert.doesNotMatch(footer, /animate-|fade-in|slide-in/);
+  assertStill(footer);
 });
