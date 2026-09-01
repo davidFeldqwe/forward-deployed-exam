@@ -48,9 +48,17 @@ function emptyDocuments(): ConvexDocuments {
   return { accounts: {}, threads: {} };
 }
 
+function convexDir(): string {
+  return join(process.cwd(), ".convex");
+}
+
 function dataPath(): string {
   // Pid in the name so parallel test files in this cwd do not share a JSON file.
-  return join(process.cwd(), ".convex", `auth-and-threads-${process.pid}.json`);
+  return join(convexDir(), `auth-and-threads-${process.pid}.json`);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function accountDocument(account: ConvexAccount): ConvexAccount {
@@ -68,23 +76,27 @@ function threadDocument(thread: ConvexThread): ConvexThread {
   };
 }
 
+/** Copies a table through `toDocument` so extra keys cannot ride along. */
+function tableDocuments<T>(
+  value: unknown,
+  toDocument: (row: T) => T,
+): Record<string, T> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, row]) => [key, toDocument(row as T)]),
+  );
+}
+
 function parseDocuments(value: unknown): ConvexDocuments {
-  const docs = emptyDocuments();
-  if (typeof value !== "object" || value === null) {
-    return docs;
+  if (!isRecord(value)) {
+    return emptyDocuments();
   }
-  const record = value as Record<string, unknown>;
-  if (typeof record.accounts === "object" && record.accounts !== null) {
-    for (const [email, account] of Object.entries(record.accounts as Record<string, ConvexAccount>)) {
-      docs.accounts[email] = accountDocument(account);
-    }
-  }
-  if (typeof record.threads === "object" && record.threads !== null) {
-    for (const [id, thread] of Object.entries(record.threads as Record<string, ConvexThread>)) {
-      docs.threads[id] = threadDocument(thread);
-    }
-  }
-  return docs;
+  return {
+    accounts: tableDocuments(value.accounts, accountDocument),
+    threads: tableDocuments(value.threads, threadDocument),
+  };
 }
 
 function loadFromDisk(): ConvexDocuments {
@@ -95,23 +107,40 @@ function loadFromDisk(): ConvexDocuments {
   }
 }
 
-function documents(): ConvexDocuments {
+/** What the Convex database holds: the two tables, no others. */
+export function convexDocuments(): ConvexDocuments {
   const state = host();
   state.__aiiConvexDocuments ??= loadFromDisk();
   return state.__aiiConvexDocuments;
 }
 
-/** What the Convex database holds: the two tables, no others. */
-export function convexDocuments(): ConvexDocuments {
-  return documents();
-}
-
 export function convexAccountMap(): Record<string, ConvexAccount> {
-  return documents().accounts;
+  return convexDocuments().accounts;
 }
 
 export function convexThreadMap(): Record<string, ConvexThread> {
-  return documents().threads;
+  return convexDocuments().threads;
+}
+
+export function putAccount(account: ConvexAccount): void {
+  convexAccountMap()[account.email] = accountDocument(account);
+  persistConvexStore();
+}
+
+/**
+ * Inserts the Thread last so recents order is object insertion order (last
+ * spoken in last, first after reverse). Extra keys on the argument are dropped.
+ */
+export function putThread(thread: ConvexThread): ConvexThread {
+  const threads = convexThreadMap();
+  delete threads[thread.id];
+  const stored = threadDocument({
+    ...thread,
+    messages: structuredClone(thread.messages),
+  });
+  threads[thread.id] = stored;
+  persistConvexStore();
+  return stored;
 }
 
 /**
@@ -120,17 +149,12 @@ export function convexThreadMap(): Record<string, ConvexThread> {
  * riding along with a thread write.
  */
 export function persistConvexStore(): void {
-  const { accounts, threads } = documents();
+  const { accounts, threads } = convexDocuments();
   const payload: ConvexDocuments = {
-    accounts: Object.fromEntries(
-      Object.entries(accounts).map(([email, account]) => [email, accountDocument(account)]),
-    ),
-    threads: Object.fromEntries(
-      Object.entries(threads).map(([id, thread]) => [id, threadDocument(thread)]),
-    ),
+    accounts: tableDocuments(accounts, accountDocument),
+    threads: tableDocuments(threads, threadDocument),
   };
-  const directory = join(process.cwd(), ".convex");
-  mkdirSync(directory, { recursive: true });
+  mkdirSync(convexDir(), { recursive: true });
   const target = dataPath();
   const staging = `${target}.${process.pid}.tmp`;
   writeFileSync(staging, JSON.stringify(payload));

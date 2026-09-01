@@ -11,7 +11,7 @@ import { normalizeEmail } from "./auth-accounts.ts";
 import {
   type ConvexThread,
   convexThreadMap,
-  persistConvexStore,
+  putThread,
 } from "./convex-store.ts";
 import {
   type ThreadMessage,
@@ -50,10 +50,6 @@ function threadHost(): ThreadHost {
   return globalThis as unknown as ThreadHost;
 }
 
-function threadsById(): Record<string, ConvexThread> {
-  return convexThreadMap();
-}
-
 /** Each thread's queue of asks, held as its tail: what the next one waits on. */
 function askQueues(): Map<string, Promise<void>> {
   const host = threadHost();
@@ -71,7 +67,7 @@ function newThreadId(): string {
  * they typed their email.
  */
 function ownedThread(ownerEmail: string, threadId: string): ConvexThread | null {
-  const thread = threadsById()[threadId];
+  const thread = convexThreadMap()[threadId];
   return thread && thread.ownerEmail === normalizeEmail(ownerEmail)
     ? thread
     : null;
@@ -99,20 +95,6 @@ function snapshotOf(thread: ConvexThread): Thread {
   };
 }
 
-function putThread(thread: ConvexThread): void {
-  const threads = threadsById();
-  delete threads[thread.id];
-  threads[thread.id] = {
-    id: thread.id,
-    ownerEmail: thread.ownerEmail,
-    title: thread.title,
-    createdAt: thread.createdAt,
-    updatedAt: thread.updatedAt,
-    messages: structuredClone(thread.messages),
-  };
-  persistConvexStore();
-}
-
 /**
  * A new conversation, titled with the question that opened it. A question with
  * nothing in it is refused, the same way `appendMessage` refuses a message that
@@ -132,8 +114,7 @@ export function startThread(ownerEmail: string, question: string): Thread | null
     updatedAt: now,
     messages: [opening],
   };
-  putThread(thread);
-  return snapshotOf(thread);
+  return snapshotOf(putThread(thread));
 }
 
 /**
@@ -152,21 +133,22 @@ export function appendMessage(
   }
   // Stored as a copy, so the caller's message and the store cannot diverge.
   // Re-insert so the thread just spoken in is the most recent one.
-  putThread({
-    ...thread,
-    messages: [...thread.messages, structuredClone(parsed)],
-    updatedAt: Date.now(),
-  });
-  return snapshotOf(threadsById()[thread.id]!);
+  return snapshotOf(
+    putThread({
+      ...thread,
+      messages: [...thread.messages, structuredClone(parsed)],
+      updatedAt: Date.now(),
+    }),
+  );
 }
 
 /**
  * A question from the composer, landed in the thread it belongs to. An open
  * thread the analyst owns takes the question as a follow-up; anything else —
- * no thread yet, someone else's id from a forged form, or a thread this
- * process no longer holds after a restart — opens a new one, because a
- * question that was typed and sent must not be dropped on the floor. Only a
- * question with nothing in it is refused.
+ * no thread yet, someone else's id from a forged form, or a thread Convex no
+ * longer has — opens a new one, because a question that was typed and sent
+ * must not be dropped on the floor. Only a question with nothing in it is
+ * refused.
  */
 export function recordQuestion(
   ownerEmail: string,
@@ -180,10 +162,8 @@ export function recordQuestion(
 }
 
 /**
- * A thread the analyst owns. Its messages are handed back without re-parsing
- * because every write went through `parseThreadMessage`. A Convex-backed read
- * hands over a document this process never validated, so it has to run the
- * messages back through it.
+ * A thread the analyst owns. Messages are parsed on the way out: Convex (and
+ * the on-disk file) can hand back a document this process never validated.
  */
 export function readThread(ownerEmail: string, threadId: string): Thread | null {
   const thread = ownedThread(ownerEmail, threadId);
@@ -198,7 +178,7 @@ export function readThread(ownerEmail: string, threadId: string): Thread | null 
  */
 export function listThreads(ownerEmail: string): ThreadSummary[] {
   const owner = normalizeEmail(ownerEmail);
-  return Object.values(threadsById())
+  return Object.values(convexThreadMap())
     .filter((thread) => thread.ownerEmail === owner)
     .reverse()
     .map(({ id, title }) => ({ id, title }));

@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 import { readSessionToken, type Session } from "./auth-token.ts";
-import { convexAccountMap, persistConvexStore } from "./convex-store.ts";
+import { convexAccountMap, putAccount } from "./convex-store.ts";
 
 /** Open signup: long enough to be a password, no composition theatre. */
 export const MIN_PASSWORD_LENGTH = 8;
@@ -73,16 +73,14 @@ export function createAccount(email: string, password: string): AccountResult {
   }
 
   const normalized = normalizeEmail(email);
-  const accounts = convexAccountMap();
-  if (Object.hasOwn(accounts, normalized)) {
+  if (Object.hasOwn(convexAccountMap(), normalized)) {
     return {
       ok: false,
       errors: { email: "That email already has an account. Sign in instead." },
     };
   }
 
-  accounts[normalized] = { email: normalized, passwordHash: hashPassword(password) };
-  persistConvexStore();
+  putAccount({ email: normalized, passwordHash: hashPassword(password) });
   return { ok: true, email: normalized };
 }
 
