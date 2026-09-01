@@ -1,9 +1,11 @@
 /**
- * The thread rail (issue #32; PRD story 17): recents is a persistent left
- * column beside the transcript, not a menu in the header. The data is what it
- * always was — `listThreads` hands back `{ id, title }`, newest first, and the
- * title is the thread's first user question — so this module only decides where
- * each row goes and which one the analyst is looking at.
+ * The thread rail (issue #55 / #32; PRD story 17): recents is a left column
+ * beside the transcript, not a menu in the header. A header control collapses
+ * the column from `md` up; under `md` the same list is a drawer. The data is
+ * what it always was — `listThreads` hands back `{ id, title }`, newest first,
+ * and the title is the thread's first user question — so this module only
+ * decides where each row goes, which one the analyst is looking at, and whether
+ * a key dismisses the drawer.
  *
  * Exactly one destination is current. An open thread lights its own row; an
  * empty chat lights **New thread**, because that is the destination the screen
@@ -44,4 +46,15 @@ export function threadRail(
       current: id === openThreadId,
     })),
   };
+}
+
+/** The narrow-viewport control Escape returns focus to after dismissing the drawer. */
+export const DRAWER_TOGGLE_ID = "thread-rail-drawer-toggle";
+
+/**
+ * Escape closes the recents drawer. The desktop column stays: hiding it is the
+ * header control, not a key that would also drop an open drawer on a phone.
+ */
+export function recentsDrawerKey(key: string, drawerOpen: boolean): "dismiss" | null {
+  return drawerOpen && key === "Escape" ? "dismiss" : null;
 }

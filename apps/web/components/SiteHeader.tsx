@@ -35,8 +35,8 @@ const LINK_ICONS = {
 /**
  * The header Landing, chat and `/map` share (issue #53): identity on the left,
  * chat, Map, GitHub and the profile control on the right. A surface with chrome
- * of its own hands it in — chat's recents drawer control leads the bar, beside
- * the rail it opens, and the comparison window sits with the actions.
+ * of its own hands it in — chat's recents control leads the bar, beside the
+ * rail it opens, and the comparison window sits with the actions.
  */
 export function SiteHeader({
   signedIn,
@@ -47,7 +47,7 @@ export function SiteHeader({
   signedIn: boolean;
   /** The surface drawing the bar, so its own action reads as where we are. */
   current?: HeaderSurface;
-  /** A control at the leading edge: chat's recents drawer button. */
+  /** A control at the leading edge: chat's recents show/hide button. */
   leading?: ReactNode;
   /** What this surface says about itself, ahead of the actions: the window. */
   status?: ReactNode;

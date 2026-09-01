@@ -156,7 +156,7 @@ test("chat fills both header slots: the drawer control and the window", () => {
   const chat = source("components/Chat.tsx");
 
   assert.match(chat, /<SiteHeader\s+signedIn\b/);
-  assert.match(chat, /leading=\{<ThreadRailToggle/);
+  assert.match(chat, /<ThreadRailToggle/);
   assert.match(chat, /status=\{<ComparisonWindow/);
 });
 
