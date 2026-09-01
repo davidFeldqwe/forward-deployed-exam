@@ -16,3 +16,4 @@ convex/_generated/ai/ai-files.state.json
 .sandcastle/logs/
 .sandcastle/worktrees/
 .cache
+.evalite/
