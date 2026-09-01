@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { queryAirports, scoreUniverse } from "@repo/scoring";
-import { loadSnapshot } from "@repo/snapshot";
+import { DEFAULT_LIMIT, queryAirports, scoreUniverse } from "@repo/scoring";
+import { loadSnapshot, peerGroupSchema } from "@repo/snapshot";
 
 import { AGENT_TOOL_SPECS, runAgentTool, scoredUniverse } from "./agent-tools.ts";
 import { AGENT_TOOLS, parseThreadMessage, assistantMessage } from "./thread-messages.ts";
@@ -17,7 +17,12 @@ test("a region question returns the scoring module's national composite ranking"
 
   // The tool is a pass-through to the screen: same rows, same order, same numbers.
   assert.deepEqual(payload, JSON.parse(JSON.stringify(expected)));
-  assert.deepEqual(payload.resolvedIata, ["PVD", "BDL", "PWM", "BOS"]);
+  // #73: New England now matches every primary there, but the ranking still
+  // draws DEFAULT_LIMIT rows — expanding the snapshot does not dump the set.
+  assert.equal(payload.limit, DEFAULT_LIMIT);
+  assert.equal(payload.rows.length, DEFAULT_LIMIT);
+  assert.ok(payload.matched > DEFAULT_LIMIT, `matched ${payload.matched}`);
+  assert.equal(payload.resolvedIata.length, payload.matched);
 });
 
 test("the universe is scored once, so two questions rank against the same distribution", () => {
@@ -60,7 +65,11 @@ test("describeMethodology names the window, the weights, the lamp bands and the 
     report.candidateLamp.map(({ lamp }) => lamp),
     ["Strong candidate", "Mixed vector", "Weak candidate", "Partial inputs", "No data"],
   );
-  assert.deepEqual(report.universe.peerGroups, ["large", "medium", "small"]);
+  assert.deepEqual(report.universe.peerGroups, [...peerGroupSchema.options].toSorted());
+  assert.ok(
+    report.universe.airports >= 300,
+    `primary-scale universe, got ${report.universe.airports}`,
+  );
   assert.ok(report.acceptedPlacePhrases.region.includes("New England"));
   assert.ok(report.acceptedPlacePhrases.state.includes("CA"));
 });
