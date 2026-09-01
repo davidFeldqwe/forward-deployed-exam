@@ -40,13 +40,13 @@ export function Ranking({
 
 function RankingTable({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel: string }) {
   return (
-    <section className="overflow-hidden rounded-lg border bg-card">
-      <div className={`${GRID} border-b bg-row-head px-3.5 py-2.5`}>
-        <HeadCell>#</HeadCell>
-        <HeadCell>Airport</HeadCell>
-        <HeadCell className="text-right">Composite</HeadCell>
-        <HeadCell>Candidate lamp</HeadCell>
-        <span />
+    <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
+      <div className={`${STRIP} border-b bg-row-head py-2.5`}>
+        <HeadCell className={RANK}>#</HeadCell>
+        <HeadCell className={AIRPORT}>Airport</HeadCell>
+        <HeadCell className="shrink-0 text-right">Composite</HeadCell>
+        <HeadCell className="shrink-0">Candidate lamp</HeadCell>
+        <span className={CHEVRON} />
       </div>
       {rows.map((row) => (
         <Row key={row.iata} row={row} />
@@ -71,7 +71,7 @@ function LookupTable({
   sortLabel: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border bg-card">
+    <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
       <div className={`${LOOKUP_GRID} border-b bg-row-head px-3.5 py-2.5`}>
         <HeadCell>#</HeadCell>
         <HeadCell>Airport</HeadCell>
@@ -88,9 +88,16 @@ function LookupTable({
   );
 }
 
-const GRID = "grid grid-cols-[26px_1fr_74px_150px_14px] items-center gap-3";
+/** Rank stays put; airport, composite and lamp wrap in a narrow chat column. */
+const STRIP = "flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5";
 
-const LOOKUP_GRID = "grid grid-cols-[26px_1fr_150px] items-center gap-3";
+const RANK = "w-[26px] shrink-0";
+
+const AIRPORT = "flex min-w-0 flex-1 basis-40 flex-wrap items-baseline gap-2";
+
+const CHEVRON = "w-[14px] shrink-0";
+
+const LOOKUP_GRID = "grid grid-cols-[26px_minmax(0,1fr)_minmax(0,max-content)] items-center gap-3";
 
 /** One airport and the one number the lookup asked for. Nothing else. */
 function LookupRow({ row }: { row: RankingRowView }) {
@@ -110,10 +117,11 @@ function Row({ row }: { row: RankingRowView }) {
   return (
     <details className="group border-b border-grid last:border-b-0">
       <summary
-        className={`${GRID} cursor-pointer list-none px-3.5 py-3 hover:bg-raised/40 [&::-webkit-details-marker]:hidden`}
+        data-ranking-row
+        className={`${STRIP} cursor-pointer list-none py-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden`}
       >
-        <span className="font-mono text-xs text-muted-foreground/70">{row.rank}</span>
-        <span className="flex min-w-0 flex-wrap items-baseline gap-2">
+        <span className={`${RANK} font-mono text-xs text-muted-foreground/70`}>{row.rank}</span>
+        <span className={AIRPORT}>
           <span className="font-mono text-sm font-medium text-foreground">{row.iata}</span>
           <span className="text-[13.5px] text-body">{row.name}</span>
           {row.whyLabels.map((label) => (
@@ -125,7 +133,7 @@ function Row({ row }: { row: RankingRowView }) {
             </span>
           ))}
         </span>
-        <span className="flex items-baseline justify-end gap-1">
+        <span className="flex shrink-0 items-baseline justify-end gap-1">
           <span className="font-mono text-[15px] font-medium text-foreground">{row.composite}</span>
           {row.composite === WITHHELD_COMPOSITE ? null : (
             <span className="text-[10px] text-muted-foreground/70">/100</span>
@@ -136,15 +144,15 @@ function Row({ row }: { row: RankingRowView }) {
             ranked row always has one — only a lookup withholds the lamp, and a
             lookup is not drawn here — so the empty cell just holds the column. */}
         {row.lamp === null ? (
-          <span />
+          <span className="shrink-0" />
         ) : (
           <span
-            className={`justify-self-start rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${lampPill(row.lamp)}`}
+            className={`shrink-0 rounded border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${lampPill(row.lamp)}`}
           >
             {row.lamp}
           </span>
         )}
-        <span className="text-[10px] text-muted-foreground/70">
+        <span className={`${CHEVRON} text-[10px] text-muted-foreground/70`}>
           <span className="group-open:hidden">▸</span>
           <span className="hidden group-open:inline">▾</span>
         </span>
@@ -157,7 +165,7 @@ function Row({ row }: { row: RankingRowView }) {
 /** The four percentiles the composite is built from, with their raw values. */
 function ScoreVector({ row }: { row: RankingRowView }) {
   return (
-    <div className="bg-background px-3.5 pb-3.5 pl-10">
+    <div className="bg-background px-3.5 pb-3.5 sm:pl-10">
       <div className="overflow-hidden rounded-md border">
         <div className={`${VECTOR_GRID} border-b bg-row-head px-3 py-2`}>
           <HeadCell>Component</HeadCell>
@@ -181,7 +189,8 @@ function ScoreVector({ row }: { row: RankingRowView }) {
   );
 }
 
-const VECTOR_GRID = "grid grid-cols-[1.5fr_1.35fr_1.5fr_0.5fr] items-center gap-3";
+const VECTOR_GRID =
+  "grid grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.35fr)_minmax(0,1.5fr)_minmax(0,auto)]";
 
 function VectorRow({ cell }: { cell: VectorCell }) {
   return (

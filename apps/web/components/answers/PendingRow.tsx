@@ -9,22 +9,22 @@ import { HeadCell } from "@/components/answers/HeadCell";
  */
 export function PendingRow({ row }: { row: PendingRowPart }) {
   return (
-    <section className="overflow-hidden rounded-lg border bg-card">
-      <div className={`${GRID} border-b bg-row-head px-3.5 py-2.5`}>
-        <HeadCell>#</HeadCell>
-        <HeadCell>Airport</HeadCell>
-        <HeadCell className="text-right">Composite</HeadCell>
-        <HeadCell>Candidate lamp</HeadCell>
+    <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
+      <div className={`${STRIP} border-b bg-row-head py-2.5`}>
+        <HeadCell className={RANK}>#</HeadCell>
+        <HeadCell className={AIRPORT}>Airport</HeadCell>
+        <HeadCell className="shrink-0 text-right">Composite</HeadCell>
+        <HeadCell className="shrink-0">Candidate lamp</HeadCell>
       </div>
       {/* The row exists; its scores do not. Both number cells are left empty
           rather than filled with a placeholder that reads as one. */}
-      <div className={`${GRID} border-b border-grid px-3.5 py-3`}>
-        <span className="font-mono text-xs text-muted-foreground/70" aria-hidden>
+      <div className={`${STRIP} border-b border-grid py-3`}>
+        <span className={`${RANK} font-mono text-xs text-muted-foreground/70`} aria-hidden>
           ·
         </span>
-        <span className="text-[13.5px] text-muted-foreground">{row.airportLabel}</span>
-        <span />
-        <span className="justify-self-start rounded border border-border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-muted-foreground">
+        <span className={`${AIRPORT} text-[13.5px] text-muted-foreground`}>{row.airportLabel}</span>
+        <span className="shrink-0" />
+        <span className="shrink-0 justify-self-start rounded border border-border px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-muted-foreground">
           {row.rowLabel}
         </span>
       </div>
@@ -35,4 +35,8 @@ export function PendingRow({ row }: { row: PendingRowPart }) {
   );
 }
 
-const GRID = "grid grid-cols-[26px_1fr_74px_150px] items-center gap-3";
+const STRIP = "flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5";
+
+const RANK = "w-[26px] shrink-0";
+
+const AIRPORT = "min-w-0 flex-1 basis-40";

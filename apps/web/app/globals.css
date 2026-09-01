@@ -156,6 +156,14 @@
     }
   }
 
+  /* Ranking disclosure. Same gate as the rail: a tap on a coarse pointer
+     must not leave the raised fill stuck after the score vector opens. */
+  @media (hover: hover) and (pointer: fine) {
+    [data-ranking-row]:hover {
+      background-color: color-mix(in srgb, var(--raised) 40%, transparent);
+    }
+  }
+
   a:focus-visible {
     outline: none;
     box-shadow:
