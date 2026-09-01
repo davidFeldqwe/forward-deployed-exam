@@ -112,16 +112,18 @@ async function insertOwnedThread(
   messages: ThreadMessage[],
 ): Promise<Thread> {
   const now = Date.now();
-  return snapshotOf(
-    await putThread({
-      id: newThreadId(),
-      ownerEmail: normalizeEmail(ownerEmail),
-      title: titleFromMessages(messages),
-      createdAt: now,
-      updatedAt: now,
-      messages,
-    }),
-  );
+  const stored = await putThread({
+    id: newThreadId(),
+    ownerEmail: normalizeEmail(ownerEmail),
+    title: titleFromMessages(messages),
+    createdAt: now,
+    updatedAt: now,
+    messages,
+  });
+  if (!stored) {
+    throw new Error("Convex did not store a new Thread.");
+  }
+  return snapshotOf(stored);
 }
 
 /**
@@ -145,7 +147,8 @@ export async function openEmptyThread(ownerEmail: string): Promise<Thread> {
   const owner = normalizeEmail(ownerEmail);
   const existing = (await listThreadsByOwner(owner)).find((thread) => !hasUserQuestion(thread));
   if (existing) {
-    return snapshotOf(await putThread({ ...existing, updatedAt: Date.now() }));
+    const stored = await putThread({ ...existing, updatedAt: Date.now() });
+    return snapshotOf(stored ?? existing);
   }
   return insertOwnedThread(owner, []);
 }
