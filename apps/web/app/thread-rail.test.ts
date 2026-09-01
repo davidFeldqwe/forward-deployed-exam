@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { CHAT_PATH, chatDestination } from "./auth-gate.ts";
 import { chatCopy } from "./chat-copy.ts";
-import { recentsDrawerKey, threadRail } from "./thread-rail.ts";
+import { RAIL_COLUMN_MEDIA, recentsDrawerKey, threadRail } from "./thread-rail.ts";
 import type { ThreadSummary } from "./thread-store.ts";
 
 const web = new URL("../", import.meta.url);
@@ -68,6 +68,10 @@ test("Escape dismisses an open recents drawer, and nothing else does", () => {
   assert.equal(recentsDrawerKey("Escape", false), null);
   assert.equal(recentsDrawerKey("Tab", true), null);
   assert.equal(recentsDrawerKey("Enter", true), null);
+});
+
+test("the recents column starts at Tailwind md, the same width the drawer ends", () => {
+  assert.equal(RAIL_COLUMN_MEDIA, "(min-width: 768px)");
 });
 
 test("the rail is a labelled list of thread links, and marks the open one", () => {
@@ -174,6 +178,8 @@ test("the recents drawer dismisses on Escape and returns to the header control",
   assert.match(rail, /recentsDrawerKey\(/);
   assert.match(rail, /DRAWER_TOGGLE_ID/);
   assert.match(rail, /\.focus\(/);
+  // Crossing `md` must drop the drawer flag, or the transcript stays inert.
+  assert.match(rail, /matchMedia\(RAIL_COLUMN_MEDIA\)/);
   // The transcript under the scrim cannot take Tab: that is how a keyboard
   // user would otherwise land in the composer with no Escape path back.
   assert.match(chat, /inert=\{railOpen\}/);

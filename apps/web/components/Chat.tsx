@@ -43,19 +43,6 @@ export function Chat({
   const [railOpen, setRailOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
 
-  // The drawer flag is only an overlay under `md`. Crossing that breakpoint
-  // with it still true would leave the transcript `inert` on desktop.
-  useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 768px)");
-    function onChange() {
-      if (desktop.matches) {
-        setRailOpen(false);
-      }
-    }
-    desktop.addEventListener("change", onChange);
-    return () => desktop.removeEventListener("change", onChange);
-  }, []);
-
   const [draft, setDraft] = useState(initialPrompt ?? "");
   // Asking inside an open thread redirects back to the same route, so React
   // reconciles rather than remounts and this controlled field would still hold

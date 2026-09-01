@@ -152,7 +152,7 @@ test("the bar names the comparison window, and shortens it to its years", () => 
   assert.match(siteHeaderCopy.comparisonWindowYears, /^2023.2024$/);
 });
 
-test("chat fills both header slots: the drawer control and the window", () => {
+test("chat fills both header slots: the recents control and the window", () => {
   const chat = source("components/Chat.tsx");
 
   assert.match(chat, /<SiteHeader\s+signedIn\b/);

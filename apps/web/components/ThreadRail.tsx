@@ -7,6 +7,7 @@ import { PanelLeftIcon, PlusIcon } from "lucide-react";
 import { chatCopy } from "@/app/chat-copy";
 import {
   DRAWER_TOGGLE_ID,
+  RAIL_COLUMN_MEDIA,
   recentsDrawerKey,
   threadRail,
   type RailDestination,
@@ -78,9 +79,22 @@ export function ThreadRail({
 }) {
   const { newThread, rows } = threadRail(threads, openThreadId);
 
+  // The drawer flag is only an overlay under `md`. Crossing that breakpoint
+  // with it still true would leave the transcript `inert` on desktop.
+  useEffect(() => {
+    const column = window.matchMedia(RAIL_COLUMN_MEDIA);
+    function onChange(event: MediaQueryListEvent) {
+      if (event.matches) {
+        onClose();
+      }
+    }
+    column.addEventListener("change", onChange);
+    return () => column.removeEventListener("change", onChange);
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) {
-      return undefined;
+      return;
     }
     function onKeyDown(event: KeyboardEvent) {
       if (recentsDrawerKey(event.key, open) !== "dismiss") {
