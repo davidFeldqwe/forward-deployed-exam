@@ -10,7 +10,8 @@ import { SPEND_CAP_REFUSAL, reserveAgentCall } from "./agent-spend.ts";
 import { normalizeEmail } from "./auth-accounts.ts";
 import {
   type ConvexThread,
-  convexThreadMap,
+  getThread,
+  listThreadsByOwner,
   putThread,
 } from "./convex-store.ts";
 import {
@@ -66,11 +67,8 @@ function newThreadId(): string {
  * is keyed the way sign-in keys an account, so it is the same analyst however
  * they typed their email.
  */
-function ownedThread(ownerEmail: string, threadId: string): ConvexThread | null {
-  const thread = convexThreadMap()[threadId];
-  return thread && thread.ownerEmail === normalizeEmail(ownerEmail)
-    ? thread
-    : null;
+function ownedThread(ownerEmail: string, threadId: string): Promise<ConvexThread | null> {
+  return getThread(threadId, normalizeEmail(ownerEmail));
 }
 
 /**
@@ -100,7 +98,7 @@ function snapshotOf(thread: ConvexThread): Thread {
  * nothing in it is refused, the same way `appendMessage` refuses a message that
  * cannot render: recents would show a blank row opening a blank transcript.
  */
-export function startThread(ownerEmail: string, question: string): Thread | null {
+export async function startThread(ownerEmail: string, question: string): Promise<Thread | null> {
   const opening = parseThreadMessage(userMessage(question));
   if (!opening) {
     return null;
@@ -114,32 +112,32 @@ export function startThread(ownerEmail: string, question: string): Thread | null
     updatedAt: now,
     messages: [opening],
   };
-  return snapshotOf(putThread(thread));
+  const stored = await putThread(thread);
+  return stored ? snapshotOf(stored) : null;
 }
 
 /**
  * Adds one message to a thread the analyst owns. A message that would not
  * re-render is refused rather than stored half-formed.
  */
-export function appendMessage(
+export async function appendMessage(
   ownerEmail: string,
   threadId: string,
   message: ThreadMessage,
-): Thread | null {
-  const thread = ownedThread(ownerEmail, threadId);
+): Promise<Thread | null> {
+  const thread = await ownedThread(ownerEmail, threadId);
   const parsed = parseThreadMessage(message);
   if (!thread || !parsed) {
     return null;
   }
   // Stored as a copy, so the caller's message and the store cannot diverge.
   // Re-insert so the thread just spoken in is the most recent one.
-  return snapshotOf(
-    putThread({
-      ...thread,
-      messages: [...thread.messages, structuredClone(parsed)],
-      updatedAt: Date.now(),
-    }),
-  );
+  const stored = await putThread({
+    ...thread,
+    messages: [...thread.messages, structuredClone(parsed)],
+    updatedAt: Date.now(),
+  });
+  return stored ? snapshotOf(stored) : null;
 }
 
 /**
@@ -150,23 +148,23 @@ export function appendMessage(
  * must not be dropped on the floor. Only a question with nothing in it is
  * refused.
  */
-export function recordQuestion(
+export async function recordQuestion(
   ownerEmail: string,
   openThreadId: string | null,
   question: string,
-): Thread | null {
+): Promise<Thread | null> {
   const followUp = openThreadId
-    ? appendMessage(ownerEmail, openThreadId, userMessage(question))
+    ? await appendMessage(ownerEmail, openThreadId, userMessage(question))
     : null;
-  return followUp ?? startThread(ownerEmail, question);
+  return followUp ?? (await startThread(ownerEmail, question));
 }
 
 /**
  * A thread the analyst owns. Messages are parsed on the way out: Convex (and
  * the on-disk file) can hand back a document this process never validated.
  */
-export function readThread(ownerEmail: string, threadId: string): Thread | null {
-  const thread = ownedThread(ownerEmail, threadId);
+export async function readThread(ownerEmail: string, threadId: string): Promise<Thread | null> {
+  const thread = await ownedThread(ownerEmail, threadId);
   return thread ? snapshotOf(thread) : null;
 }
 
@@ -176,17 +174,14 @@ export function readThread(ownerEmail: string, threadId: string): Thread | null 
  * just spoken in — which is what an index on (owner, updatedAt) will do in
  * Convex without depending on two writes landing in different milliseconds.
  */
-export function listThreads(ownerEmail: string): ThreadSummary[] {
-  const owner = normalizeEmail(ownerEmail);
-  return Object.values(convexThreadMap())
-    .filter((thread) => thread.ownerEmail === owner)
-    .reverse()
-    .map(({ id, title }) => ({ id, title }));
+export async function listThreads(ownerEmail: string): Promise<ThreadSummary[]> {
+  const threads = await listThreadsByOwner(normalizeEmail(ownerEmail));
+  return threads.map(({ id, title }) => ({ id, title }));
 }
 
 /** Where `/` sends a signed-in analyst: their last thread, or an empty chat. */
-export function latestThreadId(ownerEmail: string): string | null {
-  return listThreads(ownerEmail)[0]?.id ?? null;
+export async function latestThreadId(ownerEmail: string): Promise<string | null> {
+  return (await listThreads(ownerEmail))[0]?.id ?? null;
 }
 
 /**
@@ -239,23 +234,23 @@ export async function askOnThread(
   at = Date.now(),
 ): Promise<Thread | null> {
   const ask = async (): Promise<Thread | null> => {
-    const thread = recordQuestion(ownerEmail, openThreadId, question);
+    const thread = await recordQuestion(ownerEmail, openThreadId, question);
     if (!thread) {
       return null;
     }
     if (!reserveAgentCall({ email: ownerEmail, clientIp, at })) {
       return (
-        appendMessage(ownerEmail, thread.id, assistantMessage(SPEND_CAP_REFUSAL)) ?? thread
+        (await appendMessage(ownerEmail, thread.id, assistantMessage(SPEND_CAP_REFUSAL))) ?? thread
       );
     }
-    const answered = appendMessage(ownerEmail, thread.id, await answer(thread));
+    const answered = await appendMessage(ownerEmail, thread.id, await answer(thread));
     if (answered) {
       return answered;
     }
     // A refused answer is told, not swallowed: `UNSTORABLE_ANSWER` is prose the
     // store cannot refuse in turn, so the only way back from here with no reply
     // under the question is a thread that stopped existing mid-ask.
-    return appendMessage(ownerEmail, thread.id, assistantMessage(UNSTORABLE_ANSWER)) ?? thread;
+    return (await appendMessage(ownerEmail, thread.id, assistantMessage(UNSTORABLE_ANSWER))) ?? thread;
   };
 
   // An ask naming no thread opens one nobody can be holding yet, so it takes no
