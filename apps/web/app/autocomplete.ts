@@ -51,12 +51,12 @@ export function mockContinuation(partial: string): string {
 
 /** Keep a leading space; take only the first few words of the tail. */
 export function clipGhostContinuation(suggestion: string): string {
-  const lead = suggestion.match(/^\s*/)?.[0] ?? "";
-  const words = suggestion.trim().split(/\s+/).filter((word) => word.length > 0);
-  if (words.length === 0) {
+  const trimmed = suggestion.trim();
+  if (trimmed.length === 0) {
     return "";
   }
-  return `${lead}${words.slice(0, GHOST_MAX_WORDS).join(" ")}`;
+  const lead = suggestion.match(/^\s*/)?.[0] ?? "";
+  return `${lead}${trimmed.split(/\s+/).slice(0, GHOST_MAX_WORDS).join(" ")}`;
 }
 
 /** Drop emptiness and an echo of the partial so the ghost is only the tail. Keep a leading space. */
@@ -72,15 +72,15 @@ export function normalizeSuggestion(
   if (suggestion.trim() === prefix) {
     return null;
   }
-  const rest =
-    prefix.length > 0 && suggestion.toLowerCase().startsWith(prefix.toLowerCase())
-      ? suggestion.slice(prefix.length)
-      : suggestion;
-  if (rest.trim().length === 0) {
-    return null;
+  let rest = suggestion;
+  if (prefix.length > 0 && suggestion.toLowerCase().startsWith(prefix.toLowerCase())) {
+    rest = suggestion.slice(prefix.length);
   }
   const clipped = clipGhostContinuation(rest);
-  return clipped.trim().length === 0 ? null : clipped;
+  if (clipped.trim().length === 0) {
+    return null;
+  }
+  return clipped;
 }
 
 /**

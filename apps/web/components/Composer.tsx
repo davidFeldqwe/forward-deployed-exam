@@ -240,8 +240,8 @@ function suggestionFromBody(partial: string, body: unknown): string | null {
 
 function GhostFetchPlugin({ recentPrompts }: { recentPrompts: readonly string[] }) {
   const [editor] = useLexicalComposerContext();
-  // Chat's empty-thread default is a new `[]` on every keystroke. Keep the
-  // pause on the editor, and read the latest prompts only when the timer fires.
+  // Chat builds a new `recentPrompts` array each render. Keep the pause tied to
+  // the editor and read prompts only when the timer fires.
   const recentPromptsRef = useRef(recentPrompts);
   recentPromptsRef.current = recentPrompts;
 

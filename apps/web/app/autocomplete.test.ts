@@ -208,8 +208,8 @@ test("an empty thread still fetches a ghost; the pause is not reset by recentPro
   );
 
   const composer = source("../components/Composer.tsx");
-  // `/chat` omits `messages`, so Chat re-renders a new empty array on every
-  // keystroke. The pause must read recent prompts from a ref, not effect deps.
+  // Chat passes a new `recentPrompts` array each render (`/chat` also omits
+  // `messages`). The pause must read prompts from a ref, not effect deps.
   assert.match(composer, /recentPromptsRef/);
   assert.doesNotMatch(composer, /if\s*\(\s*recentPrompts\.length/);
   const chat = source("../components/Chat.tsx");

@@ -22,6 +22,7 @@ import {
   InputGroupButton,
 } from "@/components/ui/input-group";
 
+// `/chat` omits `messages`; reuse one empty list instead of a new `[]` each render.
 const EMPTY_THREAD: readonly ThreadMessage[] = [];
 
 export function Chat({
