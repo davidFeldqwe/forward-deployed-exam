@@ -329,6 +329,13 @@ test("a peer-group filter is the phrase its members answer to: hubs, or nonhub a
   assert.equal(large?.resolved.phrase, "large hubs");
 });
 
+// The screen matches a peer group on case and padding only, so a filter that
+// resolved to nonhub rows is put in the words those rows answer to.
+test("a peer-group filter is read as the hub size it matched, however it was spelled", () => {
+  const capitalised = rankingView({ ...bangor, args: { peerGroup: "Nonhub" } });
+  assert.equal(capitalised?.resolved.phrase, "Nonhub airports");
+});
+
 // A stored value that is not a hub size resolves to no rows, and the resolved
 // set still says what was filtered on: `unknownPlace` is what reports the miss.
 test("a peer-group value that is not a hub size is printed as it was asked for", () => {

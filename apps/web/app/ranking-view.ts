@@ -275,12 +275,15 @@ function phraseOf(args: JsonObject): string {
 
 /**
  * A peer-group filter as words: "large hubs", and "nonhub airports" because a
- * nonhub primary is precisely not a hub. A stored value that is not a hub size
- * is still printed as it was asked for — the resolved set says what was
- * filtered on, and the unresolved-place list is what reports it matched nothing.
+ * nonhub primary is precisely not a hub. The hub size is read off the value the
+ * way the screen matches it, on case and padding only, so "Nonhub" resolves to
+ * the rows it filtered to rather than being called a hub. A stored value that is
+ * not a hub size at all is still printed as it was asked for — the resolved set
+ * says what was filtered on, and the unresolved-place list is what reports it
+ * matched nothing.
  */
 function peerGroupPhrase(value: string): string {
-  const asked = peerGroupSchema.safeParse(value);
+  const asked = peerGroupSchema.safeParse(value.trim().toLowerCase());
   const noun = asked.success ? PEER_GROUP_NOUNS[asked.data] : "hub";
   return `${value} ${noun}s`;
 }

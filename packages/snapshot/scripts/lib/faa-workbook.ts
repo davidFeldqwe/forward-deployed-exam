@@ -11,9 +11,9 @@ export type FaaUniverseRow = {
  * The FAA's hub-size letter for each peer group. N is the fourth: a nonhub
  * primary, under 0.05% of national enplanements and still scheduled service, so
  * the row is read rather than refused. Keyed off `PeerGroup`, so a fifth hub
- * size fails to typecheck here rather than reaching ingest as a letter no case
- * claims — which reads as a workbook this module cannot parse, not as a hub size
- * it was never given.
+ * size fails to typecheck here rather than reaching ingest with no letter of its
+ * own, where every row carrying it would be thrown as a workbook this module
+ * cannot parse.
  */
 export const FAA_HUB_LETTERS: Readonly<Record<PeerGroup, string>> = {
   large: "L",
