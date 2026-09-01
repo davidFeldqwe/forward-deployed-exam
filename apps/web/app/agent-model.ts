@@ -19,6 +19,7 @@ import {
 import {
   AGENT_MAX_STEPS,
   NO_PROVIDER_ANSWER,
+  chooseAutocompleteProvider,
   chooseProvider,
   type ProviderChoice,
 } from "./agent-provider.ts";
@@ -37,6 +38,9 @@ export class NoProviderError extends Error {
 export type AgentTurn = { role: "user" | "assistant"; content: string };
 
 export type AgentRequest = { system: string; messages: readonly AgentTurn[] };
+
+/** A composer continuation: no tools, no transcript, one string back. */
+export type CompletionRequest = { system: string; prompt: string };
 
 export type ModelAnswer = { text: string; toolCalls: ToolCall[] };
 
@@ -66,6 +70,42 @@ export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
  */
 export function streamAgentModel(request: AgentRequest): Promise<ModelAnswer> {
   return answerWithProvider(streamModelAnswer, request);
+}
+
+/**
+ * One continuation for the composer ghost. No tools: a ranking number must not
+ * be invented on the way into the draft. Failures are the route's to swallow.
+ */
+export async function completePrompt(request: CompletionRequest): Promise<string> {
+  const choice = chooseAutocompleteProvider(process.env);
+  if (!choice) {
+    throw new NoProviderError();
+  }
+
+  try {
+    return await generateCompletion(languageModel(choice), request);
+  } catch (error) {
+    if (choice.fallbackModel === null || !isModelUnavailable(error)) {
+      throw error;
+    }
+    return await generateCompletion(
+      languageModel({ ...choice, model: choice.fallbackModel }),
+      request,
+    );
+  }
+}
+
+/** The same one-shot generate, so a test can script the model without a key. */
+export async function generateCompletion(
+  model: AgentLanguageModel,
+  request: CompletionRequest,
+): Promise<string> {
+  const { text } = await generateText({
+    model,
+    system: request.system,
+    prompt: request.prompt,
+  });
+  return text;
 }
 
 async function answerWithProvider(loop: ModelLoop, request: AgentRequest): Promise<ModelAnswer> {

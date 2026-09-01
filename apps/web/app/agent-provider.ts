@@ -19,6 +19,8 @@ export const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o";
 /** PRD "Stack": `gpt-4o` first, `gpt-4o-mini` if that model is not available. */
 export const OPENAI_FALLBACK_MODEL = "gpt-4o-mini";
+/** Optional cheaper name for the composer ghost; same key family as chat. */
+export const AUTOCOMPLETE_MODEL = "AUTOCOMPLETE_MODEL";
 
 export type ProviderChoice = {
   vendor: "anthropic" | "openai";
@@ -61,6 +63,23 @@ export function chooseProvider(env: Record<string, string | undefined>): Provide
     };
   }
   return null;
+}
+
+/**
+ * The composer ghost uses the same vendor and key as chat. A named cheaper
+ * model is allowed; without one, the chat model answers here too.
+ */
+export function chooseAutocompleteProvider(
+  env: Record<string, string | undefined>,
+): ProviderChoice | null {
+  const choice = chooseProvider(env);
+  if (!choice) {
+    return null;
+  }
+  const model = trimmed(env[AUTOCOMPLETE_MODEL]);
+  // A named ghost model that the account cannot see is silence, not a second
+  // paid call: failure on this route means no suggestion.
+  return model === null ? choice : { ...choice, model, fallbackModel: null };
 }
 
 function trimmed(value: string | undefined): string | null {

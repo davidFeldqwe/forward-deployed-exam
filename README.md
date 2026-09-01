@@ -41,6 +41,8 @@ objects — needs no key at all.
 | `OPENAI_API_KEY` | the agent's model when the Anthropic key is absent. |
 | `ANTHROPIC_MODEL` | override the default Anthropic model. |
 | `OPENAI_MODEL` | override the default OpenAI model (`gpt-4o`, falling back to `gpt-4o-mini` if the account cannot see it). |
+| `AUTOCOMPLETE_MODEL` | optional cheaper model for the composer ghost; same API key family as chat. |
+| `MOCK_LLM` | set to `1` for a canned New England composer ghost. CI leaves this unset and has no paid key. |
 | `AUTH_SECRET` | signs the session cookie. Required when `NODE_ENV` is `production`; development falls back to a dev-only secret. |
 
 The root `.env.example` is that table with empty values. Copy it to

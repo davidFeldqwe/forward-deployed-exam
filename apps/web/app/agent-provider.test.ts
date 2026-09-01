@@ -3,9 +3,11 @@ import { test } from "node:test";
 
 import {
   AGENT_MAX_STEPS,
+  AUTOCOMPLETE_MODEL,
   DEFAULT_ANTHROPIC_MODEL,
   DEFAULT_OPENAI_MODEL,
   OPENAI_FALLBACK_MODEL,
+  chooseAutocompleteProvider,
   chooseProvider,
 } from "./agent-provider.ts";
 
@@ -44,4 +46,21 @@ test("either model can be named, and a blank key is no key at all", () => {
 
 test("the tool-step cap is the PRD's eight", () => {
   assert.equal(AGENT_MAX_STEPS, 8);
+});
+
+test("the composer ghost uses the chat key, and may name a cheaper model", () => {
+  assert.deepEqual(chooseAutocompleteProvider({ ANTHROPIC_API_KEY: "sk-ant" }), {
+    vendor: "anthropic",
+    model: DEFAULT_ANTHROPIC_MODEL,
+    fallbackModel: null,
+    apiKey: "sk-ant",
+  });
+  assert.deepEqual(
+    chooseAutocompleteProvider({
+      ANTHROPIC_API_KEY: "sk-ant",
+      [AUTOCOMPLETE_MODEL]: "claude-haiku-4",
+    }),
+    { vendor: "anthropic", model: "claude-haiku-4", fallbackModel: null, apiKey: "sk-ant" },
+  );
+  assert.equal(chooseAutocompleteProvider({}), null);
 });

@@ -56,7 +56,7 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   const chat = source(THE_COMPOSER);
   const form = chat.indexOf("<form action={askQuestion}");
   const pending = chat.indexOf("<PendingAnswer");
-  const composer = chat.indexOf("<InputGroupInput");
+  const composer = chat.indexOf("<Composer");
 
   // `useFormStatus` only reports on an ancestor form, so the pending answer and
   // the composer that submits it are inside the one form.

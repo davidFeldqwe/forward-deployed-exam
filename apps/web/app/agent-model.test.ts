@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  generateCompletion,
   generateModelAnswer,
   streamModelAnswer,
   type AgentLanguageModel,
@@ -180,6 +181,15 @@ test("a stream that fails throws the model's own error, so the fallback can read
   const unavailable = failingModel(() => Promise.reject(new Error("model_not_found")));
 
   await assert.rejects(streamModelAnswer(unavailable, REQUEST), /model_not_found/);
+});
+
+test("a composer continuation is prose with no tool loop", async () => {
+  const text = await generateCompletion(scriptedModel([{ text: " are candidates?" }]), {
+    system: "Continue the question.",
+    prompt: "Which airports in New England",
+  });
+
+  assert.equal(text, " are candidates?");
 });
 
 test("a stream that fails after prose throws rather than storing the half answer", async () => {

@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { recentUserPrompts } from "@/app/autocomplete";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { chatCopy } from "@/app/chat-copy";
 import { askQuestion } from "@/app/thread-actions";
 import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
+import { Composer } from "@/components/Composer";
 import { PromptChips } from "@/components/PromptChips";
 import { PendingAnswer } from "@/components/answers/PendingAnswer";
 import { ComparisonWindow, SiteHeader } from "@/components/SiteHeader";
@@ -17,7 +19,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupInput,
 } from "@/components/ui/input-group";
 
 export function Chat({
@@ -106,20 +107,13 @@ export function Chat({
           <div className="shrink-0 border-t bg-header">
             <div className="mx-auto max-w-[820px] px-6 pt-3 pb-4">
               <InputGroup className="h-auto min-h-11 py-1 pe-1 ps-1">
-                <label className="sr-only" htmlFor="chat-draft">
-                  {chatCopy.composerPlaceholder}
-                </label>
-                <InputGroupInput
+                <Composer
                   id="chat-draft"
-                  name="prompt"
                   value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
+                  onChange={setDraft}
+                  recentPrompts={recentUserPrompts(messages)}
                   placeholder={chatCopy.composerPlaceholder}
-                  // `askQuestion` bounds a question by the same maximum, so
-                  // stopping the field here means a long question is visibly
-                  // capped rather than silently cut on its way into the thread.
                   maxLength={PROMPT_MAX_LENGTH}
-                  className="h-9 text-base md:text-base"
                 />
                 <InputGroupAddon align="inline-end">
                   <SendButton ready={ready} />
