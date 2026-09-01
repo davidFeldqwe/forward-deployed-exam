@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { chatCopy } from "./chat-copy.ts";
 import { landingCopy } from "./landing-copy.ts";
 import { siteHeaderCopy } from "./site-header.ts";
+
+const chatChrome = readFileSync(new URL("../components/Chat.tsx", import.meta.url), "utf8");
+const composerChrome = readFileSync(new URL("../components/Composer.tsx", import.meta.url), "utf8");
+const askQuestionAction = readFileSync(new URL("./thread-actions.ts", import.meta.url), "utf8");
 
 function visibleText(value: unknown): string {
   if (typeof value === "string") {
@@ -41,11 +46,47 @@ test("empty state has no thesis paragraph", () => {
 
 test("composer is a single send field that says when a question is in flight", () => {
   assert.equal(chatCopy.composerPlaceholder, "Ask about an airport…");
+  // Accessible name of the submit control — the visible chrome is an arrow.
   assert.equal(chatCopy.sendLabel, "Send");
   // Send is held while the question is being persisted, so the label has to
   // say why it cannot be clicked again.
   assert.match(chatCopy.sendingLabel, /^Sending/);
   assert.notEqual(chatCopy.sendingLabel, chatCopy.sendLabel);
+});
+
+test("submit is an upward arrow whose accessible name is send, not the word Send", () => {
+  assert.match(chatChrome, /ArrowUpIcon/);
+  assert.match(chatChrome, /aria-label=\{pending \? chatCopy\.sendingLabel : chatCopy\.sendLabel\}/);
+  assert.doesNotMatch(
+    chatChrome,
+    />\s*\{pending \? chatCopy\.sendingLabel : chatCopy\.sendLabel\}\s*</,
+  );
+});
+
+test("empty draft cannot activate send; a ready draft stays enabled unless in flight", () => {
+  // `ready` is the trimmed draft, including a server-rendered carried prompt, so
+  // a valid draft is enabled in the initial HTML and an empty one is not.
+  assert.match(chatChrome, /disabled=\{!ready \|\| pending\}/);
+});
+
+test("a long draft wraps and scrolls inside the field instead of clipping sideways", () => {
+  const field = composerChrome.match(/<ContentEditable[\s\S]*?\/>/)?.[0] ?? "";
+  assert.match(field, /min-h-9/);
+  assert.match(field, /max-h-/);
+  assert.match(field, /overflow-y-auto/);
+  assert.doesNotMatch(field, /whitespace-nowrap/);
+  assert.doesNotMatch(field, /overflow-y-hidden/);
+});
+
+test("header and composer stay on screen; the transcript is the region that shrinks", () => {
+  assert.match(chatChrome, /h-svh/);
+  assert.match(chatChrome, /shrink-0 border-t/);
+  assert.match(chatChrome, /min-h-0 flex-1[^"]*overflow-y-auto/);
+});
+
+test("empty submit without JavaScript does not create a user turn", () => {
+  assert.match(askQuestionAction, /carriedPrompt/);
+  assert.match(askQuestionAction, /if \(!question\) \{\s*return;/);
 });
 
 test("chat chrome does not advertise dropped surfaces or a live scoring path", () => {

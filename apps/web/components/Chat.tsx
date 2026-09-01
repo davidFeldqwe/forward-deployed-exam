@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { ArrowUpIcon } from "lucide-react";
 
 import { recentUserPrompts } from "@/app/autocomplete";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
@@ -106,7 +107,7 @@ export function Chat({
 
           <div className="shrink-0 border-t bg-header">
             <div className="mx-auto max-w-[820px] px-6 pt-3 pb-4">
-              <InputGroup className="h-auto min-h-11 py-1 pe-1 ps-1">
+              <InputGroup className="h-auto min-h-11 items-end py-1 pe-1 ps-1">
                 <Composer
                   id="chat-draft"
                   value={draft}
@@ -131,7 +132,8 @@ export function Chat({
  * Send, held while the question is on its way into the Thread. The composer
  * only clears once the transcript comes back with the question in it, so until
  * then a second click would post the same question again and append it twice.
- * Rendered enabled on the server, so the form still sends without JavaScript.
+ * `ready` is the trimmed draft, including a carried prompt on first paint, so a
+ * valid draft is enabled in the initial HTML and an empty or in-flight one is not.
  */
 function SendButton({ ready }: { ready: boolean }) {
   const { pending } = useFormStatus();
@@ -139,11 +141,12 @@ function SendButton({ ready }: { ready: boolean }) {
   return (
     <InputGroupButton
       type="submit"
-      size="sm"
+      size="icon-sm"
       variant={ready ? "default" : "secondary"}
-      disabled={pending}
+      disabled={!ready || pending}
+      aria-label={pending ? chatCopy.sendingLabel : chatCopy.sendLabel}
     >
-      {pending ? chatCopy.sendingLabel : chatCopy.sendLabel}
+      <ArrowUpIcon />
     </InputGroupButton>
   );
 }

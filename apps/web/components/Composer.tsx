@@ -74,7 +74,7 @@ export function Composer({
                 </div>
               }
               data-slot="input-group-control"
-              className="relative z-10 h-9 overflow-x-auto overflow-y-hidden px-3 py-1.5 text-base whitespace-nowrap outline-none md:text-base"
+              className="relative z-10 block min-h-9 max-h-32 overflow-x-hidden overflow-y-auto px-3 py-1.5 text-base break-words outline-none md:text-base"
             />
           }
           ErrorBoundary={LexicalErrorBoundary}
@@ -197,6 +197,9 @@ function GhostKeysPlugin() {
         (event) => {
           event?.preventDefault();
           $removeGhosts();
+          if ($draftText().trim().length === 0) {
+            return true;
+          }
           editor.getRootElement()?.closest("form")?.requestSubmit();
           return true;
         },
