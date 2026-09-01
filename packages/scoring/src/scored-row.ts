@@ -27,7 +27,7 @@ export function isScoredAirport(value: unknown): value is ScoredAirport {
 
 /**
  * A check for one of a closed set of labels, spelled as every label of the type
- * it closes over: a fourth FAA hub size or a third slot level fails this
+ * it closes over: a fifth FAA hub size or a third slot level fails this
  * typecheck rather than being refused at a store boundary that never heard of
  * it. The sets are written out here because this module reads `@repo/snapshot`
  * for types only — nothing of it loads at runtime.
@@ -42,6 +42,7 @@ const isPeerGroup = isLabelIn<ScoredAirport["peerGroup"]>({
   large: true,
   medium: true,
   small: true,
+  nonhub: true,
 });
 
 const isSlotLevel = isLabelIn<NonNullable<ScoredAirport["slotLimit"]>>({

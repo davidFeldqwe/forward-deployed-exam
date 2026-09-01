@@ -111,7 +111,7 @@ Each snapshot airport carries at least:
 
 - identity: IATA, name
 - place: municipality, state, region (one of nine US Census divisions)
-- peer group: large / medium / small (FAA hub size)
+- peer group: large / medium / small / nonhub (FAA hub size)
 - inputs for the score vector (or explicit missing)
 - runway count, long-haul share inputs, slot-limit label
 - coverage per score-vector component

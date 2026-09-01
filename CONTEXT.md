@@ -85,7 +85,7 @@ Four numbers for one airport: congestion, delay, unmet flight demand, and growth
 _Avoid_: long-haul share
 
 **Peer group**:
-Airports of one FAA hub size: large, medium, or small. Santa Ana and Los Angeles are not in the same peer group.
+Airports of one FAA hub size: large, medium, small, or nonhub. Santa Ana and Los Angeles are not in the same peer group, and a nonhub airport's percentiles are ranks among nonhub airports.
 _Avoid_: universe, city, metro
 
 **Composite score**:

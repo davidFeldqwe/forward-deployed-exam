@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { readFaaUniverse } from "../scripts/lib/faa-workbook.ts";
+import { FAA_HUB_LETTERS, readFaaUniverse } from "../scripts/lib/faa-workbook.ts";
+import { peerGroupSchema } from "../src/schema.ts";
 
 const WINDOW = { firstYear: 2023, secondYear: 2024 } as const;
 
@@ -74,9 +75,37 @@ test("rows that are not ranked IATA airports drop out of the universe", () => {
   assert.deepEqual(universe.map((row) => row.iata), ["ATL", "DFW"]);
 });
 
+// #70: N is the FAA's fourth hub size for a primary commercial airport, so the
+// reader stores it as the `nonhub` peer group rather than throwing on the row.
+test("hub N is read as the nonhub peer group, the fourth FAA hub size", () => {
+  const bgr = ["2", "NE", "ME", "BGR", "Bangor", "Bangor Intl", "P", "N", "140400", "130000", "0.08"];
+  const universe = readFaaUniverse(sheet(HEADER, [ATL, bgr]), WINDOW, 2);
+  assert.deepEqual(
+    universe.map((row) => [row.iata, row.peerGroup]),
+    [
+      ["ATL", "large"],
+      ["BGR", "nonhub"],
+    ],
+  );
+});
+
+// #70: the letter for each hub size is keyed off `PeerGroup`, so a fifth peer
+// group in the snapshot schema fails this reader's typecheck rather than being
+// refused row by row at ingest. This is the runtime half of that pin: every hub
+// size the schema accepts has a letter, and that letter really is read back as
+// the hub size it stands for — two sharing one letter fails here too.
+test("every peer group the snapshot accepts is an FAA hub size this reader reads", () => {
+  for (const peerGroup of peerGroupSchema.options) {
+    const row = [...ATL];
+    row[HEADER.indexOf("Hub")] = FAA_HUB_LETTERS[peerGroup];
+    const universe = readFaaUniverse(sheet(HEADER, [row]), WINDOW, 1);
+    assert.equal(universe[0]?.peerGroup, peerGroup);
+  }
+});
+
 test("an unreadable hub size and a short universe both fail loudly", () => {
-  const noHub = [...DFW];
-  noHub[7] = "N";
-  assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL, noHub]), WINDOW, 2), /hub size/i);
+  const unknownHub = [...DFW];
+  unknownHub[HEADER.indexOf("Hub")] = "X";
+  assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL, unknownHub]), WINDOW, 2), /hub size/i);
   assert.throws(() => readFaaUniverse(sheet(HEADER, [ATL]), WINDOW, 2), /expected 2/);
 });

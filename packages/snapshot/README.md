@@ -24,7 +24,7 @@ on the same pair; `asOf` plus those years is the snapshot vintage.
 | `iata`, `name` | identity; the join key is IATA, never a BTS city market or an OurAirports ident |
 | `municipality`, `state`, `region` | place; `region` is one of the nine US Census divisions, null for territories |
 | `latitude`, `longitude` | OurAirports degrees, so a resolved set can be placed without a second lookup; null only as a pair |
-| `peerGroup` | FAA hub size: large, medium, small |
+| `peerGroup` | FAA hub size: large, medium, small, nonhub |
 | `inputs` | the four score-vector inputs, each with `raw` and `coverage` |
 | `enplanements`, `flights` | the window measures the inputs are computed from |
 | `runwayCount`, `slotLimit`, `longHaulShare` | lookups and why-labels, not score-vector slots |

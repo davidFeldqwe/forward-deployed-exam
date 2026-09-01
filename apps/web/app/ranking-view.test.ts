@@ -50,6 +50,18 @@ const hya: ScoredAirport = {
   gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for HYA."],
 };
 
+// The fourth hub size, off the fixture rather than the committed snapshot: the
+// snapshot is still the top ~100 by ACAIS and carries no nonhub row yet.
+const bgr: ScoredAirport = {
+  ...hya,
+  iata: "BGR",
+  name: "Bangor Intl",
+  municipality: "Bangor",
+  peerGroup: "nonhub",
+  assumptions: ["Weather delays are excluded.", "Delay is missing for BGR."],
+  gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for BGR."],
+};
+
 function call(result: JsonValue, args: JsonObject = { region: "New England" }): ToolCall {
   return { tool: "queryAirports", args, result, durationMs: 12 };
 }
@@ -63,6 +75,19 @@ const twoRows = call({
   unknownIata: [],
   unknownPlace: [],
 });
+
+const bangor = call(
+  {
+    rows: [bgr],
+    matched: 1,
+    resolvedIata: ["BGR"],
+    sortBy: "composite",
+    limit: 10,
+    unknownIata: [],
+    unknownPlace: [],
+  },
+  { peerGroup: "nonhub" },
+);
 
 test("only a queryAirports payload becomes a ranking", () => {
   assert.equal(rankingView(undefined), null);
@@ -284,6 +309,38 @@ test("a compare keeps LAX and SNA as two rows, in two peer groups", () => {
     ["large FAA hubs", "medium FAA hubs"],
   );
   assert.equal(view?.resolved.phrase, "LAX · SNA");
+});
+
+// Issue #70 / #68 stories 9-10: the fourth FAA hub size is the primaries that
+// are *not* hubs, so the words the table prints for a peer group cannot be the
+// hub words with the size swapped in — "nonhub hub" names nothing an analyst
+// would write, and the row would be saying its percentiles are a hub rank.
+test("a nonhub row is ranked among nonhub airports, not among nonhub hubs", () => {
+  assert.equal(rankingView(bangor)?.rows[0]?.peerLabel, "nonhub FAA airports");
+});
+
+test("the why-label of a nonhub row names its peer group without calling it a hub", () => {
+  assert.deepEqual(rankingView(bangor)?.rows[0]?.whyLabels, ["Nonhub airport"]);
+});
+
+test("a peer-group filter is the phrase its members answer to: hubs, or nonhub airports", () => {
+  assert.equal(rankingView(bangor)?.resolved.phrase, "nonhub airports");
+  const large = rankingView({ ...twoRows, args: { peerGroup: "large" } });
+  assert.equal(large?.resolved.phrase, "large hubs");
+});
+
+// The screen matches a peer group on case and padding only, so a filter that
+// resolved to nonhub rows is put in the words those rows answer to.
+test("a peer-group filter is read as the hub size it matched, however it was spelled", () => {
+  const capitalised = rankingView({ ...bangor, args: { peerGroup: "Nonhub" } });
+  assert.equal(capitalised?.resolved.phrase, "Nonhub airports");
+});
+
+// A stored value that is not a hub size resolves to no rows, and the resolved
+// set still says what was filtered on: `unknownPlace` is what reports the miss.
+test("a peer-group value that is not a hub size is printed as it was asked for", () => {
+  const asked = rankingView({ ...twoRows, args: { peerGroup: "jumbo" } });
+  assert.equal(asked?.resolved.phrase, "jumbo hubs");
 });
 
 test("the municipality Los Angeles is one airport, not a metro that swallows SNA", () => {

@@ -4,7 +4,10 @@ import { CENSUS_DIVISIONS } from "./census-divisions.ts";
 import { SLOT_LIMIT_LEVELS } from "./slot-limits.ts";
 
 export const coverageSchema = z.enum(["present", "missing"]);
-export const peerGroupSchema = z.enum(["large", "medium", "small"]);
+// The four FAA hub sizes a primary commercial airport can be filed under. A
+// nonhub primary is the fourth: small enough to be under 0.05% of national
+// enplanements, still a scheduled commercial airport with peers of its own.
+export const peerGroupSchema = z.enum(["large", "medium", "small", "nonhub"]);
 export const slotLimitSchema = z.enum(SLOT_LIMIT_LEVELS);
 
 // Missing is not a low score: an absent input keeps `raw` null and flags

@@ -50,8 +50,8 @@ Congestion and unmet flight demand are constraint-relief and together carry 70 o
 100; growth carries 10.
 
 **Percentile, then composite.** Each raw value becomes a percentile *within the
-airport's FAA hub-size peer group* (large / medium / small), computed nationally,
-once:
+airport's FAA hub-size peer group* (large / medium / small / nonhub), computed
+nationally, once:
 
 ```
 percentile = round(100 * (peers below + half the ties) / peers scored)

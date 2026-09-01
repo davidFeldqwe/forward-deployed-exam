@@ -1,20 +1,38 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { COMPONENTS, WEIGHTS, candidateLamp, scoreUniverse } from "../src/index.ts";
-import { FIXTURE } from "./fixture.ts";
+import {
+  COMPONENTS,
+  WEIGHTS,
+  candidateLamp,
+  scoreUniverse,
+  type ScoredAirport,
+} from "../src/index.ts";
+import { FIXTURE, NONHUB_FIXTURE } from "./fixture.ts";
 import { rowLookup } from "./rows.ts";
 
 const scored = scoreUniverse(FIXTURE);
 const row = rowLookup(scored);
 
-function percentiles(iata: string) {
-  const { scoreVector } = row(iata);
+// The nonhub rows rank in a snapshot of their own, so both universes are scored.
+const nonhubRow = rowLookup(scoreUniverse(NONHUB_FIXTURE));
+
+/** The four percentiles of one scored row, as one object. */
+function percentiles({ scoreVector }: ScoredAirport) {
   return {
     congestion: scoreVector.congestion.percentile,
     unmetFlightDemand: scoreVector.unmetFlightDemand.percentile,
     delay: scoreVector.delay.percentile,
     growth: scoreVector.growth.percentile,
+  };
+}
+
+/** The numbers scoring computes for one row, apart from the snapshot it read. */
+function scoredNumbers(airport: ScoredAirport) {
+  return {
+    scoreVector: airport.scoreVector,
+    composite: airport.composite,
+    candidateLamp: airport.candidateLamp,
   };
 }
 
@@ -34,25 +52,25 @@ test("the weights are the locked 35/35/20/10 and sum to 100", () => {
 // Five large hubs, so a distinct value lands on one of 90/70/50/30/10:
 // percentile = 100 * (peers below + half the ties, self included) / peers scored.
 test("percentiles are hand-checkable ranks inside the large-hub peer group", () => {
-  assert.deepEqual(percentiles("ATL"), {
+  assert.deepEqual(percentiles(row("ATL")), {
     congestion: 90, // 10,400,000 pax/runway — highest of five
     unmetFlightDemand: 70, // +2.0 pp — second of five
     delay: 63, // 13.5 min — second of the four large hubs with delay data
     growth: 70, // +3.0% — second of five
   });
-  assert.deepEqual(percentiles("ORD"), {
+  assert.deepEqual(percentiles(row("ORD")), {
     congestion: 50,
     unmetFlightDemand: 30,
     delay: 88, // 16.5 min — highest of four scored
     growth: 90,
   });
-  assert.deepEqual(percentiles("LAX"), {
+  assert.deepEqual(percentiles(row("LAX")), {
     congestion: 70,
     unmetFlightDemand: 10,
     delay: 38,
     growth: 10,
   });
-  assert.deepEqual(percentiles("BOS"), {
+  assert.deepEqual(percentiles(row("BOS")), {
     congestion: 30,
     unmetFlightDemand: 90,
     delay: 13,
@@ -89,13 +107,81 @@ test("percentiles are peer-group-relative, so SNA outranks ORD on a smaller raw"
 });
 
 test("a peer group of one is the median of itself, not the top of the country", () => {
-  assert.deepEqual(percentiles("ORH"), {
+  assert.deepEqual(percentiles(row("ORH")), {
     congestion: 50,
     unmetFlightDemand: 50,
     delay: 50,
     growth: 50,
   });
   assert.equal(row("ORH").composite, 50);
+});
+
+// #70 / #68 stories 9, 10 and 56: nonhub is the fourth FAA hub size, and its
+// rows rank among nonhub peers. Three nonhub airports, so a distinct value lands
+// on one of 83/50/17.
+test("a nonhub airport's percentiles are ranks among nonhub peers, not national ones", () => {
+  for (const iata of ["BGR", "ITH", "MVY"]) {
+    assert.equal(nonhubRow(iata).peerGroup, "nonhub");
+  }
+  assert.deepEqual(percentiles(nonhubRow("BGR")), {
+    congestion: 83, // 140,400 pax/runway — highest of three nonhub airports
+    unmetFlightDemand: 17, // -2.0 pp — lowest of the three
+    delay: null, // a BTS delay hole, so BGR is not in the nonhub delay field
+    growth: 83, // +8.0% — highest of the three
+  });
+  assert.deepEqual(percentiles(nonhubRow("ITH")), {
+    congestion: 50,
+    unmetFlightDemand: 50,
+    delay: 75, // 14.0 min — higher of the two nonhub airports with delay data
+    growth: 50,
+  });
+  assert.deepEqual(percentiles(nonhubRow("MVY")), {
+    congestion: 17,
+    unmetFlightDemand: 83,
+    delay: 25,
+    growth: 17,
+  });
+});
+
+// The Santa Ana versus Los Angeles rule one hub size further down: BGR is under
+// a fraction of ORD's load per runway and outranks it, because neither number is
+// a reading of the other's field.
+test("percentiles are peer-group-relative, so BGR outranks ORD on a smaller raw", () => {
+  const bgr = nonhubRow("BGR");
+  const ord = nonhubRow("ORD");
+  assert.notEqual(bgr.peerGroup, ord.peerGroup);
+
+  assert.ok(bgr.scoreVector.congestion.raw! < ord.scoreVector.congestion.raw!);
+  assert.equal(bgr.scoreVector.congestion.percentile, 83); // top of three nonhub airports
+  assert.equal(ord.scoreVector.congestion.percentile, 50); // middle of five large hubs
+});
+
+// The fourth hub size ranks in a field of its own, so the other three cannot
+// feel it: scoring the slice with and without the nonhub rows has to hand the
+// ten shared airports the same vectors, composites and lamps.
+test("nonhub rows leave the large, medium and small percentiles exactly as they were", () => {
+  for (const { iata } of FIXTURE.airports) {
+    assert.deepEqual(scoredNumbers(nonhubRow(iata)), scoredNumbers(row(iata)), iata);
+  }
+});
+
+test("nonhub composites are the weighted percentiles, built on nonhub ranks alone", () => {
+  // ITH: 0.35*50 + 0.35*50 + 0.20*75 + 0.10*50 = 55
+  assert.equal(nonhubRow("ITH").composite, 55);
+  assert.equal(nonhubRow("ITH").candidateLamp, "Mixed vector");
+  // MVY: 0.35*17 + 0.35*83 + 0.20*25 + 0.10*17 = 41.7
+  assert.equal(nonhubRow("MVY").composite, 42);
+  assert.equal(nonhubRow("MVY").candidateLamp, "Mixed vector");
+});
+
+test("a nonhub row with a missing component withholds its composite, like any other", () => {
+  const bgr = nonhubRow("BGR");
+  assert.equal(bgr.composite, null);
+  assert.equal(bgr.candidateLamp, "Partial inputs");
+  // The three present components are still nonhub ranks an analyst can read.
+  assert.equal(bgr.scoreVector.congestion.percentile, 83);
+  assert.equal(bgr.scoreVector.unmetFlightDemand.percentile, 17);
+  assert.equal(bgr.scoreVector.growth.percentile, 83);
 });
 
 test("a missing component is withheld, never zero-filled or re-weighted", () => {
@@ -280,7 +366,7 @@ test("a scored row carries the snapshot's coordinates, unrounded and unfilled", 
   assert.equal(row("HYA").candidateLamp, "No data");
 });
 
-// A national rank sorts three peer groups' composites into one list, so a small
+// A national rank sorts four peer groups' composites into one list, so a small
 // hub can outrank a large one. That is the locked design, and the row has to say
 // so: the composite is as peer-relative as the percentiles it is built from.
 test("the cross-peer-group caveat covers the composite, not just the percentiles", () => {

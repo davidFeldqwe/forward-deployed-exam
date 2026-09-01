@@ -16,7 +16,7 @@ import {
   type QueryAirportsArgs,
   type SortBy,
 } from "../src/index.ts";
-import { FIXTURE } from "./fixture.ts";
+import { FIXTURE, NONHUB_FIXTURE } from "./fixture.ts";
 import { rowLookup } from "./rows.ts";
 
 const scored = scoreUniverse(FIXTURE);
@@ -82,6 +82,23 @@ test("filters combine, and match on case and padding only", () => {
   assert.deepEqual(codes({ region: "new england", peerGroup: "SMALL" }), ["ORH", "HYA"]);
   assert.deepEqual(codes({ state: " il " }), ["ORD", "MDW"]);
   assert.deepEqual(codes({ peerGroup: "medium" }), ["BDL", "SNA", "PVD"]);
+});
+
+// #70: `peerGroup` is a place phrase read off the rows, so the fourth hub size
+// is accepted the moment the universe carries one — and until then it is an
+// unresolved phrase rather than an empty ranking, which is the same answer any
+// place the universe does not carry gets.
+test("nonhub is an accepted peerGroup phrase exactly when the universe carries one", () => {
+  const withNonhub = scoreUniverse(NONHUB_FIXTURE);
+  assert.deepEqual(
+    queryAirports(withNonhub, { peerGroup: " NONHUB " }).rows.map((row) => row.iata),
+    ["ITH", "MVY", "BGR"], // 55, 42, and BGR's withheld composite last
+  );
+  assert.deepEqual(placeVocabulary(withNonhub).peerGroup, ["large", "medium", "nonhub", "small"]);
+
+  const absent = queryAirports(scored, { peerGroup: "nonhub" });
+  assert.equal(absent.matched, 0);
+  assert.deepEqual(absent.unknownPlace, [{ field: "peerGroup", value: "nonhub" }]);
 });
 
 test("ORD and MDW stay two rows: the screen never joins on a city market", () => {

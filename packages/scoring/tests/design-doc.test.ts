@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { loadSnapshot } from "@repo/snapshot";
+import { loadSnapshot, peerGroupSchema } from "@repo/snapshot";
 
 import {
   CANDIDATE_LAMPS,
@@ -23,6 +23,10 @@ import {
  */
 const repo = new URL("../../../", import.meta.url);
 const design = readFileSync(new URL("DESIGN.md", repo), "utf8");
+
+/** The writeup as one line, so a list that wraps across lines still reads as one. */
+const prose = design.replace(/\s+/g, " ");
+
 const snapshot = loadSnapshot();
 const scored = scoreUniverse(snapshot);
 
@@ -95,6 +99,14 @@ test("the stated vintage is the committed snapshot's own", () => {
     design.includes(`top ${snapshot.airports.length} US airports`),
     "DESIGN.md names the size of the universe",
   );
+});
+
+// Issue #70: a hub size the module ranks in and the writeup's parenthetical
+// does not name sends a reviewer looking for a fourth peer group that the doc
+// says is not there.
+test("the stated peer groups are every hub size the snapshot accepts", () => {
+  const hubSizes = peerGroupSchema.options.join(" / ");
+  assert.ok(prose.includes(hubSizes), `DESIGN.md names the hub sizes as ${hubSizes}`);
 });
 
 test("the peer-relative example is the committed snapshot's own numbers", () => {

@@ -1,4 +1,4 @@
-import type { PeerGroup } from "../../src/schema.ts";
+import { peerGroupSchema, type PeerGroup } from "../../src/schema.ts";
 
 export type FaaUniverseRow = {
   iata: string;
@@ -7,11 +7,27 @@ export type FaaUniverseRow = {
   enplanements: { firstYear: number; secondYear: number };
 };
 
-const PEER_GROUP_BY_FAA_HUB: Record<string, PeerGroup> = {
-  L: "large",
-  M: "medium",
-  S: "small",
+/**
+ * The FAA's hub-size letter for each peer group. N is the fourth: a nonhub
+ * primary, under 0.05% of national enplanements and still scheduled service, so
+ * the row is read rather than refused. Keyed off `PeerGroup`, so a fifth hub
+ * size fails to typecheck here rather than reaching ingest with no letter of its
+ * own, where every row carrying it would be thrown as a workbook this module
+ * cannot parse.
+ */
+export const FAA_HUB_LETTERS: Readonly<Record<PeerGroup, string>> = {
+  large: "L",
+  medium: "M",
+  small: "S",
+  nonhub: "N",
 };
+
+// Read the other way round, because the workbook gives a letter and the universe
+// stores a peer group. A letter no hub size claims has no entry, which is the
+// row `readFaaUniverse` refuses.
+const PEER_GROUP_BY_FAA_HUB = new Map<string, PeerGroup>(
+  peerGroupSchema.options.map((peerGroup) => [FAA_HUB_LETTERS[peerGroup], peerGroup]),
+);
 
 type Columns = {
   rank: string;
@@ -103,7 +119,7 @@ export function readFaaUniverse(
       continue;
     }
     const hub = cell(row, columns.hubSize);
-    const peerGroup = PEER_GROUP_BY_FAA_HUB[hub];
+    const peerGroup = PEER_GROUP_BY_FAA_HUB.get(hub);
     if (!peerGroup) {
       throw new Error(`FAA hub size ${hub || "(blank)"} at rank ${rank} is not a peer group`);
     }
