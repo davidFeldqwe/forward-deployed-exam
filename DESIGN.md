@@ -151,6 +151,17 @@ snapshot, no `queryAirports`. It uses the same API key family as chat
 New England continuation for that prefix and empty otherwise, so CI never calls
 a paid model for a ghost.
 
+**Signed-in chat SSE.** `POST /api/chat` is the agent. A session is required;
+signed-out POSTs go to `/login`. The question is stored before the vendor call.
+While the model runs, the transcript shows the pending row (no composite, no
+candidate lamp, no withheld-composite mark). Inspectable `queryAirports` /
+`describeMethodology` rows may appear as those tools finish, and model prose
+may stream. When the loop ends, one assistant Thread answer is stored. Ranking
+numbers still come from that stored payload, never from a streamed sentence.
+Spend cap and one-in-flight-ask are the same `askOnThread` seam the composer
+used to post through. The route imports no vendor SDK; `streamText` stays in
+`apps/web/app/agent-model.ts`. CI has no paid key: tests inject a runner.
+
 **LLM-free rank HTTP** is the curlable half of the same screen. `GET /api/rank`,
 `GET /api/airports/{iata}`, and `GET /api/compare/{left}/{right}` call
 `queryAirports` on the scored universe the agent tools use. The JSON body is

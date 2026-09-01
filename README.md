@@ -43,6 +43,11 @@ curl -s http://localhost:3000/api/airports/LAX
 curl -s http://localhost:3000/api/compare/LAX/SNA
 ```
 
+Signed-in chat is `POST /api/chat` (SSE). It needs a session cookie; without one
+the response is a redirect to `/login`. The question is stored before any model
+call. Without an API key the app still stores the question and says so in the
+transcript.
+
 ## Environment
 
 | Variable | Used for |

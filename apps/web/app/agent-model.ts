@@ -26,6 +26,11 @@ import {
 import { AGENT_TOOL_SPECS, runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { AGENT_TOOLS, type JsonObject, type ToolCall } from "./thread-messages.ts";
 
+/** Deltas the SSE route can forward without importing the vendor stream. */
+export type AgentStreamEvent = { type: "text"; delta: string } | { type: "tool"; call: ToolCall };
+
+export type AgentStreamObserver = (event: AgentStreamEvent) => void;
+
 /** The deployment holds neither key, so there is nobody to ask. */
 export class NoProviderError extends Error {
   constructor() {
@@ -68,8 +73,11 @@ export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
  * comes back here: the ranking is drawn from a finished `queryAirports` payload,
  * never from a half-read one.
  */
-export function streamAgentModel(request: AgentRequest): Promise<ModelAnswer> {
-  return withProvider(chooseProvider, (model) => streamModelAnswer(model, request));
+export function streamAgentModel(
+  request: AgentRequest,
+  onEvent?: AgentStreamObserver,
+): Promise<ModelAnswer> {
+  return withProvider(chooseProvider, (model) => streamModelAnswer(model, request, onEvent));
 }
 
 /**
@@ -140,11 +148,12 @@ export async function generateModelAnswer(
 export async function streamModelAnswer(
   model: AgentLanguageModel,
   request: AgentRequest,
+  onEvent?: AgentStreamObserver,
 ): Promise<ModelAnswer> {
   let failure: unknown = null;
   const toolCalls: ToolCall[] = [];
   const result = streamText({
-    ...modelCall(model, request, toolCalls),
+    ...modelCall(model, request, toolCalls, onEvent),
     // `streamText` puts a failed call on the stream instead of throwing it, and
     // the promise below then rejects with a NoOutputGeneratedError carrying no
     // cause. Keep the vendor's own error: the fallback above reads it, and the
@@ -154,9 +163,14 @@ export async function streamModelAnswer(
     },
   });
 
-  let text: string;
+  let text = "";
   try {
-    text = await result.text;
+    for await (const delta of result.textStream) {
+      text += delta;
+      if (delta.length > 0) {
+        onEvent?.({ type: "text", delta });
+      }
+    }
   } catch (error) {
     throw failure ?? error;
   }
@@ -168,14 +182,19 @@ export async function streamModelAnswer(
   return { text, toolCalls };
 }
 
-function modelCall(model: AgentLanguageModel, request: AgentRequest, recorded: ToolCall[]) {
+function modelCall(
+  model: AgentLanguageModel,
+  request: AgentRequest,
+  recorded: ToolCall[],
+  onEvent?: AgentStreamObserver,
+) {
   return {
     model,
     system: request.system,
     messages: request.messages.map(
       (turn): ModelMessage => ({ role: turn.role, content: turn.content }),
     ),
-    tools: instrumentedTools(recorded),
+    tools: instrumentedTools(recorded, onEvent),
     // PRD "Stack": cap tool steps, eight is enough.
     stopWhen: stepCountIs(AGENT_MAX_STEPS),
   };
@@ -192,7 +211,7 @@ function languageModel({ vendor, apiKey, model }: ProviderChoice) {
  * through the same JSON round trip the store will do, so what the model reads
  * and what the transcript re-renders are the one object.
  */
-function instrumentedTools(recorded: ToolCall[]): ToolSet {
+function instrumentedTools(recorded: ToolCall[], onEvent?: AgentStreamObserver): ToolSet {
   return Object.fromEntries(
     AGENT_TOOLS.map((tool) => [
       tool,
@@ -202,12 +221,14 @@ function instrumentedTools(recorded: ToolCall[]): ToolSet {
         execute: (args: unknown) => {
           const startedAt = performance.now();
           const result = toolPayloadJson(runAgentTool(tool, args));
-          recorded.push({
+          const call: ToolCall = {
             tool,
             args: (args ?? {}) as JsonObject,
             result,
             durationMs: performance.now() - startedAt,
-          });
+          };
+          recorded.push(call);
+          onEvent?.({ type: "tool", call });
           return result;
         },
       },

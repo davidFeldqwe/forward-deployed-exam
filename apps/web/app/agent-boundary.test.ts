@@ -41,7 +41,7 @@ test("exactly one module imports an LLM vendor SDK", () => {
 });
 
 test("the tools, the screen and the answer objects need no key to load", () => {
-  for (const file of ["app/agent-tools.ts", "app/agent.ts", "app/ranking-view.ts", "app/rank-http.ts"]) {
+  for (const file of ["app/agent-tools.ts", "app/agent.ts", "app/ranking-view.ts", "app/rank-http.ts", "app/chat-sse.ts"]) {
     assert.equal(
       importsOf(file).some(isVendorSdk),
       false,

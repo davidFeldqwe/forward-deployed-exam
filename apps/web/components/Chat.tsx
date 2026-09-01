@@ -7,7 +7,7 @@ import { ArrowUpIcon } from "lucide-react";
 import { recentUserPrompts } from "@/app/autocomplete";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { chatCopy } from "@/app/chat-copy";
-import { askQuestion } from "@/app/thread-actions";
+import { askOnChatSse } from "@/app/chat-ask";
 import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { Composer } from "@/components/Composer";
@@ -95,7 +95,7 @@ export function Chat({
 
         {/* Transcript and composer are one form, so the pending answer above the
             composer can read the same submission `useFormStatus` reports on. */}
-        <form action={askQuestion} className="flex min-h-0 flex-1 flex-col" inert={railOpen}>
+        <form action={askOnChatSse} className="flex min-h-0 flex-1 flex-col" inert={railOpen}>
           {threadId ? <input type="hidden" name="threadId" value={threadId} /> : null}
           <main
             ref={transcriptPane}

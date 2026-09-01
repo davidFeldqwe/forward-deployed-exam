@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  CHAT_SSE_PATH,
   carriedPrompt,
   chatDestination,
   chatPathWithPrompt,
@@ -13,6 +14,7 @@ import { landingCopy } from "./landing-copy.ts";
 
 test("an unauthenticated chat request is sent to login carrying where it wanted to go", () => {
   assert.equal(loginRedirect("/chat"), "/login?next=%2Fchat");
+  assert.equal(CHAT_SSE_PATH, "/api/chat");
 });
 
 test("a Landing question card carries its prompt through login into a new thread", () => {

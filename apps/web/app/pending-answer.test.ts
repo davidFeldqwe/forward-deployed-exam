@@ -54,7 +54,7 @@ test("the pending row draws no composite, no lamp pill and no hue", () => {
 
 test("the composer's form is what the pending answer is drawn inside", () => {
   const chat = source(THE_COMPOSER);
-  const form = chat.indexOf("<form action={askQuestion}");
+  const form = chat.indexOf("<form action={askOnChatSse}");
   const pending = chat.indexOf("<PendingAnswer");
   const composer = chat.indexOf("<Composer");
 

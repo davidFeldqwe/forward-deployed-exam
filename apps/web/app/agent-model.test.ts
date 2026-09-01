@@ -157,6 +157,23 @@ test("a streamed tool loop answers with the prose and the payload it was built f
   assert.ok(answer.toolCalls.every((call) => typeof call.durationMs === "number"));
 });
 
+test("a stream observer sees complete tool payloads, then prose deltas, never a half ranking", async () => {
+  const seen: string[] = [];
+  const answer = await streamModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST, (event) => {
+    seen.push(event.type);
+    if (event.type === "tool") {
+      assert.equal(event.call.tool, "queryAirports");
+      assert.deepEqual(event.call.args, REGION);
+      assert.deepEqual(event.call.result, toolPayloadJson(runAgentTool("queryAirports", REGION)));
+    }
+  });
+
+  assert.equal(answer.text, PROSE);
+  assert.ok(seen.includes("tool"));
+  assert.ok(seen.includes("text"));
+  assert.equal(seen.indexOf("tool") < seen.indexOf("text"), true);
+});
+
 test("what the stream stores is what generateText stores", async () => {
   const streamed = await streamModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST);
   const generated = await generateModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST);
