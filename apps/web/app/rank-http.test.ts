@@ -8,10 +8,17 @@ import {
   queryAirports,
   scoreUniverse,
   type QueryAirportsArgs,
+  type QueryResult,
 } from "@repo/scoring";
 import { loadSnapshot } from "@repo/snapshot";
 
-import { AIRPORT_PATH, COMPARE_PATH, RANK_PATH, rankQueryResponse } from "./rank-http.ts";
+import {
+  AIRPORT_PATH,
+  COMPARE_PATH,
+  RANK_PATH,
+  rankQueryResponse,
+  type RankQueryExtras,
+} from "./rank-http.ts";
 
 const scored = scoreUniverse(loadSnapshot());
 
@@ -19,13 +26,13 @@ function source(file: string): string {
   return readFileSync(new URL(file, import.meta.url), "utf8");
 }
 
-async function bodyOf(url: string, extras?: { iata?: string | readonly string[] }): Promise<unknown> {
+async function bodyOf(url: string, extras?: RankQueryExtras): Promise<QueryResult> {
   const response = rankQueryResponse(url, extras);
   assert.equal(response.status, 200, await response.clone().text());
-  return response.json();
+  return (await response.json()) as QueryResult;
 }
 
-function equalsModule(body: unknown, args: QueryAirportsArgs): void {
+function equalsModule(body: QueryResult, args: QueryAirportsArgs): void {
   const expected = queryAirports(scored, args);
   // Key order included: stringify, not a key-set comparison that would hide a reorder.
   assert.equal(JSON.stringify(body), JSON.stringify(expected));
@@ -47,9 +54,8 @@ test("a two-code compare returns those two rows, not a city-market merge", async
     iata: ["LAX", "SNA"],
   });
   equalsModule(body, { iata: ["LAX", "SNA"] });
-  const rows = (body as { rows: { iata: string }[] }).rows;
   assert.deepEqual(
-    rows.map((row) => row.iata),
+    body.rows.map((row) => row.iata),
     ["LAX", "SNA"],
   );
 });
@@ -57,13 +63,13 @@ test("a two-code compare returns those two rows, not a city-market merge", async
 test("the default limit and the 25 cap match queryAirports", async () => {
   const national = await bodyOf(`http://exam.test${RANK_PATH}`);
   equalsModule(national, {});
-  assert.equal((national as { limit: number; rows: unknown[] }).limit, DEFAULT_LIMIT);
-  assert.equal((national as { rows: unknown[] }).rows.length, DEFAULT_LIMIT);
+  assert.equal(national.limit, DEFAULT_LIMIT);
+  assert.equal(national.rows.length, DEFAULT_LIMIT);
 
   const capped = await bodyOf(`http://exam.test${RANK_PATH}?limit=100`);
   equalsModule(capped, { limit: 100 });
-  assert.equal((capped as { limit: number; rows: unknown[] }).limit, MAX_LIMIT);
-  assert.equal((capped as { rows: unknown[] }).rows.length, MAX_LIMIT);
+  assert.equal(capped.limit, MAX_LIMIT);
+  assert.equal(capped.rows.length, MAX_LIMIT);
 });
 
 test("the three curl surfaces exist as GET routes and share the rank helper", () => {

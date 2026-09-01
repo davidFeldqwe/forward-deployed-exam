@@ -11,7 +11,6 @@ import {
   queryAirports,
   type LookupMetric,
   type QueryAirportsArgs,
-  type QueryResult,
   type SortBy,
 } from "@repo/scoring";
 
@@ -34,7 +33,7 @@ export type RankQueryExtras = {
  */
 export function rankQueryResponse(url: string, extras?: RankQueryExtras): Response {
   try {
-    return Response.json(runRankQuery(url, extras));
+    return Response.json(queryAirports(scoredUniverse(), argsFromUrl(url, extras)));
   } catch (error) {
     if (error instanceof RangeError) {
       return Response.json({ error: error.message }, { status: 400 });
@@ -43,15 +42,10 @@ export function rankQueryResponse(url: string, extras?: RankQueryExtras): Respon
   }
 }
 
-function runRankQuery(url: string, extras?: RankQueryExtras): QueryResult {
-  return queryAirports(scoredUniverse(), argsFromUrl(url, extras));
-}
-
 function argsFromUrl(url: string, extras?: RankQueryExtras): QueryAirportsArgs {
   const params = new URL(url, "http://exam.test").searchParams;
-  const iata = extras?.iata ?? iataFromSearch(params);
   return {
-    iata,
+    iata: extras?.iata ?? iataFromSearch(params),
     region: params.get("region"),
     state: params.get("state"),
     municipality: params.get("municipality"),
@@ -69,7 +63,8 @@ function iataFromSearch(params: URLSearchParams): string | string[] | null {
     .map((code) => code.trim())
     .filter((code) => code.length > 0);
   if (codes.length === 0) return null;
-  return codes.length === 1 ? (codes[0] ?? null) : codes;
+  if (codes.length === 1) return codes[0] ?? null;
+  return codes;
 }
 
 function parseLimit(raw: string | null): number | null {
