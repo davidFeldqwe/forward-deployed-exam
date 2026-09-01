@@ -36,6 +36,7 @@ test("Start asking is the large primary hero action, and the only one", () => {
   assert.equal([...hero.matchAll(/<Button\b/g)].length, 1);
   assert.doesNotMatch(hero, /variant=/);
   assert.match(hero, /href=\{action\.href\}/);
+  assert.match(hero, /ArrowRightIcon/);
   assert.deepEqual(landingCopy.hero.actions, [{ label: "Start asking", href: "/chat" }]);
   // A visit hits this once; it does not enter or leave.
   assertStill(hero);
@@ -92,6 +93,9 @@ test("Built on shows each product's real mark, not a text-only badge", () => {
   assert.match(strip, /fill="currentColor"/);
   assert.doesNotMatch(strip, /<Badge\b/);
   assert.doesNotMatch(strip, /variant="outline"/);
+  // Same rule as How it works (issue #91): the page is the only scroller.
+  assert.doesNotMatch(strip, NESTED_OVERFLOW);
+  assert.match(strip, /flex-wrap/);
   assertStill(strip);
 });
 
@@ -113,4 +117,11 @@ test("the footer GitHub credit wears the same chrome as the header action", () =
   // Privacy stays the band above this credit, not a line inside it.
   assert.ok(landing.indexOf('aria-label="Privacy"') < landing.indexOf("<footer"));
   assertStill(footer);
+});
+
+test("the tab icon is the wordmark mark on the page background", () => {
+  const icon = readFileSync(new URL("app/icon.svg", web), "utf8");
+  assert.match(icon, /#08090a/);
+  assert.match(icon, /stroke-linecap="round"/);
+  assert.match(icon, /M16\.25 10\.5h5\.25v5\.25/);
 });

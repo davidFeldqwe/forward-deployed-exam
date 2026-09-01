@@ -1,8 +1,9 @@
 /**
  * Product identity: a compact mark and the product name, together, on every
- * surface. There is no brand asset for this product, so the mark is a glyph —
- * a vector rising off a runway inside a rounded square — drawn in the text's
- * own colour so it never competes with the lamp hues or with indigo.
+ * surface. The mark is a vector rising off a runway inside a rounded square,
+ * drawn in the text's own colour so it never competes with the lamp hues or
+ * with indigo. The tab icon (`app/icon.svg`) is this same glyph on the page
+ * background, so the browser chrome matches the bar.
  */
 function Mark() {
   return (

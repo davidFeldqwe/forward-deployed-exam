@@ -32,7 +32,11 @@ export function PromptChips({ questions, href, onSelect }: PromptChipsProps) {
               size="sm"
               render={chipHref ? <Link href={chipHref} /> : <button type="button" />}
               onClick={onSelect ? () => onSelect(question) : undefined}
-              className={onSelect ? `cursor-pointer text-start ${chipMotion}` : chipMotion}
+              className={
+                onSelect
+                  ? `cursor-pointer text-start ${chipMotion}`
+                  : `text-foreground hover:text-foreground ${chipMotion}`
+              }
               style={{ animationDelay: `${index * 40}ms`, animationDuration: "280ms" }}
             >
               <ItemContent>

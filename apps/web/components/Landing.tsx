@@ -29,7 +29,7 @@ export function Landing() {
     landingCopy;
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex min-h-svh flex-col selection:bg-primary/30 selection:text-foreground">
       <SiteHeader signedIn={false} />
 
       <main className="flex flex-1 flex-col">
@@ -52,9 +52,11 @@ export function Landing() {
                 key={action.href}
                 size="lg"
                 nativeButton={false}
+                className="text-primary-foreground hover:text-primary-foreground"
                 render={<Link href={action.href} />}
               >
                 {action.label}
+                <ArrowRightIcon />
               </Button>
             ))}
           </div>
@@ -107,7 +109,7 @@ export function Landing() {
           <p className="mb-3.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
             Built on
           </p>
-          <ul className="flex list-none flex-nowrap items-stretch gap-3 overflow-x-auto p-0">
+          <ul className="flex list-none flex-wrap items-stretch gap-3 p-0">
             {builtOn.map((item) => {
               const mark = stackMarks[item];
               return (

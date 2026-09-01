@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Same mark as components/Wordmark.tsx, filled for a dark tab tile. -->
+  <rect width="32" height="32" rx="8" fill="#08090a"/>
+  <rect
+    x="4.5"
+    y="4.5"
+    width="23"
+    height="23"
+    rx="6.5"
+    fill="none"
+    stroke="#f7f8f8"
+    stroke-opacity="0.45"
+    stroke-width="2"
+  />
+  <path
+    d="M10.25 21.75 21.5 10.5"
+    fill="none"
+    stroke="#f7f8f8"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M16.25 10.5h5.25v5.25"
+    fill="none"
+    stroke="#f7f8f8"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
