@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      zod:
-        specifier: ^4.5.4
-        version: 4.5.4
     devDependencies:
       '@ai-hero/sandcastle':
         specifier: ^0.12.0
