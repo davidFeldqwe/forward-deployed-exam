@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
@@ -57,7 +57,16 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   // the composer that submits it are inside the one form.
   assert.ok(form > 0 && pending > form, "the pending answer is inside the composer's form");
   assert.ok(composer > pending, "the transcript's pending row is drawn above the composer");
-  // The pending answer is what reads the form status; nothing under the Thread
-  // answer it draws does.
-  assert.match(source("components/answers/PendingAnswer.tsx"), /useFormStatus/);
+  // The pending answer is the one block that reads the form status, and nothing
+  // under the Thread answer it draws does: the list and every block in it are a
+  // function of the messages, so an answer cannot decide it is in flight.
+  const answers = readdirSync(new URL("components/answers/", web), { encoding: "utf8" })
+    .filter((file) => file.endsWith(".tsx"))
+    .map((file) => `components/answers/${file}`);
+  assert.ok(answers.includes("components/answers/ThreadAnswer.tsx"));
+  assert.deepEqual(
+    answers.filter((file) => source(file).includes("useFormStatus")),
+    ["components/answers/PendingAnswer.tsx"],
+  );
+  assert.doesNotMatch(source("app/thread-answer.ts"), /useFormStatus|react-dom/);
 });

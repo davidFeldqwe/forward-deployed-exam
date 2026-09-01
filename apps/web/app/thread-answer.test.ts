@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
@@ -21,6 +21,13 @@ import {
   type ThreadMessage,
   type ToolCall,
 } from "./thread-messages.ts";
+
+const THE_TAG_SWITCH = "components/answers/ThreadAnswer.tsx";
+const THE_TRANSCRIPT = "components/Transcript.tsx";
+
+function source(file: string): string {
+  return readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+}
 
 function query(args: Record<string, string | string[]>): ToolCall {
   return {
@@ -210,12 +217,52 @@ test("every Thread answer reads down the locked tag order", () => {
 // The transcript draws tags. It cannot draw one it has no case for, and the
 // list is free to hand it any of them, so the two are pinned to each other.
 test("every tag a Thread answer may hold is drawn by the component", () => {
-  const component = readFileSync(
-    new URL("../components/answers/ThreadAnswer.tsx", import.meta.url),
-    "utf8",
-  );
+  const component = source(THE_TAG_SWITCH);
 
   for (const tag of THREAD_ANSWER_TAGS) {
     assert.match(component, new RegExp(`case "${tag}":`), tag);
   }
+});
+
+/**
+ * The component each tag with markup of its own is drawn by. `prose` has none:
+ * an answer's sentences are set like the analyst's own, so `Turn.tsx`'s `Prose`
+ * is drawn on both sides of the transcript. Every other tag is a block only an
+ * answer draws.
+ */
+const TAG_BLOCKS = {
+  tool: "ToolRow",
+  carried: "CarriedContext",
+  resolved: "ResolvedSet",
+  ranking: "Ranking",
+  pending: "PendingRow",
+  caveats: "Caveats",
+} as const satisfies Record<Exclude<ThreadAnswerTag, "prose">, string>;
+
+// "Transcript only draws tags" (issue #35). The order is the list's, so no
+// second file may reach past it to a block: a `<Caveats>` written straight into
+// the transcript would be a block in an order the order tests never see.
+test("only the tag switch draws a Thread answer's blocks", () => {
+  const components = readdirSync(new URL("../components/", import.meta.url), {
+    encoding: "utf8",
+    recursive: true,
+  })
+    .filter((file) => file.endsWith(".tsx"))
+    .map((file) => `components/${file}`);
+  // The walk sees the two files this is a claim about.
+  assert.ok(components.includes(THE_TAG_SWITCH));
+  assert.ok(components.includes(THE_TRANSCRIPT));
+
+  for (const [tag, block] of Object.entries(TAG_BLOCKS)) {
+    const drawnBy = components.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
+    assert.deepEqual(drawnBy, [THE_TAG_SWITCH], `${tag} is drawn by ${block}`);
+  }
+
+  // And the transcript reaches them the one way there is: the answer component
+  // it names takes a list of parts rather than a message.
+  const named = [...source(THE_TRANSCRIPT).matchAll(/@\/components\/answers\/(\w+)/g)];
+  assert.deepEqual(
+    named.map(([, component]) => component),
+    ["ThreadAnswer"],
+  );
 });
