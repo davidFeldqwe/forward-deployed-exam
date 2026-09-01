@@ -25,10 +25,21 @@ import {
 const web = new URL("../", import.meta.url);
 const THE_TAG_SWITCH = "components/answers/ThreadAnswer.tsx";
 const THE_TRANSCRIPT = "components/Transcript.tsx";
+const THE_PENDING_TURN = "components/answers/PendingAnswer.tsx";
 
 function source(file: string): string {
   return readFileSync(new URL(file, web), "utf8");
 }
+
+/**
+ * Every file that draws markup at all: the routes as well as the components,
+ * since a page is as able to reach past the list as the transcript is.
+ */
+const DRAWING = ["app", "components"].flatMap((directory) =>
+  readdirSync(new URL(`${directory}/`, web), { encoding: "utf8", recursive: true })
+    .filter((file) => file.endsWith(".tsx"))
+    .map((file) => `${directory}/${file}`),
+);
 
 function query(args: Record<string, string | string[]>): ToolCall {
   return {
@@ -246,23 +257,13 @@ const TAG_BLOCKS = {
 // second file may reach past it to a block: a `<Caveats>` written straight into
 // the transcript would be a block in an order the order tests never see.
 test("only the tag switch draws a Thread answer's blocks", () => {
-  // Every file that draws markup at all: the routes as well as the components,
-  // since a page is as able to reach past the list as the transcript is.
-  const drawing = ["app", "components"].flatMap((directory) =>
-    readdirSync(new URL(`${directory}/`, web), {
-      encoding: "utf8",
-      recursive: true,
-    })
-      .filter((file) => file.endsWith(".tsx"))
-      .map((file) => `${directory}/${file}`),
-  );
   // The walk sees the two files this is a claim about, and the routes.
-  assert.ok(drawing.includes(THE_TAG_SWITCH));
-  assert.ok(drawing.includes(THE_TRANSCRIPT));
-  assert.ok(drawing.includes("app/chat/page.tsx"));
+  assert.ok(DRAWING.includes(THE_TAG_SWITCH));
+  assert.ok(DRAWING.includes(THE_TRANSCRIPT));
+  assert.ok(DRAWING.includes("app/chat/page.tsx"));
 
   for (const [tag, block] of Object.entries(TAG_BLOCKS)) {
-    const drawnBy = drawing.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
+    const drawnBy = DRAWING.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
     assert.deepEqual(drawnBy, [THE_TAG_SWITCH], `${tag} is drawn by ${block}`);
   }
 
@@ -273,4 +274,47 @@ test("only the tag switch draws a Thread answer's blocks", () => {
     named.map(([, component]) => component),
     ["ThreadAnswer"],
   );
+});
+
+/**
+ * The two shapes `app/thread-answer.ts` hands out a list as: the answer composed
+ * for a stored turn, and the constant one for a question in flight. Both are
+ * imported at the top of this file, so a rename comes through here.
+ */
+const COMPOSERS: readonly string[] = ["threadAnswer", "PENDING_THREAD_ANSWER"];
+
+// The other half of "order tests hit the list, not JSX". The test above says no
+// block may be drawn outside the tag switch; this says no *list* may be written
+// outside the module that composes them. `parts={[{ tag: "ranking", ... }, {
+// tag: "prose", ... }]}` typechecks, draws in the order it is written, and no
+// order test would ever walk it.
+test("every Thread answer drawn is a list the module composed", () => {
+  const drawn = DRAWING.flatMap((file) =>
+    [...source(file).matchAll(/<ThreadAnswer\b([^>]*)>/g)].map(([, props]) => ({
+      file,
+      props: props.replace(/\/$/, "").trim(),
+    })),
+  );
+
+  // The walk sees both turns a Thread answer is drawn for: the stored one and
+  // the one in flight.
+  const files = drawn.map(({ file }) => file);
+  assert.ok(files.includes(THE_TRANSCRIPT), files.join(", "));
+  assert.ok(files.includes(THE_PENDING_TURN), files.join(", "));
+
+  for (const { file, props } of drawn) {
+    // The list is named, never written here: a call to the composer, or the
+    // constant. A literal array has no name to read, so it fails on the first
+    // assertion rather than the second.
+    const composer = props.match(/^parts=\{(\w+)[(}]/)?.[1];
+    assert.ok(composer !== undefined, `${file}: <ThreadAnswer ${props}/>`);
+    assert.ok(COMPOSERS.includes(composer), `${file}: parts={${composer}}`);
+    // And that name is the module's own, not a list some component built and
+    // gave the same name to.
+    assert.match(
+      source(file),
+      new RegExp(`import \\{[^}]*\\b${composer}\\b[^}]*\\} from "@/app/thread-answer"`),
+      `${file}: ${composer} comes from app/thread-answer`,
+    );
+  }
 });
