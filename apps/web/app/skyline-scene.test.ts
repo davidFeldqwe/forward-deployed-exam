@@ -288,6 +288,17 @@ function scroll(map: MountedSkyline, deltaY: number): void {
   wheel({ deltaMode: 0, deltaY, clientX: 0, clientY: 0, preventDefault: () => {} });
 }
 
+/**
+ * The GPU handing the canvas its context back, as the browser announces it.
+ * three.js calls `preventDefault` on the loss itself, so a restore is a thing
+ * that really happens rather than a one-way failure.
+ */
+function restoreContext(map: MountedSkyline): void {
+  const restored = map.canvas.listeners.get("webglcontextrestored");
+  assert.ok(restored, "the canvas listens for its context coming back");
+  restored({});
+}
+
 type MountedSkyline = {
   renderer: FakeRenderer;
   canvas: ReturnType<typeof fakeCanvas>;
@@ -480,6 +491,29 @@ test("a scroll is drawn: the gate is a still canvas, not a frozen one", () => {
     map.renderer.frame(now);
   }
   assert.equal(map.renderer.draws, settled, "the canvas is still again once it settles");
+});
+
+test("a context the GPU took away and gave back is drawn again, not left blank", () => {
+  // A backgrounded phone tab, a driver reset, another tab asking for too much
+  // memory: the browser takes the WebGL context away and hands it back. three
+  // re-initialises its own state on the restore but draws nothing, and on a
+  // still canvas nothing else would either — no ease is running, no control has
+  // changed and the pane is the same shape. Without a frame the visitor is left
+  // looking at a blank pane for the rest of the visit, which is the empty state
+  // they never got told about.
+  const map = mountFake(true);
+  map.renderer.frame(0);
+  assert.equal(map.renderer.draws, 1);
+
+  restoreContext(map);
+  map.renderer.frame(16);
+  assert.equal(map.renderer.draws, 2, "the skyline is put back on the new context");
+
+  // And then still again: a restore is one frame, not a licence to redraw.
+  for (const now of [32, 48, 1_000]) {
+    map.renderer.frame(now);
+  }
+  assert.equal(map.renderer.draws, 2, "the canvas is still again once it is back");
 });
 
 test("a resize re-frames the view nobody has taken, and never one they have", () => {

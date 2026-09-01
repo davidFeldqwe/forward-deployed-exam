@@ -105,9 +105,20 @@ export function mountSkyline(
   // always one. Left open on a desk the page then costs nothing, rather than a
   // GPU frame every 16 ms for pixels that are already on screen.
   let pending = true;
-  controls.addEventListener("change", () => {
+  const redraw = (): void => {
     pending = true;
-  });
+  };
+  controls.addEventListener("change", redraw);
+
+  // A browser takes the WebGL context away whenever the GPU needs it back — a
+  // backgrounded phone tab, a driver reset, another tab asking for too much —
+  // and hands it back after. three.js prevents the loss's default, so the
+  // restore really arrives, and re-initialises its own state on it; what it
+  // does not do is draw. On a still canvas nothing else would either, so
+  // without this the visitor is left looking at a blank pane for the rest of
+  // the visit — the empty state, without the sentence explaining it.
+  const canvas = renderer.domElement;
+  canvas.addEventListener("webglcontextrestored", redraw);
 
   // A drag, a scroll or a touch — all of which the controls announce as a start
   // — makes the view the visitor's. From then on nothing here writes the camera
@@ -161,7 +172,8 @@ export function mountSkyline(
     renderer.setAnimationLoop(null);
     resize.disconnect();
     controls.dispose();
-    renderer.domElement.remove();
+    canvas.removeEventListener("webglcontextrestored", redraw);
+    canvas.remove();
     disposeAll(scene);
     renderer.dispose();
   };
