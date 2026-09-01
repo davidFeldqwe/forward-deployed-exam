@@ -24,5 +24,5 @@ export default async function ChatPage({
   }
 
   // An empty chat: the next question starts a Thread rather than joining one.
-  return <Chat initialPrompt={carried} recents={listThreads(session.email)} />;
+  return <Chat initialPrompt={carried} recents={await listThreads(session.email)} />;
 }

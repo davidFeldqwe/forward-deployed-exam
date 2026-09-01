@@ -27,14 +27,14 @@ const methodology = {
   durationMs: 4,
 };
 
-test("a Thread and its stored tool payloads survive a process restart", () => {
+test("a Thread and its stored tool payloads survive a process restart", async () => {
   const analyst = "restart-thread@example.com";
-  const opened = startThread(analyst, NEW_ENGLAND)!;
-  appendMessage(analyst, opened.id, assistantMessage("Weights are fixed.", [methodology]));
+  const opened = (await startThread(analyst, NEW_ENGLAND))!;
+  await appendMessage(analyst, opened.id, assistantMessage("Weights are fixed.", [methodology]));
 
   reloadConvexStore();
 
-  const reread = readThread(analyst, opened.id);
+  const reread = await readThread(analyst, opened.id);
   assert.equal(reread?.title, NEW_ENGLAND);
   assert.deepEqual(reread?.messages, [
     userMessage(NEW_ENGLAND),
@@ -42,22 +42,22 @@ test("a Thread and its stored tool payloads survive a process restart", () => {
   ]);
 });
 
-test("an account survives a restart, and a signed-in cookie still maps to it", () => {
+test("an account survives a restart, and a signed-in cookie still maps to it", async () => {
   const analyst = "restart-account@example.com";
   const password = "correct horse battery";
-  assert.deepEqual(createAccount(analyst, password), { ok: true, email: analyst });
+  assert.deepEqual(await createAccount(analyst, password), { ok: true, email: analyst });
   const token = signSessionToken(analyst, "restart-secret");
 
   reloadConvexStore();
 
-  assert.deepEqual(authenticate(analyst, password), { ok: true, email: analyst });
-  assert.equal(accountExists(analyst), true);
-  assert.deepEqual(sessionIfAccountLive(token, "restart-secret"), { email: analyst });
+  assert.deepEqual(await authenticate(analyst, password), { ok: true, email: analyst });
+  assert.equal(await accountExists(analyst), true);
+  assert.deepEqual(await sessionIfAccountLive(token, "restart-secret"), { email: analyst });
 });
 
-test("Convex documents are accounts and threads only: never airports or scores", () => {
+test("Convex documents are accounts and threads only: never airports or scores", async () => {
   const analyst = "convex-scope@example.com";
-  startThread(analyst, NEW_ENGLAND);
+  await startThread(analyst, NEW_ENGLAND);
 
   const tables = Object.keys(convexDocuments()).toSorted();
   assert.deepEqual(tables, [...CONVEX_TABLES].toSorted());
@@ -66,13 +66,13 @@ test("Convex documents are accounts and threads only: never airports or scores",
   assert.equal(tables.includes("snapshot"), false);
 });
 
-test("a persist drops airports and scores even if a caller stuck them on the store", () => {
+test("a persist drops airports and scores even if a caller stuck them on the store", async () => {
   const docs = convexDocuments() as Record<string, unknown>;
   docs.airports = [{ iata: "BOS" }];
   docs.scores = { BOS: 79 };
   docs.snapshot = { asOf: "never" };
 
-  const opened = startThread("smuggle@example.com", NEW_ENGLAND)!;
+  const opened = (await startThread("smuggle@example.com", NEW_ENGLAND))!;
   const thread = convexThreadMap()[opened.id] as Record<string, unknown>;
   thread.airports = [{ iata: "BOS", composite: 79 }];
   persistConvexStore();
@@ -80,7 +80,7 @@ test("a persist drops airports and scores even if a caller stuck them on the sto
 
   assert.deepEqual(Object.keys(convexDocuments()).toSorted(), [...CONVEX_TABLES].toSorted());
   assert.equal("airports" in (convexThreadMap()[opened.id] ?? {}), false);
-  assert.equal(readThread("smuggle@example.com", opened.id)?.title, NEW_ENGLAND);
+  assert.equal((await readThread("smuggle@example.com", opened.id))?.title, NEW_ENGLAND);
 });
 
 test("an SSE ask still stores one assistant message per question on the Convex Thread after a restart", async () => {
@@ -91,7 +91,7 @@ test("an SSE ask still stores one assistant message per question on the Convex T
 
   reloadConvexStore();
 
-  const reread = readThread(analyst, thread!.id);
+  const reread = await readThread(analyst, thread!.id);
   assert.deepEqual(
     reread?.messages.map((message) => message.role),
     ["user", "assistant"],
@@ -102,16 +102,16 @@ test("an SSE ask still stores one assistant message per question on the Convex T
   ]);
 });
 
-test("recents order survives a restart: the thread last spoken in stays first", () => {
+test("recents order survives a restart: the thread last spoken in stays first", async () => {
   const analyst = "recents-restart@example.com";
-  const first = startThread(analyst, NEW_ENGLAND)!;
-  const second = startThread(analyst, "How much unmet flight demand is there at SFO?")!;
-  appendMessage(analyst, first.id, assistantMessage("BOS leads at composite 79."));
+  const first = (await startThread(analyst, NEW_ENGLAND))!;
+  const second = (await startThread(analyst, "How much unmet flight demand is there at SFO?"))!;
+  await appendMessage(analyst, first.id, assistantMessage("BOS leads at composite 79."));
 
   reloadConvexStore();
 
   assert.deepEqual(
-    listThreads(analyst).map((summary) => summary.id),
+    (await listThreads(analyst)).map((summary) => summary.id),
     [first.id, second.id],
   );
 });

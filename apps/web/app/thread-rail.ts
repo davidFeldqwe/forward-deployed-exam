@@ -2,15 +2,17 @@
  * The thread rail (issue #55 / #32; PRD story 17): recents is a left column
  * beside the transcript, not a menu in the header. A header control collapses
  * the column from `md` up; under `md` the same list is a drawer. The data is
- * what it always was — `listThreads` hands back `{ id, title }`, newest first,
- * and the title is the thread's first user question — so this module only
- * decides where each row goes, which one the analyst is looking at, whether a
- * key dismisses the drawer, and the width at which the drawer is a column.
+ * what it always was — `listThreads` hands back `{ id, title }`, newest first.
+ * The title is standing copy until the first user question, then that question.
+ * This module only decides where each row goes, which one the analyst is looking
+ * at, whether a key dismisses the drawer, and the width at which the drawer is a
+ * column.
  *
- * Exactly one destination is current. An open thread lights its own row; an
- * empty chat lights **New thread**, because that is the destination the screen
- * is already showing. A `threadId` that recents does not hold lights nothing,
- * rather than pointing at a thread the rail cannot open.
+ * Exactly one destination is current. An open thread lights its own row,
+ * including an empty Thread that New thread just created. An empty chat with
+ * no Thread yet lights **New thread**, because that is the destination the
+ * screen is already showing. A `threadId` that recents does not hold lights
+ * nothing, rather than pointing at a thread the rail cannot open.
  */
 import { CHAT_PATH, chatDestination } from "./auth-gate.ts";
 import type { ThreadSummary } from "./thread-store.ts";

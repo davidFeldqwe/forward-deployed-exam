@@ -49,6 +49,19 @@ test("an empty chat makes New thread the current destination and no row current"
   assert.deepEqual(currentDestinations(null), [CHAT_PATH]);
 });
 
+test("an empty Thread in recents is the current row when that Thread is open", () => {
+  const empty = { id: "e0", title: chatCopy.newThreadLabel };
+  const rail = threadRail([empty, ...RECENTS], empty.id);
+
+  assert.equal(rail.newThread.current, false);
+  assert.equal(rail.rows[0]?.current, true);
+  assert.equal(rail.rows[0]?.title, chatCopy.newThreadLabel);
+  assert.deepEqual(
+    [rail.newThread, ...rail.rows].filter((destination) => destination.current).map((d) => d.href),
+    [chatDestination(empty.id)],
+  );
+});
+
 test("a thread the recents list does not hold leaves nothing marked current", () => {
   // A restart drops the store: the route still carries an id, and the rail says
   // so by lighting nothing rather than lighting the empty chat.
@@ -81,6 +94,7 @@ test("the rail is a labelled list of thread links, and marks the open one", () =
   assert.match(rail, /aria-current=\{[^}]*"page"/);
   assert.match(rail, /chatCopy\.newThreadLabel/);
   assert.match(rail, /chatCopy\.noRecentsLabel/);
+  assert.match(rail, /openNewThread/);
   // A long first question is clipped to the row, not wrapped into a paragraph.
   assert.match(rail, /truncate/);
 });

@@ -113,7 +113,7 @@ test("x-forwarded-for is coarsened so one NAT cannot mint a fresh bucket per hop
 test("a capped ask stores the question, skips the vendor, and answers with the locked line", async () => {
   const analyst = "capped@example.com";
   const ip = "192.0.2.44";
-  const opened = startThread(analyst, "Which airports in Texas are candidates?")!;
+  const opened = (await startThread(analyst, "Which airports in Texas are candidates?"))!;
   const day = Date.UTC(2026, 8, 1, 12);
 
   for (let n = 0; n < AGENT_ASKS_PER_EMAIL; n += 1) {
@@ -137,7 +137,7 @@ test("a capped ask stores the question, skips the vendor, and answers with the l
   assert.equal(thread?.messages.at(-2)?.text, "And New England?");
   assert.equal(thread?.messages.at(-1)?.text, SPEND_CAP_REFUSAL);
   assert.deepEqual(thread?.messages.at(-1)?.toolCalls, []);
-  assert.deepEqual(readThread(analyst, opened.id)?.messages, thread?.messages);
+  assert.deepEqual((await readThread(analyst, opened.id))?.messages, thread?.messages);
 });
 
 test("repeated asks on one account eventually refuse instead of calling the vendor again", async () => {

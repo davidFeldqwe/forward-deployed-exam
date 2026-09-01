@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PanelLeftIcon, PlusIcon } from "lucide-react";
 
 import { chatCopy } from "@/app/chat-copy";
+import { openNewThread } from "@/app/new-thread";
 import {
   DRAWER_TOGGLE_ID,
   RAIL_COLUMN_MEDIA,
@@ -120,10 +121,22 @@ export function ThreadRail({
         )}
       >
         <div className="p-2">
-          <RailLink destination={newThread} onClose={onClose}>
-            <PlusIcon aria-hidden="true" className="size-3.5 shrink-0" />
-            {chatCopy.newThreadLabel}
-          </RailLink>
+          <form action={openNewThread}>
+            <button
+              type="submit"
+              data-thread-row
+              aria-current={newThread.current ? "page" : undefined}
+              onClick={onClose}
+              className={cn(
+                rowClass,
+                "w-full cursor-pointer border-0 bg-transparent text-start",
+                newThread.current && currentRowClass,
+              )}
+            >
+              <PlusIcon aria-hidden="true" className="size-3.5 shrink-0" />
+              {chatCopy.newThreadLabel}
+            </button>
+          </form>
         </div>
 
         <h2

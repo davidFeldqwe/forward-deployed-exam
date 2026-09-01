@@ -8,7 +8,7 @@ import { Landing } from "@/components/Landing";
 export default async function LandingPage() {
   const session = await currentSession();
   if (session) {
-    redirect(chatDestination(latestThreadId(session.email)));
+    redirect(chatDestination(await latestThreadId(session.email)));
   }
 
   return <Landing />;

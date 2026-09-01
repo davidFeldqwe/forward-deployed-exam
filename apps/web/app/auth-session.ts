@@ -22,7 +22,7 @@ function sessionSecret(): string {
 
 export async function currentSession(): Promise<Session | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  return token ? sessionIfAccountLive(token, sessionSecret()) : null;
+  return token ? await sessionIfAccountLive(token, sessionSecret()) : null;
 }
 
 export async function startSession(email: string): Promise<void> {

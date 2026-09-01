@@ -20,14 +20,14 @@ function refusedErrors(result: AccountResult): CredentialErrors {
 }
 
 /** Median cost of an attempt, so one scheduling hiccup cannot decide a run. */
-function medianMillis(attempt: () => void): number {
+async function medianMillis(attempt: () => Promise<void>): Promise<number> {
   const samples = [];
   for (let run = 0; run < 5; run += 1) {
     const started = performance.now();
-    attempt();
+    await attempt();
     samples.push(performance.now() - started);
   }
-  return samples.sort((a, b) => a - b)[2];
+  return samples.sort((a, b) => a - b)[2]!;
 }
 
 test("signup is open: any well-formed email is accepted, with no invite list", () => {
@@ -71,46 +71,46 @@ test("a stored password is salted, never plaintext, and only verifies itself", (
   assert.equal(verifyPassword(password, "scrypt$abcd$abcd"), false);
 });
 
-test("open signup creates an account and signs it in", () => {
-  assert.deepEqual(createAccount("New@Example.com", "correct horse battery"), {
+test("open signup creates an account and signs it in", async () => {
+  assert.deepEqual(await createAccount("New@Example.com", "correct horse battery"), {
     ok: true,
     email: "new@example.com",
   });
-  assert.deepEqual(authenticate("new@example.com", "correct horse battery"), {
+  assert.deepEqual(await authenticate("new@example.com", "correct horse battery"), {
     ok: true,
     email: "new@example.com",
   });
 });
 
-test("an email already in use is refused with a sign-in hint, not a duplicate account", () => {
-  createAccount("taken@example.com", "correct horse battery");
-  const errors = refusedErrors(createAccount("TAKEN@example.com", "another password"));
+test("an email already in use is refused with a sign-in hint, not a duplicate account", async () => {
+  await createAccount("taken@example.com", "correct horse battery");
+  const errors = refusedErrors(await createAccount("TAKEN@example.com", "another password"));
 
   assert.match(String(errors.email), /already/i);
-  assert.deepEqual(authenticate("taken@example.com", "correct horse battery"), {
+  assert.deepEqual(await authenticate("taken@example.com", "correct horse battery"), {
     ok: true,
     email: "taken@example.com",
   });
 });
 
-test("sign-in refuses a wrong password or an unknown email without saying which", () => {
-  createAccount("returning@example.com", "correct horse battery");
+test("sign-in refuses a wrong password or an unknown email without saying which", async () => {
+  await createAccount("returning@example.com", "correct horse battery");
 
-  const wrongPassword = authenticate("returning@example.com", "guess password");
-  const unknownEmail = authenticate("stranger@example.com", "correct horse battery");
+  const wrongPassword = await authenticate("returning@example.com", "guess password");
+  const unknownEmail = await authenticate("stranger@example.com", "correct horse battery");
 
   assert.equal(wrongPassword.ok, false);
   assert.deepEqual(wrongPassword, unknownEmail);
 });
 
-test("an unknown email costs the same password work as a wrong password, so timing cannot enumerate", () => {
-  createAccount("timed@example.com", "correct horse battery");
+test("an unknown email costs the same password work as a wrong password, so timing cannot enumerate", async () => {
+  await createAccount("timed@example.com", "correct horse battery");
 
-  const wrongPassword = medianMillis(() =>
-    authenticate("timed@example.com", "guess password"),
+  const wrongPassword = await medianMillis(() =>
+    authenticate("timed@example.com", "guess password").then(() => {}),
   );
-  const unknownEmail = medianMillis(() =>
-    authenticate("nobody@example.com", "guess password"),
+  const unknownEmail = await medianMillis(() =>
+    authenticate("nobody@example.com", "guess password").then(() => {}),
   );
 
   assert.ok(
@@ -119,10 +119,10 @@ test("an unknown email costs the same password work as a wrong password, so timi
   );
 });
 
-test("credential rules apply before an account is created", () => {
-  const errors = refusedErrors(createAccount("not-an-email", "short"));
+test("credential rules apply before an account is created", async () => {
+  const errors = refusedErrors(await createAccount("not-an-email", "short"));
 
   assert.ok(errors.email);
   assert.ok(errors.password);
-  assert.equal(authenticate("not-an-email", "short").ok, false);
+  assert.equal((await authenticate("not-an-email", "short")).ok, false);
 });
