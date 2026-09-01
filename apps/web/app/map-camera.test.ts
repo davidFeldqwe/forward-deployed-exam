@@ -42,24 +42,38 @@ const ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5, 0.4, 0.33];
  */
 const OFF_FRAME = new Set(["AK", "HI", "PR"]);
 
+/** Whether a state is inside the opening frame at all. */
+function inFrame(state: string): boolean {
+  return !OFF_FRAME.has(state);
+}
+
+/** Every state, for the claims made about the whole drawn world. */
+const EVERYWHERE = () => true;
+
+/**
+ * Every point of the committed ground plane, on the y = 0 plane it is drawn on.
+ * `states` picks which of them: the whole country by default, or `inFrame` for
+ * only the states the opening frame has to hold.
+ */
+function groundPoints(states: (state: string) => boolean = EVERYWHERE): THREE.Vector3[] {
+  return GROUND_OUTLINES.filter((outline) => states(outline.state)).flatMap((outline) =>
+    outline.rings.flatMap((ring) => ring.map(({ x, z }) => new THREE.Vector3(x, 0, z))),
+  );
+}
+
+/** The top of every column the skyline stands up, for the same states. */
+function columnTops(states: (state: string) => boolean = EVERYWHERE): THREE.Vector3[] {
+  const rows = scoreUniverse(loadSnapshot()).filter((row) => states(row.state ?? ""));
+  return mapMarks(rows).map((mark) => new THREE.Vector3(mark.x, mark.height, mark.z));
+}
+
 /**
  * Everything the opening frame is supposed to hold: the country's own outline,
  * and the top of every column standing on it. A column's height is what a
  * frame chosen from the ground alone would clip first.
  */
 function contiguousPoints(): THREE.Vector3[] {
-  const points: THREE.Vector3[] = [];
-  for (const outline of GROUND_OUTLINES) {
-    if (OFF_FRAME.has(outline.state)) continue;
-    for (const ring of outline.rings) {
-      for (const point of ring) points.push(new THREE.Vector3(point.x, 0, point.z));
-    }
-  }
-  const rows = scoreUniverse(loadSnapshot()).filter((row) => !OFF_FRAME.has(row.state ?? ""));
-  for (const mark of mapMarks(rows)) {
-    points.push(new THREE.Vector3(mark.x, mark.height, mark.z));
-  }
-  return points;
+  return [...groundPoints(inFrame), ...columnTops(inFrame)];
 }
 
 /** The camera as the scene builds it, in the frame this module opens on. */
@@ -126,11 +140,7 @@ test("the frame's half-width is the committed country's own east–west reach", 
   // The frame is centred on x = 0, so what has to fit is the further of the two
   // edges. A constant that drifted from the geometry would frame a country the
   // ground plane no longer draws.
-  const reach = Math.max(
-    ...GROUND_OUTLINES
-      .filter((outline) => !OFF_FRAME.has(outline.state))
-      .flatMap((outline) => outline.rings.flatMap((ring) => ring.map((point) => Math.abs(point.x)))),
-  );
+  const reach = Math.max(...groundPoints(inFrame).map((point) => Math.abs(point.x)));
 
   assert.ok(CONUS_HALF_WIDTH >= reach, `${CONUS_HALF_WIDTH} covers ${reach}`);
   // And no wider: a frame with a country's width of slack in it opens too far out.
@@ -234,14 +244,7 @@ test("the camera can see the whole world from the furthest the orbit may stand",
   // limit plus this would clip the country out of the frame it opened in.
   const target = new THREE.Vector3(CONUS_VIEW.target.x, CONUS_VIEW.target.y, CONUS_VIEW.target.z);
   const reach = Math.max(
-    ...GROUND_OUTLINES.flatMap((outline) =>
-      outline.rings.flatMap((ring) =>
-        ring.map((point) => new THREE.Vector3(point.x, 0, point.z).distanceTo(target)),
-      ),
-    ),
-    ...mapMarks(scoreUniverse(loadSnapshot())).map((mark) =>
-      new THREE.Vector3(mark.x, mark.height, mark.z).distanceTo(target),
-    ),
+    ...[...groundPoints(), ...columnTops()].map((point) => point.distanceTo(target)),
   );
 
   assert.ok(WORLD_REACH >= reach, `${WORLD_REACH} covers ${reach}`);

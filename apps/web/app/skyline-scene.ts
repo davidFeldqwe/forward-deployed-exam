@@ -40,7 +40,11 @@ const RING_OUTER_RADIUS = COLUMN_RADIUS * 1.5;
 /** Clear of the ground plane, so a ring is not fighting it for the same pixels. */
 const RING_LIFT = 0.008;
 
-/** If a custom property does not resolve, the canvas greys rather than guesses. */
+/**
+ * If a custom property does not resolve, the canvas greys rather than guesses.
+ * The value is `--muted-foreground`'s own: the token cannot be read to find it,
+ * so this is the one place the grey is written twice.
+ */
 export const FALLBACK_HUE = "#8a8f98";
 
 export type SkylineInput = {
@@ -71,6 +75,7 @@ export function mountSkyline(
     return null;
   }
 
+  const canvas = renderer.domElement;
   const scene = new THREE.Scene();
   // The frame is chosen against the pane's own shape, so a narrow one opens
   // holding the country rather than cutting both coasts off it.
@@ -86,8 +91,8 @@ export function mountSkyline(
 
   // A canvas is inline by default, which would leave a text descender's worth
   // of gap under it inside a pane sized to the viewport.
-  renderer.domElement.style.display = "block";
-  host.appendChild(renderer.domElement);
+  canvas.style.display = "block";
+  host.appendChild(canvas);
 
   const intro = introEase(input.reducedMotion, camera.aspect);
   const from = vector(intro.from);
@@ -97,7 +102,7 @@ export function mountSkyline(
 
   // The controls read the camera off its position, so it stands where the ease
   // starts before they are built.
-  const controls = orbit(camera, renderer.domElement, CONUS_VIEW.target);
+  const controls = orbit(camera, canvas, CONUS_VIEW.target);
 
   // Nothing in this scene moves on its own, so a frame is worth drawing only
   // when something moved it: the opening ease, a drag or a scroll — both of
@@ -117,7 +122,6 @@ export function mountSkyline(
   // does not do is draw. On a still canvas nothing else would either, so
   // without this the visitor is left looking at a blank pane for the rest of
   // the visit — the empty state, without the sentence explaining it.
-  const canvas = renderer.domElement;
   canvas.addEventListener("webglcontextrestored", redraw);
 
   // A drag, a scroll or a touch — all of which the controls announce as a start
@@ -318,10 +322,11 @@ export function markMeshes(
     // A ring keeps its own scale and sits just clear of the ground lines; a
     // column is stretched from its base by the height the mark carries.
     const isRing = shape === "ring";
+    const groundOffset = isRing ? RING_LIFT : 0;
     const placement = new THREE.Matrix4();
     members.forEach((mark, index) => {
       placement.makeScale(1, isRing ? 1 : mark.height, 1);
-      placement.setPosition(mark.x, isRing ? RING_LIFT : 0, mark.z);
+      placement.setPosition(mark.x, groundOffset, mark.z);
       mesh.setMatrixAt(index, placement);
     });
     return mesh;
@@ -382,13 +387,18 @@ function hostAspect(host: HTMLElement): number {
 const MAX_PIXEL_RATIO = 2;
 
 /**
- * What one CSS pixel is worth on this display right now. Read on every fit
- * rather than once at the context request: a browser zoom changes the ratio and
- * resizes the pane in the same breath, and a buffer left at the ratio the page
- * opened with draws the outline soft for the rest of the visit.
+ * What one CSS pixel is worth on this display, as the browser reports it. Read
+ * on every fit rather than once at the context request: a browser zoom changes
+ * it and resizes the pane in the same breath, and a buffer left at the ratio
+ * the page opened with draws the outline soft for the rest of the visit.
  */
+function displayRatio(): number {
+  return globalThis.devicePixelRatio ?? 1;
+}
+
+/** The same ratio, capped: what the drawing buffer is actually sized by. */
 function pixelRatio(): number {
-  return Math.min(globalThis.devicePixelRatio ?? 1, MAX_PIXEL_RATIO);
+  return Math.min(displayRatio(), MAX_PIXEL_RATIO);
 }
 
 /**
@@ -412,7 +422,10 @@ function watchPixelRatio(onChange: () => void): () => void {
   };
   const watch = (): void => {
     display?.removeEventListener("change", moved);
-    display = matchMedia(`(resolution: ${globalThis.devicePixelRatio ?? 1}dppx)`);
+    // The display's own ratio, not the capped one: a query naming a resolution
+    // this display does not report would never match, and so would never
+    // announce the move away from it.
+    display = matchMedia(`(resolution: ${displayRatio()}dppx)`);
     display.addEventListener("change", moved);
   };
 

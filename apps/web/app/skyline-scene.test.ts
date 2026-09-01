@@ -62,12 +62,15 @@ const SKYLINE: readonly MapMark[] = [
   ring("GUM", "No data", 6),
 ];
 
+/** The hue one mesh is drawn in, as a hex string. */
+function colourOf(mesh: THREE.InstancedMesh): string {
+  return (mesh.material as THREE.MeshLambertMaterial).color.getHexString();
+}
+
 /** The one mesh drawing a lamp word, found by the hue only that word lights. */
 function meshFor(meshes: readonly THREE.InstancedMesh[], lamp: CandidateLamp): THREE.InstancedMesh {
   const lit = COLOURS[lamp].getHexString();
-  const found = meshes.filter(
-    (mesh) => (mesh.material as THREE.MeshLambertMaterial).color.getHexString() === lit,
-  );
+  const found = meshes.filter((mesh) => colourOf(mesh) === lit);
   assert.equal(found.length, 1, `one mesh for ${lamp}`);
   return found[0];
 }
@@ -141,11 +144,7 @@ test("a withheld composite lies flat in its own hue, never the weak column's", (
     assert.equal(scale.y, 1, lamp);
     assert.ok(position.y > 0 && position.y < 0.05, "clear of the ground lines, not above them");
 
-    const weak = (meshFor(meshes, "Weak candidate").material as THREE.MeshLambertMaterial).color;
-    assert.notEqual(
-      (mesh.material as THREE.MeshLambertMaterial).color.getHexString(),
-      weak.getHexString(),
-    );
+    assert.notEqual(colourOf(mesh), colourOf(meshFor(meshes, "Weak candidate")));
   }
 });
 
