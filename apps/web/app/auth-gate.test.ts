@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   CHAT_SSE_PATH,
+  LANDING_PATH,
   carriedPrompt,
   chatDestination,
   chatPathWithPrompt,
@@ -11,6 +12,10 @@ import {
   promptFromPath,
 } from "./auth-gate.ts";
 import { landingCopy } from "./landing-copy.ts";
+
+test("the Landing is the public home, and login is not it", () => {
+  assert.equal(LANDING_PATH, "/");
+});
 
 test("an unauthenticated chat request is sent to login carrying where it wanted to go", () => {
   assert.equal(loginRedirect("/chat"), "/login?next=%2Fchat");

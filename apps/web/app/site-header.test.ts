@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { CHAT_PATH, LOGIN_PATH, MAP_PATH, postLoginPath } from "./auth-gate.ts";
+import { CHAT_PATH, LANDING_PATH, LOGIN_PATH, MAP_PATH, postLoginPath } from "./auth-gate.ts";
 import { chatCopy } from "./chat-copy.ts";
 import { landingCopy } from "./landing-copy.ts";
 import { loginCopy } from "./login-copy.ts";
@@ -19,8 +19,13 @@ function doc(file: string): string {
   return readFileSync(new URL(file, repo), "utf8");
 }
 
-/** Every surface that wears the shared bar, `/map` included. */
-const SURFACES = ["components/Landing.tsx", "components/Chat.tsx", "components/Skyline.tsx"];
+/** Every surface that wears the shared bar, login and `/map` included. */
+const SURFACES = [
+  "components/Landing.tsx",
+  "components/Login.tsx",
+  "components/Chat.tsx",
+  "components/Skyline.tsx",
+];
 
 /** The one header link with this key, whichever surface is asking. */
 function link(signedIn: boolean, key: HeaderLink["key"]): HeaderLink {
@@ -78,6 +83,16 @@ test("GitHub opens this repository, and leaves the product to do it", () => {
   assert.match(source("components/SiteHeader.tsx"), /rel="noreferrer"/);
 });
 
+test("the identity is a destination to the Landing on every surface", () => {
+  const header = source("components/SiteHeader.tsx");
+
+  assert.equal(LANDING_PATH, "/");
+  assert.match(header, /<Link href=\{LANDING_PATH\}/);
+  // A visitor who opened login from a card, Chat, or the profile control
+  // still has this same control; it does not depend on history.
+  assert.match(source("components/Login.tsx"), /<SiteHeader\s+signedIn=\{false\}/);
+});
+
 test("the profile control reaches login signed out and signs out signed in", () => {
   assert.deepEqual(siteHeader(false).profile, {
     kind: "signIn",
@@ -89,11 +104,25 @@ test("the profile control reaches login signed out and signs out signed in", () 
     label: "Sign out",
   });
 
-  // Signing out is a server action, so the control is a form submit rather
-  // than a link that a prefetch could follow.
-  const header = source("components/SiteHeader.tsx");
-  assert.match(header, /<form action=\{signOut\}>/);
-  assert.match(header, /type="submit"/);
+  assert.equal(siteHeaderCopy.signOutCancelLabel, "Cancel");
+  assert.match(siteHeaderCopy.signOutConfirmTitle, /sign out/i);
+  assert.match(siteHeaderCopy.signOutConfirmDescription, /session/i);
+
+  // The header icon opens a dialog. Confirming is the server action; Cancel
+  // is Dialog.Close, so it cannot POST signOut.
+  const signOut = source("components/SignOutControl.tsx");
+  assert.match(signOut, /<Dialog\.Root>/);
+  assert.match(signOut, /render=\{<Dialog\.Trigger/);
+  assert.match(signOut, /<form action=\{signOut\}>/);
+  assert.match(signOut, /type="submit"/);
+  assert.match(signOut, /<Dialog\.Close/);
+  assert.match(signOut, /signOutCancelLabel/);
+  assert.doesNotMatch(source("components/SiteHeader.tsx"), /<form action=\{signOut\}>/);
+
+  const closeAt = signOut.indexOf("<Dialog.Close");
+  const formAt = signOut.indexOf("<form action={signOut}>");
+  assert.ok(closeAt >= 0 && formAt >= 0);
+  assert.ok(closeAt < formAt, "Cancel is not the sign-out submit");
 });
 
 test("the bar is sticky, full-bleed, and still", () => {
@@ -200,8 +229,13 @@ test("the PRD and the coding standards describe the shared header", () => {
   assert.doesNotMatch(story8, /only as a footer link/i);
   assert.match(story8, /header/i);
 
+  const story16 = prd.split("\n").find((line) => line.startsWith("16. "));
+  assert.ok(story16, "story 16");
+  assert.match(story16, /confirm/i);
+
   for (const text of [prd, standards]) {
     assert.match(text, /sticky/i);
     assert.match(text, /profile control/i);
+    assert.match(text, /login/i);
   }
 });

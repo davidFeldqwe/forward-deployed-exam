@@ -5,8 +5,7 @@ import { useActionState, useState } from "react";
 import { type LoginState, submitLogin } from "@/app/auth-actions";
 import { loginCopy } from "@/app/login-copy";
 import { type LoginMode, loginFieldsToRender } from "@/app/login-fields";
-import { siteHeaderCopy } from "@/app/site-header";
-import { Wordmark } from "@/components/Wordmark";
+import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,11 +33,7 @@ export function Login({
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="h-12 shrink-0 border-b bg-header">
-        <div className="mx-auto flex h-full max-w-[720px] items-center px-6">
-          <Wordmark name={siteHeaderCopy.wordmark} />
-        </div>
-      </header>
+      <SiteHeader signedIn={false} />
 
       <main
         className="flex flex-1 items-center bg-[linear-gradient(var(--grid)_1px,transparent_1px),linear-gradient(90deg,var(--grid)_1px,transparent_1px)] bg-[size:28px_28px] py-12"

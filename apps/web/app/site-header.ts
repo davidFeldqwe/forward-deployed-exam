@@ -1,6 +1,6 @@
 /**
- * The shared site header (issue #53; PRD stories 2, 8, 16). Landing, chat and
- * `/map` wear one bar, so the product does not read as three apps: the same
+ * The shared site header (issue #53; PRD stories 2, 8, 16). Landing, login, chat
+ * and `/map` wear one bar, so the product does not read as three apps: the same
  * identity on the left, the same actions on the right, always on screen.
  *
  * This module is what is in the bar — the one product name, the three actions,
@@ -9,13 +9,15 @@
  * surface brings (chat's recents drawer control) is passed in by that surface.
  *
  * The profile control is one icon with two behaviours rather than a menu:
- * signed out it is the way into `/login`, signed in it is the way out of the
- * session. There is no account page behind it to open.
+ * signed out it is the way into `/login`, signed in it opens a confirmation and
+ * only then ends the session. There is no account page behind it to open.
+ * Identity on the left is a destination to the Landing, so `/login` is not a
+ * dead end.
  */
 import { CHAT_PATH, LOGIN_PATH, MAP_PATH } from "./auth-gate.ts";
 
 export const siteHeaderCopy = {
-  /** The product name, and the only one: Landing, chat and login all show it. */
+  /** The product name, and the only one: Landing, login, chat and map all show it. */
   wordmark: "Airport Investment Intelligence Agent",
   chatLabel: "Chat",
   mapLabel: "Map",
@@ -32,6 +34,9 @@ export const siteHeaderCopy = {
   githubHref: "https://github.com/davidFeldqwe/forward-deployed-exam",
   signInLabel: "Sign in",
   signOutLabel: "Sign out",
+  signOutConfirmTitle: "Sign out?",
+  signOutConfirmDescription: "This ends the session on this machine.",
+  signOutCancelLabel: "Cancel",
 } as const;
 
 /** One header action: where it goes, and whether it leaves the product. */
@@ -46,8 +51,8 @@ export type HeaderLink = {
 
 /**
  * Which of the product's own surfaces is drawing the bar, so its control reads
- * as current rather than as somewhere else to go. Landing is not one: it is the
- * brochure the header links away from, and no action opens it.
+ * as current rather than as somewhere else to go. Landing is not one of the
+ * right-hand actions: the wordmark on the left is how a visitor reaches it.
  */
 export type HeaderSurface = "chat" | "map";
 
