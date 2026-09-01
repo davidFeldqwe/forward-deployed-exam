@@ -106,12 +106,13 @@ export function threadAnswer(
   if (!message || message.role !== "assistant") {
     return [];
   }
-  const rankings = message.toolCalls
+  // Every `queryAirports` call this turn made, as answer objects.
+  const queries = message.toolCalls
     .map((call) => rankingView(call))
     .filter((view) => view !== null);
   // A query that matched nothing has a resolved set to show and no table, so
   // the tables are their own list: what the prose is labelled off from.
-  const tables = rankings.filter((view) => view.rows.length > 0);
+  const tables = queries.filter((view) => view.rows.length > 0);
   const carried = carriedContext(messages, index);
 
   // The locked order, one group per block, each one skipped where it is empty.
@@ -124,7 +125,7 @@ export function threadAnswer(
   if (carried) {
     parts.push({ tag: "carried", carried });
   }
-  for (const view of rankings) {
+  for (const view of queries) {
     parts.push({ tag: "resolved", resolved: view.resolved, unknown: view.unknown });
   }
   if (message.text.trim().length > 0) {
@@ -143,8 +144,8 @@ export function threadAnswer(
       sortLabel: view.sortLabel,
     });
   }
-  const assumptions = mergedLines(rankings, "assumptions");
-  const gaps = mergedLines(rankings, "gaps");
+  const assumptions = mergedLines(queries, "assumptions");
+  const gaps = mergedLines(queries, "gaps");
   if (assumptions.length > 0 || gaps.length > 0) {
     parts.push({ tag: "caveats", assumptions, gaps });
   }

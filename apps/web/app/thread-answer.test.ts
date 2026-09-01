@@ -156,10 +156,11 @@ test("two queryAirports calls group all sets, then prose, then all tables, then 
     "caveats",
   ]);
 
-  const caveats = partsOf(parts, "caveats");
-  assert.equal(caveats.length, 1);
+  const [caveats, ...alsoCaveats] = partsOf(parts, "caveats");
+  assert.ok(caveats);
+  assert.deepEqual(alsoCaveats, []);
   // One block, so a line both queries carry is printed once.
-  const lines = [...caveats[0]!.assumptions, ...caveats[0]!.gaps];
+  const lines = [...caveats.assumptions, ...caveats.gaps];
   assert.equal(new Set(lines).size, lines.length);
   assert.ok(lines.length > 0);
 });
@@ -223,6 +224,12 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
   // Prose with no tool call at all is one tag.
   const proseOnly = [userMessage("Hello."), assistantMessage("Ask about an airport.")];
   assert.deepEqual(tags(threadAnswer(proseOnly, 1)), ["prose"]);
+
+  // And the other way round: a turn the model wrote no sentence for. The store
+  // admits it as long as it carries a payload (`parseThreadMessage`), so the
+  // prose tag is omitted rather than drawn as a blank line above the table.
+  const wordless = [userMessage("New England?"), assistantMessage(" ", [newEngland])];
+  assert.deepEqual(tags(threadAnswer(wordless, 1)), ["tool", "resolved", "ranking", "caveats"]);
 });
 
 test("the prose heading is drawn only where a table sits under it", () => {
