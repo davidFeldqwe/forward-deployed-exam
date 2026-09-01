@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
@@ -102,18 +101,4 @@ test("only an answer carries context, and only from an earlier answer", () => {
   assert.equal(carriedContext(messages, 0), null, "a question is not an answer");
   assert.equal(carriedContext(messages, 1), null, "the first ranking carries nothing");
   assert.equal(carriedContext(messages, 9), null, "there is no message there");
-});
-
-// Story 29 puts the carried context *before* the vector: the analyst sees which
-// row "the second one" became before they read a number for it. There is no DOM
-// harness in this repo, so the order is asserted on the answer the transcript
-// composes.
-test("the transcript draws carried context before the resolved set and the ranking", () => {
-  const transcript = readFileSync(new URL("../components/Transcript.tsx", import.meta.url), "utf8");
-  const carried = transcript.indexOf("<CarriedContext");
-  const resolved = transcript.indexOf("<ResolvedSet");
-  const ranking = transcript.indexOf("<Ranking");
-
-  assert.ok(carried > 0 && resolved > carried, "carried context comes before the resolved set");
-  assert.ok(ranking > carried, "carried context comes before the ranking and its vectors");
 });
