@@ -57,9 +57,8 @@ export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
 
 /**
  * The locked order as a list: the sequence every answer below is composed to
- * read down, and what the order test walks. `satisfies` keeps it from naming a
- * tag no part carries; a tag it forgets to name has nowhere to be drawn, which
- * is what that test reports.
+ * read down, and what the order test walks. A tag this list forgets to name has
+ * nowhere to be drawn, which is what that test reports.
  *
  * `pending` is the one tag with no neighbours to be ordered against — a
  * question in flight is drawn as that row alone — so its place here only has to

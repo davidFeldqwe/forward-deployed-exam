@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
@@ -8,28 +8,11 @@ import { pendingAnswer } from "./pending-answer.ts";
 import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
 
 const web = new URL("../", import.meta.url);
-const THE_COMPOSER = "components/Chat.tsx";
 const THE_PENDING_TURN = "components/answers/PendingAnswer.tsx";
 
 function source(file: string): string {
   return readFileSync(new URL(file, web), "utf8");
 }
-
-/**
- * Every file in the package that draws markup, found off disk rather than
- * listed: a walk that names its directories only answers for the directories it
- * names, and this is a claim about the whole app.
- */
-const DRAWING = readdirSync(web, { withFileTypes: true })
-  // Source only: not the installed packages, and not the build output.
-  .filter(
-    (entry) => entry.isDirectory() && entry.name !== "node_modules" && !entry.name.startsWith("."),
-  )
-  .flatMap((entry) =>
-    readdirSync(new URL(`${entry.name}/`, web), { encoding: "utf8", recursive: true })
-      .filter((file) => file.endsWith(".tsx"))
-      .map((file) => `${entry.name}/${file}`),
-  );
 
 // Story 35: streaming shows a pending row with no scores yet. There is no DOM
 // harness in this repo, so what a pending row may contain is pinned on the copy
@@ -77,31 +60,13 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   assert.ok(composer > pending, "the transcript's pending row is drawn above the composer");
 });
 
-// "Form-in-flight stays in Chat" (issue #35). The list and every block in it are
-// a function of the messages, so nothing that draws a stored turn may ask
-// whether a question is on its way: the composer's form is what decides that,
-// and the one turn drawn out of that decision is the pending answer inside it.
-test("only the composer and the turn it draws in flight read the form status", () => {
-  // The walk sees the composer, the transcript beside it, and the tag switch —
-  // the three files a form status could sensibly have been read in.
-  assert.ok(DRAWING.includes(THE_COMPOSER), DRAWING.join(", "));
-  assert.ok(DRAWING.includes("components/Transcript.tsx"));
-  assert.ok(DRAWING.includes("components/answers/ThreadAnswer.tsx"));
-
-  assert.deepEqual(
-    DRAWING.filter((file) => source(file).includes("useFormStatus")).sort(),
-    [THE_COMPOSER, THE_PENDING_TURN].sort(),
-  );
-  assert.doesNotMatch(source("app/thread-answer.ts"), /useFormStatus|react-dom/);
-});
-
 // Criterion 5's other half: "the in-flight question is a user turn, not part of
 // the Thread answer". That it is not *in* the answer is pinned on the list —
 // there is no field a question could arrive in. This is the half that says
 // where it is instead: above the answer, in the turn chrome a landed question is
 // set in, so Send does not change the shape of what is already on screen.
 test("the question in flight is a user turn above the pending answer, not inside it", () => {
-  const pending = source("components/answers/PendingAnswer.tsx");
+  const pending = source(THE_PENDING_TURN);
   const asked = pending.indexOf('<RoleLabel role="user" />');
   const answering = pending.indexOf('<RoleLabel role="assistant" />');
   const list = pending.indexOf("<ThreadAnswer");
@@ -114,7 +79,7 @@ test("the question in flight is a user turn above the pending answer, not inside
   // Both sides of the same chrome: a question in flight is set like the same
   // question once it has landed in the transcript, so both files draw the turn
   // out of `Turn.tsx` rather than one of them writing its own.
-  for (const file of ["components/answers/PendingAnswer.tsx", "components/Transcript.tsx"]) {
+  for (const file of [THE_PENDING_TURN, "components/Transcript.tsx"]) {
     const chrome = source(file).match(/import \{([^}]*)\} from "@\/components\/Turn"/)?.[1];
     assert.deepEqual(
       chrome

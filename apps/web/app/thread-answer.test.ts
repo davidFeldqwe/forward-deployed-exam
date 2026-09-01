@@ -26,6 +26,9 @@ const web = new URL("../", import.meta.url);
 const THE_TAG_SWITCH = "components/answers/ThreadAnswer.tsx";
 const THE_TRANSCRIPT = "components/Transcript.tsx";
 const THE_PENDING_TURN = "components/answers/PendingAnswer.tsx";
+const THE_COMPOSER = "components/Chat.tsx";
+/** A route: not a claim of its own, but what shows the walk reaches past the components. */
+const A_ROUTE = "app/chat/page.tsx";
 
 function source(file: string): string {
   return readFileSync(new URL(file, web), "utf8");
@@ -246,6 +249,15 @@ test("the tag list and the component's cases name the same tags", () => {
   assert.deepEqual(cases.sort(), [...THREAD_ANSWER_TAGS].sort());
 });
 
+// Each claim the walk carries below is that some file is *not* in a list, so a
+// walk that came back short would pass every one of them and mean nothing. It
+// is checked once, here: these are the files those claims are about.
+test("the walk finds every file the claims below are read off", () => {
+  for (const file of [THE_TAG_SWITCH, THE_TRANSCRIPT, THE_PENDING_TURN, THE_COMPOSER, A_ROUTE]) {
+    assert.ok(DRAWING.includes(file), `${file} is not among ${DRAWING.join(", ")}`);
+  }
+});
+
 /**
  * The component each tag with markup of its own is drawn by. `prose` has none:
  * an answer's sentences are set like the analyst's own, so `Turn.tsx`'s `Prose`
@@ -265,11 +277,6 @@ const TAG_BLOCKS = {
 // second file may reach past it to a block: a `<Caveats>` written straight into
 // the transcript would be a block in an order the order tests never see.
 test("only the tag switch draws a Thread answer's blocks", () => {
-  // The walk sees the two files this is a claim about, and the routes.
-  assert.ok(DRAWING.includes(THE_TAG_SWITCH));
-  assert.ok(DRAWING.includes(THE_TRANSCRIPT));
-  assert.ok(DRAWING.includes("app/chat/page.tsx"));
-
   for (const [tag, block] of Object.entries(TAG_BLOCKS)) {
     const drawnBy = DRAWING.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
     assert.deepEqual(drawnBy, [THE_TAG_SWITCH], `${tag} is drawn by ${block}`);
@@ -304,7 +311,7 @@ test("every Thread answer drawn is a list the module composed", () => {
     })),
   );
 
-  // The walk sees both turns a Thread answer is drawn for: the stored one and
+  // Both turns a Thread answer is drawn for are among them: the stored one and
   // the one in flight.
   const files = drawn.map(({ file }) => file);
   assert.ok(files.includes(THE_TRANSCRIPT), files.join(", "));
@@ -325,4 +332,16 @@ test("every Thread answer drawn is a list the module composed", () => {
       `${file}: ${composer} comes from app/thread-answer`,
     );
   }
+});
+
+// "Form-in-flight stays in Chat" (issue #35). A Thread answer is a function of
+// the messages, so nothing that draws a stored turn may ask whether a question
+// is on its way: the composer's form is what decides that, and the one turn
+// drawn out of that decision is the pending answer inside it.
+test("only the composer and the turn it draws in flight read the form status", () => {
+  assert.deepEqual(
+    DRAWING.filter((file) => source(file).includes("useFormStatus")).sort(),
+    [THE_COMPOSER, THE_PENDING_TURN].sort(),
+  );
+  assert.doesNotMatch(source("app/thread-answer.ts"), /useFormStatus|react-dom/);
 });
