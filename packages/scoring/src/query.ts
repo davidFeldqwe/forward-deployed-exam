@@ -71,7 +71,7 @@ export type QueryResult = {
   limit: number;
   /**
    * Requested codes with no airport in the scored universe, in the order asked.
-   * "LAX vs ITH" returns one row, and without this the caller cannot tell that
+   * "LAX vs IAN" returns one row, and without this the caller cannot tell that
    * from a compare that returned both. These are outside the primary-commercial
    * screen, not merely filtered out: a code the place filters excluded is not
    * listed here.

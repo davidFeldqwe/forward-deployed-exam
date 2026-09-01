@@ -104,7 +104,7 @@ itself.
   state does not come back as the ten `rows` held. `matched` is
   `resolvedIata.length`, so the count and the set cannot disagree. `unknownIata`
   lists requested codes with no airport in the scored universe, in the order
-  asked: "LAX vs ITH" comes back as one row, and the caller has to be able to tell
+  asked: "LAX vs IAN" comes back as one row, and the caller has to be able to tell
   that from a compare that returned both. `unknownPlace` does the same for a place
   filter, in `PLACE_FIELDS` order: `state: "California"` matches nothing because
   the snapshot spells a state as two letters, and an empty ranking with no other

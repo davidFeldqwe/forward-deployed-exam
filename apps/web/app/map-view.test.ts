@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { scoreUniverse, type ScoredAirport } from "@repo/scoring";
+import { queryAirports, scoreUniverse, type ScoredAirport } from "@repo/scoring";
 import { loadSnapshot } from "@repo/snapshot";
 
 import {
@@ -146,4 +146,30 @@ test("every mark's numbers are the scored row's own, for the committed snapshot"
     assert.equal(drawn.name, row.name);
     assert.equal(drawn.height, row.composite === null ? 0 : columnHeight(row.composite));
   }
+});
+
+// #73 / PRD story 46: the ranking table and the skyline are two views of one
+// scoreUniverse row. A given IATA cannot show 37 Weak candidate in chat and a
+// different column on /map.
+test("chat and the map show the same composite and lamp for a given IATA", () => {
+  const rows = scoreUniverse(loadSnapshot());
+  const marks = new Map(mapMarks(rows).map((drawn) => [drawn.iata, drawn]));
+
+  for (const iata of ["LAX", "SNA", "PVD", "ITH"]) {
+    const chat = queryAirports(rows, { iata }).rows[0];
+    const drawn = marks.get(iata);
+    assert.ok(chat, iata);
+    assert.ok(drawn, iata);
+    assert.equal(drawn.composite, chat.composite, iata);
+    assert.equal(drawn.lamp, chat.candidateLamp, iata);
+  }
+
+  const withheld = rows.find((row) => row.composite === null && row.latitude !== null);
+  assert.ok(withheld, "the primary universe has a ring the map can draw");
+  const chat = queryAirports(rows, { iata: withheld.iata }).rows[0];
+  const drawn = marks.get(withheld.iata);
+  assert.equal(chat?.candidateLamp, "Partial inputs");
+  assert.equal(drawn?.shape, "ring");
+  assert.equal(drawn?.lamp, chat?.candidateLamp);
+  assert.equal(drawn?.composite, null);
 });
