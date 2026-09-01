@@ -241,20 +241,20 @@ export function groundLines(
   outlines: readonly PlacedOutline[],
   colour: THREE.Color,
 ): THREE.LineSegments {
-  const points: number[] = [];
+  const positions: number[] = [];
   for (const outline of outlines) {
     for (const ring of outline.rings) {
       // Two vertices per adjacent pair: a ring is drawn as its own segments.
-      for (let i = 1; i < ring.length; i += 1) {
-        const start = ring[i - 1];
-        const end = ring[i];
-        points.push(start.x, 0, start.z, end.x, 0, end.z);
+      for (let at = 1; at < ring.length; at += 1) {
+        const start = ring[at - 1];
+        const end = ring[at];
+        positions.push(start.x, 0, start.z, end.x, 0, end.z);
       }
     }
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   return new THREE.LineSegments(
     geometry,
     new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity: 0.45 }),

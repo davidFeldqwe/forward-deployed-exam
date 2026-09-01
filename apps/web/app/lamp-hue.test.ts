@@ -55,12 +55,17 @@ test("the ranking table takes its hue from `lampPill`, so a bar cannot pick one 
 
 test("the legend names every lamp word, in ranking order, with the rows' own pills", () => {
   const legend = source("components/answers/LampLegend.tsx");
+  const pill = source("components/LampPill.tsx");
 
   // Mapping the lamp list rather than a hand-written copy is what keeps the key
   // complete and in the same order the rows rank in.
   assert.match(legend, /CANDIDATE_LAMPS\.map/);
-  assert.match(legend, /lampPill\(lamp\)/);
-  assert.doesNotMatch(legend, HUE_CLASS);
+  // One chip for this key and the `/map` key alike, and its hue is `lampPill`'s:
+  // no key writes a hue class of its own.
+  assert.match(pill, /lampPill\(lamp\)/);
+  for (const file of [legend, pill, source("components/Skyline.tsx")]) {
+    assert.doesNotMatch(file, HUE_CLASS);
+  }
 });
 
 const repo = new URL("../../", web);

@@ -1,12 +1,13 @@
 import { CANDIDATE_LAMPS } from "@repo/scoring";
 
-import { LAMP_LEGEND_NOTE, lampPill } from "@/app/lamp-hue";
+import { LAMP_LEGEND_NOTE } from "@/app/lamp-hue";
+import { LampPill } from "@/components/LampPill";
 
 /**
  * The key to the lamp hues (issue #25): the five lamp words next to the hue
  * their rows light, so the table can be read by someone who cannot see the
- * difference between the three. The pills come from the same `lampPill` the
- * rows draw with, so the key cannot drift from the table above it.
+ * difference between the three. The pills are `LampPill`, the same chip the
+ * `/map` key draws, so neither key can drift from the table above it.
  */
 export function LampLegend() {
   return (
@@ -16,12 +17,7 @@ export function LampLegend() {
           Candidate lamp
         </span>
         {CANDIDATE_LAMPS.map((lamp) => (
-          <span
-            key={lamp}
-            className={`rounded border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${lampPill(lamp)}`}
-          >
-            {lamp}
-          </span>
+          <LampPill key={lamp} lamp={lamp} />
         ))}
       </div>
       <p className="m-0 text-[11.5px] text-muted-foreground">{LAMP_LEGEND_NOTE}</p>

@@ -1,6 +1,6 @@
-import { lampPill } from "@/app/lamp-hue";
 import { mapCopy } from "@/app/map-copy";
 import type { MapMark } from "@/app/map-view";
+import { LampPill } from "@/components/LampPill";
 import { ComparisonWindow, SiteHeader } from "@/components/SiteHeader";
 import { SkylineCanvas } from "@/components/SkylineCanvas";
 
@@ -51,11 +51,7 @@ function LampKey() {
         </h2>
         {mapCopy.legend.map((entry) => (
           <span key={entry.lamp} className="flex items-center gap-1.5">
-            <span
-              className={`rounded border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${lampPill(entry.lamp)}`}
-            >
-              {entry.lamp}
-            </span>
+            <LampPill lamp={entry.lamp} />
             <span className="text-[11px] text-muted-foreground">{entry.meaning}</span>
           </span>
         ))}

@@ -48,7 +48,11 @@
      the two coverage states (Partial inputs, No data) take no hue at all --
      missing is not a low score, so it is never red. Which lamp word lights
      which hue is `app/lamp-hue.ts`, the one map the ranking rows and the legend
-     that names all five words both draw from. */
+     that names all five words both draw from. The `/map` canvas resolves these
+     three -- and `--muted-foreground`, which its rings and ground plane take --
+     at runtime, and three.js reads only hex, the colour names and
+     comma-separated `rgb()`/`hsl()`: written in a newer colour space they would
+     leave the whole skyline in its fallback grey. */
   --lamp-strong: #4cb782;
   --lamp-mixed: #d9a13a;
   --lamp-weak: #c2685e;
