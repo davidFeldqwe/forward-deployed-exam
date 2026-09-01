@@ -17,14 +17,17 @@
  *
  * Marker hue and words come off the same rows the ranking table drew, so a
  * marker and a row cannot disagree; where they seem to, the table is the source
- * of truth. There is no tile library, no projection service and no second
- * geography tool: the points are the snapshot's own latitude and longitude.
+ * of truth. Land under the dots is the committed Census state outlines (issue
+ * #95), projected in the same crop: no tile library, no projection service and
+ * no second geography tool. The points are the snapshot's own latitude and
+ * longitude.
  */
 import type { CandidateLamp, ScoredAirport } from "@repo/scoring";
 import { CENSUS_DIVISIONS } from "@repo/snapshot";
 
 import { indexOfPhrase } from "./text.ts";
 import { lookupMetric, rankingRows, type JsonObject, type ToolCall } from "./thread-messages.ts";
+import { US_STATES } from "./us-outlines.ts";
 
 /** The drawing box, in SVG user units. The card scales it to its own width. */
 export const MAP_WIDTH = 320;
@@ -53,6 +56,14 @@ export type MapMarker = {
   label: { x: number; anchor: "start" | "end" };
 };
 
+/** One closed ring of a state outline, in the drawing's own user units. */
+export type MapRing = readonly { x: number; y: number }[];
+
+export type MapOutline = {
+  state: string;
+  rings: readonly MapRing[];
+};
+
 export type ResolvedMapView = {
   /**
    * The place the drawn rows are in, spelled as the closed list has it, or null
@@ -63,6 +74,12 @@ export type ResolvedMapView = {
   markers: MapMarker[];
   /** Ranked rows the snapshot does not locate; named rather than dropped. */
   unplaced: string[];
+  /**
+   * Census state outlines that intersect this crop, in the same projection as
+   * the markers. Empty only when no committed ring meets the box — the crop is
+   * still the set's bounding box, not a map of the whole country.
+   */
+  ground: readonly MapOutline[];
   caption: string;
   viewBox: string;
 };
@@ -95,11 +112,13 @@ export function resolvedMap(
   }
   const unplaced = rows.filter((row) => !isLocated(row)).map((row) => row.iata);
   const place = placeOf(named, located);
+  const frame = frameOf(located);
 
   return {
     place,
-    markers: project(located),
+    markers: project(located, frame),
     unplaced,
+    ground: groundOf(frame),
     caption: captionOf(place, located.length, unplaced),
     viewBox: `0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`,
   };
@@ -200,12 +219,18 @@ function isLocated(row: ScoredAirport): row is Located {
 }
 
 /**
- * The rows placed in the drawing box: an equirectangular projection, then the
- * set's own bounding box scaled to fill the drawing on its longer axis. That
- * crop is the whole map — there is no frame around it to be wrong about, and no
- * coastline the snapshot did not ship.
+ * The crop the dots and the outlines share: an equirectangular projection, then
+ * the set's own bounding box scaled to fill the drawing on its longer axis.
+ * Geography outside that box is clipped, not used to re-zoom the card.
  */
-function project(rows: readonly Located[]): MapMarker[] {
+type Frame = {
+  narrowing: number;
+  longitudes: { middle: number; span: number };
+  latitudes: { middle: number; span: number };
+  scale: number;
+};
+
+function frameOf(rows: readonly Located[]): Frame {
   const latitudes = extent(rows.map((row) => row.latitude));
   // Degrees of longitude are shorter than degrees of latitude away from the
   // equator, and this set's own mid-latitude is the honest amount to narrow
@@ -218,19 +243,58 @@ function project(rows: readonly Located[]): MapMarker[] {
     (MAP_WIDTH - 2 * MAP_PADDING) / longitudes.span,
     (MAP_HEIGHT - 2 * MAP_PADDING) / latitudes.span,
   );
+  return { narrowing, longitudes, latitudes, scale };
+}
 
+function xy(longitude: number, latitude: number, frame: Frame): { x: number; y: number } {
+  return {
+    x: round((longitude * frame.narrowing - frame.longitudes.middle) * frame.scale + MAP_WIDTH / 2),
+    // North is up, so latitude runs the other way from the SVG's y axis.
+    y: round((frame.latitudes.middle - latitude) * frame.scale + MAP_HEIGHT / 2),
+  };
+}
+
+function project(rows: readonly Located[], frame: Frame): MapMarker[] {
   return rows.map((row) => {
-    const x = round((row.longitude * narrowing - longitudes.middle) * scale + MAP_WIDTH / 2);
+    const { x, y } = xy(row.longitude, row.latitude, frame);
     return {
       iata: row.iata,
       name: row.name,
       lamp: row.candidateLamp,
       x,
-      // North is up, so latitude runs the other way from the SVG's y axis.
-      y: round((latitudes.middle - row.latitude) * scale + MAP_HEIGHT / 2),
+      y,
       label: labelFor(x),
     };
   });
+}
+
+/**
+ * Committed Census rings that meet this crop, in the dots' own projection. A
+ * ring wholly outside the box is dropped so Alaska does not ride along with a
+ * California ranking; a ring that crosses the edge is kept and the SVG clips it.
+ */
+function groundOf(frame: Frame): MapOutline[] {
+  const drawn: MapOutline[] = [];
+  for (const { state, rings } of US_STATES) {
+    const visible = rings
+      .map((ring) => ring.map(([longitude, latitude]) => xy(longitude, latitude, frame)))
+      .filter(ringMeetsCrop);
+    if (visible.length > 0) {
+      drawn.push({ state, rings: visible });
+    }
+  }
+  return drawn;
+}
+
+function ringMeetsCrop(ring: MapRing): boolean {
+  const xs = ring.map((point) => point.x);
+  const ys = ring.map((point) => point.y);
+  return (
+    Math.max(...xs) >= 0 &&
+    Math.min(...xs) <= MAP_WIDTH &&
+    Math.max(...ys) >= 0 &&
+    Math.min(...ys) <= MAP_HEIGHT
+  );
 }
 
 /**

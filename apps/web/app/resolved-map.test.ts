@@ -13,6 +13,7 @@ import {
   resolvedMap,
 } from "./resolved-map.ts";
 import type { JsonObject, ToolCall } from "./thread-messages.ts";
+import { US_STATES } from "./us-outlines.ts";
 
 const base: ScoredAirport = {
   iata: "BOS",
@@ -177,6 +178,77 @@ function newEnglandMap() {
   assert.ok(map);
   return map;
 }
+
+test("a New England ranking shows geography under the markers, not a blank card", () => {
+  const map = newEnglandMap();
+  const bos = map.markers.find((marker) => marker.iata === "BOS");
+  const massachusetts = map.ground.find((outline) => outline.state === "MA");
+
+  // The drawing is a map of the place: land is present, and BOS sits on
+  // Massachusetts in the same projection the dots use — not a rectangle of
+  // lamps with nothing under them.
+  assert.ok((map.ground.length ?? 0) > 0, "no geography under the markers");
+  assert.ok(bos && massachusetts, "BOS or Massachusetts missing from the drawing");
+  assert.ok(
+    massachusetts.rings.some((ring) => pointInRing(bos.x, bos.y, ring)),
+    `BOS at ${bos.x},${bos.y} is not on the Massachusetts outline`,
+  );
+});
+
+/** Whether a projected airport sits inside a projected ring: land, not a guess. */
+function pointInRing(
+  x: number,
+  y: number,
+  ring: readonly { x: number; y: number }[],
+): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i]!;
+    const b = ring[j]!;
+    const crosses = a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+test("the land is the committed Census outline, in the dots' own crop", () => {
+  const map = newEnglandMap();
+  const massachusetts = US_STATES.find((outline) => outline.state === "MA");
+  const drawn = map.ground.find((outline) => outline.state === "MA");
+  const vertex = massachusetts?.rings[0]?.[0];
+  const bos = map.markers.find((marker) => marker.iata === "BOS");
+  const btv = map.markers.find((marker) => marker.iata === "BTV");
+  assert.ok(massachusetts && drawn && vertex && bos && btv);
+
+  const [longitude, latitude] = vertex;
+  const projected = drawn.rings[0][0];
+  const btvRow = NEW_ENGLAND_SET.find((row) => row.iata === "BTV")!;
+  const scaleNorth = (bos.y - btv.y) / ((btvRow.latitude as number) - (BOS.latitude as number));
+  const expectedY = bos.y - (latitude - (BOS.latitude as number)) * scaleNorth;
+
+  // The first Massachusetts vertex is the committed degree-pair, placed with
+  // the same north-up scale as BOS→BTV — not a second coastline.
+  assert.ok(Math.abs(projected.y - expectedY) < 1, `${projected.y} vs ${expectedY}`);
+  assert.ok(projected.x > bos.x === longitude > (BOS.longitude as number));
+  assert.equal(drawn.rings[0].length, massachusetts.rings[0].length);
+});
+
+test("a California ranking's crop does not carry Alaska along", () => {
+  const map = resolvedMap(
+    "Which California airports are constrained?",
+    call({ state: "CA" }, [
+      airport("LAX", 33.9425, -118.408, CALIFORNIA),
+      airport("SFO", 37.6188, -122.375, CALIFORNIA),
+    ]),
+  );
+
+  assert.ok(map?.ground.some((outline) => outline.state === "CA"));
+  assert.equal(
+    map?.ground.some((outline) => outline.state === "AK"),
+    false,
+    "Alaska met a California bounding box",
+  );
+});
 
 test("the crop is the set's own bounding box: it fills the drawing on the longer axis", () => {
   const map = newEnglandMap();
@@ -350,6 +422,8 @@ test("the map is inline SVG: no tiles, no network, no WebGL, no map library", ()
     assert.doesNotMatch(map, forbidden);
   }
   assert.match(map, /<svg/);
+  // Land is drawn first, as paths, so geography sits under the lamps.
+  assert.ok(map.indexOf("<path") < map.indexOf("<circle"), "markers painted under the land");
 
   // Nothing was added to the bundle to draw it, either.
   const manifest = JSON.parse(source("package.json")) as { dependencies: Record<string, string> };
@@ -399,4 +473,5 @@ test("the PRD states the map gate the build enforces, and the slot it draws in",
   assert.match(map, /rows are (all )?in/i);
   // No tiles is a claim about the shipped bundle, so the doc makes it too.
   assert.match(map, /no tiles?\b|no map library/i);
+  assert.match(map, /outline/i);
 });

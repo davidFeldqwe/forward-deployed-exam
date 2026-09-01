@@ -1,12 +1,14 @@
 import { lampMarker } from "@/app/lamp-hue";
-import type { MapMarker, ResolvedMapView } from "@/app/resolved-map";
+import type { MapMarker, MapRing, ResolvedMapView } from "@/app/resolved-map";
 import { LampLegend } from "@/components/answers/LampLegend";
 
 /**
- * The resolved airport set, placed (issue #29). Inline SVG of the rows the
- * ranking table just drew, cropped to their own bounding box: no tiles, no map
- * library, and nothing fetched — the points are the snapshot's coordinates,
- * which came back on the same `queryAirports` payload as the table.
+ * The resolved airport set, placed (issue #29 / #95). Inline SVG of the rows
+ * the ranking table just drew, cropped to their own bounding box, with the
+ * committed Census state outlines under the markers: no tiles, no map library,
+ * and nothing fetched — the points are the snapshot's coordinates, which came
+ * back on the same `queryAirports` payload as the table, and the land is the
+ * same committed rings `/map` stands its columns on.
  *
  * Every marker keeps its IATA code beside it and takes its hue from its row's
  * candidate lamp, and the table's own legend sits under the drawing, so hue is
@@ -34,10 +36,20 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
       <div className="px-4">
         <svg
           viewBox={map.viewBox}
-          className="h-auto w-full rounded-md border border-grid bg-raised"
+          className="h-auto w-full overflow-hidden rounded-md border border-grid bg-raised"
           role="img"
           aria-label={description}
         >
+          {map.ground.flatMap((outline) =>
+            outline.rings.map((ring, index) => (
+              <path
+                key={`${outline.state}-${index}`}
+                d={pathOf(ring)}
+                className="fill-muted/55 stroke-grid"
+                strokeWidth={0.8}
+              />
+            )),
+          )}
           {map.markers.map((marker) => (
             <Marker key={marker.iata} marker={marker} />
           ))}
@@ -79,4 +91,13 @@ function Marker({ marker }: { marker: MapMarker }) {
       </text>
     </g>
   );
+}
+
+/** A closed ring as an SVG path, in the viewBox the projection already chose. */
+function pathOf(ring: MapRing): string {
+  const [first, ...rest] = ring;
+  if (first === undefined) {
+    return "";
+  }
+  return `M${first.x} ${first.y}${rest.map((point) => `L${point.x} ${point.y}`).join("")}Z`;
 }
