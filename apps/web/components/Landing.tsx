@@ -154,7 +154,7 @@ export function Landing() {
           >
             {howItWorks.heading}
           </h2>
-          <ol className="flex list-none flex-nowrap items-stretch overflow-x-auto p-0">
+          <ol className="flex list-none flex-wrap items-stretch gap-y-2 p-0">
             {howItWorks.steps.map((step, index) => (
               <Fragment key={step}>
                 {index > 0 && (
@@ -162,7 +162,7 @@ export function Landing() {
                     <ArrowRightIcon className="mx-1.5 size-3 text-muted-foreground" />
                   </li>
                 )}
-                <li className="flex min-h-[4.75rem] min-w-[7.5rem] flex-1 basis-0">
+                <li className="flex min-h-[4.75rem] min-w-[6.25rem] flex-1 basis-0">
                   <div className="flex h-full w-full items-center justify-center rounded-lg border bg-card px-2.5 py-3 text-center text-xs leading-snug text-foreground">
                     {step}
                   </div>
