@@ -148,8 +148,7 @@ unaccepted grey text is never a user message. Send empties the field as soon as
 the question is accepted: those words become the pending user turn (and the
 form's `prompt`), not leftover composer text a second click could post again.
 The route sees only the partial prompt and up to three recent user prompts
-from this thread — no git, no
-snapshot, no `queryAirports`. It uses the same API key family as chat
+from this thread — no git, no snapshot, no `queryAirports`. It uses the same API key family as chat
 (`AUTOCOMPLETE_MODEL` may name a cheaper model). `MOCK_LLM=1` returns a canned
 New England continuation for that prefix and empty otherwise, so CI never calls
 a paid model for a ghost.

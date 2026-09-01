@@ -61,6 +61,7 @@ export function Composer({
 }) {
   return (
     <LexicalComposer initialConfig={editorConfig}>
+      {/* One empty row is Send's size-8; wrapping grows downward from there. */}
       <div className="relative min-h-8 min-w-0 flex-1">
         <label className="sr-only" htmlFor={id}>
           {placeholder}

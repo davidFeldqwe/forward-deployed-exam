@@ -44,9 +44,8 @@ export function Chat({
   const [railCollapsed, setRailCollapsed] = useState(false);
 
   const [draft, setDraft] = useState(initialPrompt ?? "");
-  // The pending user turn holds the question that Send just accepted. The
-  // composer itself is emptied immediately, so those words are not a second
-  // click away from posting twice, and the form still posts them via formValue.
+  // Send copies the trimmed draft here and empties the field. The pending turn
+  // and the hidden `prompt` read this copy so a second click cannot post twice.
   const [asked, setAsked] = useState("");
   // Opening a different thread (or the same route coming back with the landed
   // question) must not leave either the draft or that in-flight copy behind.
@@ -57,7 +56,7 @@ export function Chat({
     setAsked("");
   }
   const ready = draft.trim().length > 0;
-  const formValue = draft.trim().length > 0 ? draft : asked;
+  const formValue = ready ? draft : asked;
 
   function acceptQuestion(): void {
     const question = draft.trim();
