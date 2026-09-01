@@ -80,6 +80,23 @@ export function lampMarker(lamp: CandidateLamp): string {
   return LAMP_MARKER[LAMP_TONES[lamp]];
 }
 
+/**
+ * The fill one lamp word paints on a composite bar (issue #30). Same three
+ * hues as the pill and the map marker. Coverage states take no fill: a
+ * placeholder track is not a composite, and missing is never red.
+ */
+const LAMP_BAR: Readonly<Record<LampTone, string>> = {
+  strong: "fill-lamp-strong",
+  mixed: "fill-lamp-mixed",
+  weak: "fill-lamp-weak",
+  none: "fill-transparent",
+};
+
+/** The bar fill one lamp word paints, from the same tone as its pill. */
+export function lampBar(lamp: CandidateLamp): string {
+  return LAMP_BAR[LAMP_TONES[lamp]];
+}
+
 export const LAMP_LEGEND_NOTE =
   "Hue reads with the lamp words, never instead of them. Partial inputs and No data " +
   "take an outline and no hue: a missing component is not a low composite.";

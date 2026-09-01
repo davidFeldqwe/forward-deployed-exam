@@ -3,7 +3,8 @@
  * locked grouped order (issue #35, map slot from #29) — the inspectable tool
  * rows, the carried context a follow-up resolved, every resolved airport set,
  * the model's prose, every ranking or lookup table, the in-thread map of each
- * ranking that earned one, then one caveats block for the whole turn.
+ * ranking that earned one, the composite bar chart of each ranking, then one
+ * caveats block for the whole turn.
  *
  * Grouped, not interleaved: a turn that ran `queryAirports` twice names both
  * sets before it says anything, and prints both tables under the one sentence
@@ -24,6 +25,7 @@ import {
   type RankingView,
   type ResolvedSet,
 } from "./ranking-view.ts";
+import { compositeChart, type CompositeChartView } from "./ranking-chart.ts";
 import { spokenProse } from "./read-aloud.ts";
 import { resolvedMap, type ResolvedMapView } from "./resolved-map.ts";
 import { previousQuestion, type ThreadMessage, type ToolCall } from "./thread-messages.ts";
@@ -46,6 +48,7 @@ export type ThreadAnswerPart =
     }
   | { tag: "ranking"; rows: RankingRowView[]; lookup: RankingView["lookup"]; sortLabel: string }
   | { tag: "map"; map: ResolvedMapView }
+  | { tag: "chart"; chart: CompositeChartView }
   | ({ tag: "pending" } & typeof pendingAnswer)
   | { tag: "caveats"; assumptions: string[]; gaps: string[] };
 
@@ -74,6 +77,7 @@ export const THREAD_ANSWER_TAGS = [
   "prose",
   "ranking",
   "map",
+  "chart",
   "pending",
   "caveats",
 ] as const satisfies readonly ThreadAnswerTag[];
@@ -156,6 +160,15 @@ export function threadAnswer(
     const map = resolvedMap(question, call);
     if (map) {
       parts.push({ tag: "map", map });
+    }
+  }
+  // After the map when one is present, still before caveats: the same ranking
+  // payload as a composite bar. Lookups and empty sets skip this the way they
+  // skip a table.
+  for (const call of message.toolCalls) {
+    const chart = compositeChart(call);
+    if (chart) {
+      parts.push({ tag: "chart", chart });
     }
   }
   const assumptions = mergedLines(queries, "assumptions");
