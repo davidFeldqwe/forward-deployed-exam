@@ -158,6 +158,53 @@ export function farPlane(aspect: number): number {
 }
 
 /**
+ * How far back a camera has to stand for a sphere of this radius, centred on
+ * what it is looking at, to sit inside the frustum of a pane this shape. The
+ * narrower of the two half-angles is the one that has to hold it: a portrait
+ * pane is cut by its width, a landscape one by its height.
+ *
+ * This is the atlas insets' framing (`app/map-insets.ts`) and the frame a click
+ * on one eases the main camera to, so a region is framed by the same arithmetic
+ * whichever viewport it is drawn in.
+ */
+export function framedDistance(radius: number, aspect: number): number {
+  const halfHeight = (FIELD_OF_VIEW * Math.PI) / 360;
+  const halfWidth = Math.atan(Math.tan(halfHeight) * aspect);
+  return radius / (Math.sin(Math.min(halfHeight, halfWidth)) * FRAME_FILL);
+}
+
+/** The direction the country is seen from: `CONUS_VIEW`'s own, as a unit ray. */
+const TILT = ((): ScenePoint => {
+  const reach = distanceFromTarget(CONUS_VIEW.position);
+  return {
+    x: (CONUS_VIEW.position.x - CONUS_VIEW.target.x) / reach,
+    y: (CONUS_VIEW.position.y - CONUS_VIEW.target.y) / reach,
+    z: (CONUS_VIEW.position.z - CONUS_VIEW.target.z) / reach,
+  };
+})();
+
+/**
+ * Where a camera framing that sphere stands: back along the tilt the country is
+ * seen from, so an inset is the same view of a smaller place rather than a plan
+ * view in which every column is a coloured dot.
+ */
+export function framedPosition(target: ScenePoint, radius: number, aspect: number): ScenePoint {
+  const distance = framedDistance(radius, aspect);
+  return {
+    x: target.x + TILT.x * distance,
+    y: target.y + TILT.y * distance,
+    z: target.z + TILT.z * distance,
+  };
+}
+
+/**
+ * How long the main camera takes to reach the region an inset was clicked for:
+ * a move the eye can follow from one frame to the other, not a tour. A visitor
+ * who asked for less motion is put there instead — see `mountSkyline`.
+ */
+export const REGION_EASE_MS = 700;
+
+/**
  * Where the camera opens on a pane of this shape: the `CONUS_VIEW` tilt, moved
  * along its own ray until the country fits. The angle never changes with the
  * viewport — a phone and a laptop look at the country the same way, from
