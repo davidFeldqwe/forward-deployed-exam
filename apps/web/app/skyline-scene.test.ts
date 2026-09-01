@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import * as THREE from "three";
 
-import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
+import { CANDIDATE_LAMPS, type CandidateLamp, type ScoreVector } from "@repo/scoring";
 
 import { lampVariable } from "./lamp-hue.ts";
 import { CONUS_VIEW, type ScenePoint, introEase, openingPosition } from "./map-camera.ts";
@@ -43,12 +43,27 @@ const COLOURS: LampColours = {
   "No data": new THREE.Color("#616671"),
 };
 
+const VECTOR: ScoreVector = {
+  congestion: { percentile: 50, raw: 1, coverage: "present" },
+  unmetFlightDemand: { percentile: 50, raw: 1, coverage: "present" },
+  delay: { percentile: 50, raw: 1, coverage: "present" },
+  growth: { percentile: 50, raw: 1, coverage: "present" },
+};
+
+const MISSING_VECTOR: ScoreVector = {
+  congestion: { percentile: null, raw: null, coverage: "missing" },
+  unmetFlightDemand: { percentile: null, raw: null, coverage: "missing" },
+  delay: { percentile: null, raw: null, coverage: "missing" },
+  growth: { percentile: null, raw: null, coverage: "missing" },
+};
+
 function column(iata: string, lamp: CandidateLamp, composite: number, x: number): MapMark {
   return {
     iata,
     name: iata,
     lamp,
     composite,
+    scoreVector: VECTOR,
     shape: "column",
     height: columnHeight(composite),
     x,
@@ -57,7 +72,17 @@ function column(iata: string, lamp: CandidateLamp, composite: number, x: number)
 }
 
 function ring(iata: string, lamp: CandidateLamp, x: number): MapMark {
-  return { iata, name: iata, lamp, composite: null, shape: "ring", height: 0, x, z: -x };
+  return {
+    iata,
+    name: iata,
+    lamp,
+    composite: null,
+    scoreVector: MISSING_VECTOR,
+    shape: "ring",
+    height: 0,
+    x,
+    z: -x,
+  };
 }
 
 const SKYLINE: readonly MapMark[] = [
@@ -81,6 +106,7 @@ function located(
     name: iata,
     lamp,
     composite,
+    scoreVector: VECTOR,
     shape: "column",
     height: columnHeight(composite),
     ...groundPoint(at),

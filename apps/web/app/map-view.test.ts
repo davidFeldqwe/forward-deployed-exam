@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { scoreUniverse, type ScoredAirport } from "@repo/scoring";
 import { loadSnapshot } from "@repo/snapshot";
 
+import { inspectTooltip } from "./map-inspect.ts";
 import {
   COLUMN_RADIUS,
   MAX_COLUMN_HEIGHT,
@@ -144,6 +145,24 @@ test("every mark's numbers are the scored row's own, for the committed snapshot"
     assert.equal(drawn.composite, row.composite);
     assert.equal(drawn.lamp, row.candidateLamp);
     assert.equal(drawn.name, row.name);
+    assert.deepEqual(drawn.scoreVector, row.scoreVector);
     assert.equal(drawn.height, row.composite === null ? 0 : columnHeight(row.composite));
+  }
+});
+
+test("the inspect tooltip is the scored row's IATA, lamp, composite, and score vector", () => {
+  const rows = scoreUniverse(loadSnapshot());
+  const byIata = new Map(mapMarks(rows).map((drawn) => [drawn.iata, drawn]));
+
+  for (const row of rows) {
+    if (row.latitude === null) continue;
+    const drawn = byIata.get(row.iata);
+    assert.ok(drawn, row.iata);
+    assert.deepEqual(inspectTooltip(drawn), {
+      iata: row.iata,
+      lamp: row.candidateLamp,
+      composite: row.composite,
+      scoreVector: row.scoreVector,
+    });
   }
 });

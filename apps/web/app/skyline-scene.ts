@@ -35,6 +35,7 @@ import {
   introEase,
   openingPosition,
 } from "./map-camera.ts";
+import type { InspectIntent } from "./map-inspect.ts";
 import {
   INSET_REGIONS,
   type InsetKey,
@@ -48,6 +49,12 @@ import {
   layerAt,
   layerOfState,
 } from "./map-insets.ts";
+import {
+  iataLabels,
+  labelFade,
+  labelPoint,
+  type PlacedIataLabel,
+} from "./map-labels.ts";
 import { COLUMN_RADIUS, type MapMark } from "./map-view.ts";
 import type { PlacedOutline } from "./us-ground.ts";
 
@@ -69,6 +76,8 @@ export type SkylineInput = {
   marks: readonly MapMark[];
   outlines: readonly PlacedOutline[];
   reducedMotion: boolean;
+  onPointer?: (intent: InspectIntent) => void;
+  onLabels?: (labels: readonly PlacedIataLabel[]) => void;
 };
 
 /**
@@ -104,7 +113,11 @@ export function mountSkyline(
   // Every layer, so the main view is one country with Alaska and Hawaii on it
   // at their own coordinates; each inset camera sees only the region it frames.
   camera.layers.enableAll();
-  scene.add(...lights(), ...layered(input, palette));
+  const objects = layered(input, palette);
+  scene.add(...lights(), ...objects);
+  const columns = objects.filter(
+    (object): object is THREE.InstancedMesh => object instanceof THREE.InstancedMesh,
+  );
 
   const atlas = makeAtlas(hostSize(host));
 
@@ -184,7 +197,13 @@ export function mountSkyline(
     };
   };
 
-  const unwatchInsets = watchInsets(canvas, () => atlas.rects, easeToRegion);
+  const unwatchPointer = watchPointer(
+    canvas,
+    () => atlas.rects,
+    (at) => pickIata(at, columns, camera, atlas),
+    easeToRegion,
+    input.onPointer,
+  );
 
   const unfit = fitToHost(host, renderer, camera, (size) => {
     // A fit is a drawing buffer nothing has been drawn into yet — a pane of a
@@ -240,6 +259,7 @@ export function mountSkyline(
     }
     pending = false;
     drawViewports(renderer, scene, camera, atlas);
+    publishLabels(input, camera, controls, atlas);
   });
 
   return () => {
@@ -247,7 +267,7 @@ export function mountSkyline(
     unfit();
     controls.dispose();
     canvas.removeEventListener("webglcontextrestored", redraw);
-    unwatchInsets();
+    unwatchPointer();
     canvas.remove();
     disposeAll(scene);
     renderer.dispose();
@@ -358,8 +378,8 @@ function panedPoint(event: MouseEvent): { x: number; y: number } {
 }
 
 /**
- * Listens for a click on one of the boxes and hands back the region it was in.
- * Returns the teardown.
+ * Pointer on the pane: hover and tap name a column for inspect, and a click in
+ * an inset box flies the main camera there. Returns the teardown.
  *
  * A click is a pointer that went down and came up in the same place: a browser
  * reports one wherever a drag lets go, so an orbit that finished over the
@@ -367,10 +387,12 @@ function panedPoint(event: MouseEvent): { x: number; y: number } {
  * The boxes are read when the pointer arrives rather than held, because a
  * resize lays them out again under a pointer that has not moved.
  */
-function watchInsets(
+function watchPointer(
   canvas: HTMLCanvasElement,
   boxes: () => readonly InsetRect[],
-  onPick: (region: InsetRegion) => void,
+  pickIata: (at: { x: number; y: number }) => string | null,
+  onInset: (region: InsetRegion) => void,
+  onPointer: ((intent: InspectIntent) => void) | undefined,
 ): () => void {
   let pressedAt: { x: number; y: number } | null = null;
 
@@ -378,8 +400,23 @@ function watchInsets(
     pressedAt = panedPoint(event);
   };
   const onPointerMove = (event: PointerEvent): void => {
-    // The insets are the one thing on this canvas that answers a click.
-    canvas.style.cursor = insetAt(boxes(), panedPoint(event)) ? "pointer" : "";
+    const at = panedPoint(event);
+    const overInset = insetAt(boxes(), at);
+    if (overInset) {
+      canvas.style.cursor = "pointer";
+      if (event.buttons === 0) {
+        onPointer?.({ kind: "hover", iata: null });
+      }
+      return;
+    }
+    const overColumn = pickIata(at);
+    canvas.style.cursor = overColumn ? "pointer" : "";
+    // A drag is the orbit's: do not rewrite the inspect card under a finger
+    // that is turning the country.
+    if (event.buttons !== 0) {
+      return;
+    }
+    onPointer?.({ kind: "hover", iata: overColumn });
   };
   const onClick = (event: MouseEvent): void => {
     const at = panedPoint(event);
@@ -390,17 +427,136 @@ function watchInsets(
     }
     const hit = insetAt(boxes(), at);
     if (hit) {
-      onPick(hit.region);
+      onInset(hit.region);
+      return;
     }
+    onPointer?.({ kind: "tap", iata: pickIata(at) });
   };
 
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("click", onClick);
+  const onPointerLeave = (): void => {
+    onPointer?.({ kind: "hover", iata: null });
+    canvas.style.cursor = "";
+  };
+  canvas.addEventListener("pointerleave", onPointerLeave);
   return () => {
     canvas.removeEventListener("pointerdown", onPointerDown);
     canvas.removeEventListener("pointermove", onPointerMove);
     canvas.removeEventListener("click", onClick);
+    canvas.removeEventListener("pointerleave", onPointerLeave);
+  };
+}
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const projected = new THREE.Vector3();
+const frustumPoint = new THREE.Vector3();
+const frustum = new THREE.Frustum();
+const frustumMatrix = new THREE.Matrix4();
+/** Which scored rows one instanced mesh stands in for, keyed by the mesh itself. */
+const INSTANCED_MEMBERS = new WeakMap<THREE.InstancedMesh, readonly MapMark[]>();
+
+function pickIata(
+  at: { x: number; y: number },
+  columns: readonly THREE.InstancedMesh[],
+  main: THREE.PerspectiveCamera,
+  atlas: Atlas,
+): string | null {
+  const { width, height } = atlas.pane;
+  if (width < 1 || height < 1) {
+    return null;
+  }
+  ndc.set((at.x / width) * 2 - 1, -(at.y / height) * 2 + 1);
+  raycaster.setFromCamera(ndc, main);
+  raycaster.layers.mask = main.layers.mask;
+  const hit = raycaster.intersectObjects([...columns], false)[0];
+  if (!hit || !(hit.object instanceof THREE.InstancedMesh)) {
+    return null;
+  }
+  return INSTANCED_MEMBERS.get(hit.object)?.[hit.instanceId ?? 0]?.iata ?? null;
+}
+
+function publishLabels(
+  input: SkylineInput,
+  camera: THREE.PerspectiveCamera,
+  controls: OrbitControls,
+  atlas: Atlas,
+): void {
+  if (!input.onLabels) {
+    return;
+  }
+  const byLayer = new Map<number, MapMark[]>();
+  for (const mark of input.marks) {
+    const layer = layerAt(mark);
+    const group = byLayer.get(layer);
+    if (group) {
+      group.push(mark);
+    } else {
+      byLayer.set(layer, [mark]);
+    }
+  }
+  const pane = { x: 0, y: 0, width: atlas.pane.width, height: atlas.pane.height };
+  const placed: PlacedIataLabel[] = labelsInView(
+    byLayer.get(MAIN_LAYER) ?? [],
+    camera,
+    pane,
+    camera.position.distanceTo(controls.target),
+  );
+  for (const rect of atlas.rects) {
+    const insetCamera = atlas.cameras[rect.region.key];
+    const { target } = insetFrame(rect.region, insetCamera.aspect);
+    placed.push(
+      ...labelsInView(
+        byLayer.get(rect.region.layer) ?? [],
+        insetCamera,
+        rect,
+        insetCamera.position.distanceTo(vector(target)),
+      ),
+    );
+  }
+  input.onLabels(placed);
+}
+
+function labelsInView(
+  marks: readonly MapMark[],
+  camera: THREE.PerspectiveCamera,
+  viewport: { x: number; y: number; width: number; height: number },
+  distance: number,
+): PlacedIataLabel[] {
+  const fade = labelFade(distance);
+  if (fade <= 0) {
+    return [];
+  }
+  frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  frustum.setFromProjectionMatrix(frustumMatrix);
+  const placed: PlacedIataLabel[] = [];
+  for (const mark of iataLabels(marks, {
+    distance,
+    camera: camera.position,
+    inFrustum: (point) => frustum.containsPoint(frustumPoint.set(point.x, point.y, point.z)),
+  })) {
+    const at = projectToPane(camera, labelPoint(mark), viewport);
+    if (at) {
+      placed.push({ iata: mark.iata, x: at.x, y: at.y, fade });
+    }
+  }
+  return placed;
+}
+
+function projectToPane(
+  camera: THREE.PerspectiveCamera,
+  point: { x: number; y: number; z: number },
+  viewport: { x: number; y: number; width: number; height: number },
+): { x: number; y: number } | null {
+  projected.set(point.x, point.y, point.z).project(camera);
+  if (projected.x < -1 || projected.x > 1 || projected.y < -1 || projected.y > 1) {
+    return null;
+  }
+  return {
+    x: viewport.x + (projected.x * 0.5 + 0.5) * viewport.width,
+    y: viewport.y + (-projected.y * 0.5 + 0.5) * viewport.height,
   };
 }
 
@@ -581,6 +737,7 @@ export function markMeshes(
       placement.setPosition(mark.x, groundOffset, mark.z);
       mesh.setMatrixAt(index, placement);
     });
+    INSTANCED_MEMBERS.set(mesh, members);
     return mesh;
   });
 }

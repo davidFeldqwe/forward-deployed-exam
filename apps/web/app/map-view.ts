@@ -8,8 +8,10 @@
  * Two encodings and no more: height is the composite, linearly, and hue is the
  * lamp (`app/lamp-hue.ts`, the same map the ranking table draws from). Radius
  * is the constant below, so FAA hub size is not smuggled in as a third one.
+ * The inspect tooltip (issue #71) copies IATA, lamp, composite, and the score
+ * vector off this mark — it does not invent a second card of numbers.
  */
-import type { CandidateLamp, ScoredAirport } from "@repo/scoring";
+import type { CandidateLamp, ScoredAirport, ScoreVector } from "@repo/scoring";
 
 /** World height of a composite of 100. Every other column is a fraction of it. */
 export const MAX_COLUMN_HEIGHT = 3.2;
@@ -34,6 +36,8 @@ export type MapMark = {
   lamp: CandidateLamp;
   /** The screen's number, or null where it withheld one. */
   composite: number | null;
+  /** The four-number vector the inspect tooltip prints, copied from the row. */
+  scoreVector: ScoreVector;
   /**
    * A column for a row with a composite, a flat ring for one without. The two
    * are different shapes rather than a tall column and a short one: a missing
@@ -90,6 +94,7 @@ function markOf(row: LocatedAirport): MapMark {
     name: row.name,
     lamp: row.candidateLamp,
     composite,
+    scoreVector: row.scoreVector,
     shape: composite === null ? "ring" : "column",
     height: composite === null ? 0 : columnHeight(composite),
     ...groundPoint(row),
