@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 
 import {
   type CredentialErrors,
-  authenticate,
-  createAccount,
+  attemptLogin,
 } from "@/app/auth-accounts";
 import { LOGIN_PATH, postLoginPath } from "@/app/auth-gate";
 import { endSession, startSession } from "@/app/auth-session";
@@ -22,10 +21,11 @@ export async function submitLogin(
 ): Promise<LoginState> {
   const email = textField(formData, "email");
   const password = textField(formData, "password");
-  const result =
-    textField(formData, "mode") === "signUp"
-      ? createAccount(email, password)
-      : authenticate(email, password);
+  const result = attemptLogin(
+    textField(formData, "mode") === "signUp" ? "signUp" : "signIn",
+    email,
+    password,
+  );
 
   if (!result.ok) {
     return { email, errors: result.errors };

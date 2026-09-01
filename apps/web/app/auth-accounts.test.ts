@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   type AccountResult,
   type CredentialErrors,
   MIN_PASSWORD_LENGTH,
+  attemptLogin,
   authenticate,
   createAccount,
   hashPassword,
@@ -125,4 +131,55 @@ test("credential rules apply before an account is created", () => {
   assert.ok(errors.email);
   assert.ok(errors.password);
   assert.equal(authenticate("not-an-email", "short").ok, false);
+});
+
+test("returning Sign in accepts the Create-account password from a later process", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aii-auth-return-"));
+  const authModule = JSON.stringify(fileURLToPath(new URL("./auth-accounts.ts", import.meta.url)));
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+
+  function run(source: string): string {
+    const result = spawnSync(
+      process.execPath,
+      ["--experimental-strip-types", "--input-type=module", "--eval", source],
+      { cwd, env, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
+    return result.stdout;
+  }
+
+  run(`
+    const { createAccount } = await import(${authModule});
+    const created = createAccount("returning-sign-in@example.com", "correct horse battery");
+    if (!created.ok) throw new Error(JSON.stringify(created));
+  `);
+  const signedIn = run(`
+    const { authenticate } = await import(${authModule});
+    const result = authenticate("returning-sign-in@example.com", "correct horse battery");
+    if (!result.ok) throw new Error("sign-in refused the create-account password: " + JSON.stringify(result));
+    console.log(result.email);
+  `);
+  assert.equal(signedIn.trim(), "returning-sign-in@example.com");
+
+  const wrong = run(`
+    const { authenticate } = await import(${authModule});
+    const result = authenticate("returning-sign-in@example.com", "guess password");
+    console.log(result.ok ? "accepted" : result.errors.email);
+  `);
+  assert.match(wrong, /Email or password is incorrect/);
+});
+
+test("Create account then Sign in is one pair: the form mode does not change the password", () => {
+  const email = "same-pair@example.com";
+  const password = "correct horse battery";
+
+  assert.deepEqual(attemptLogin("signUp", email, password), { ok: true, email });
+  assert.deepEqual(attemptLogin("signIn", email, password), { ok: true, email });
+  assert.equal(attemptLogin("signIn", email, "sign-in password").ok, false);
+  assert.deepEqual(attemptLogin("signIn", email, password), { ok: true, email });
+
+  const duplicate = refusedErrors(attemptLogin("signUp", email, "a different password"));
+  assert.match(String(duplicate.email), /already/i);
+  assert.deepEqual(attemptLogin("signIn", email, password), { ok: true, email });
 });
