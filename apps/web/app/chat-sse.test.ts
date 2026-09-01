@@ -273,7 +273,7 @@ test("the route is an authenticated POST SSE and does not import a vendor SDK", 
   assert.doesNotMatch(helper, /ranking-view|thread-answer|candidateLamp|WITHHELD_COMPOSITE/);
 });
 
-test("composer and pending follow SSE in flight through useFormStatus", () => {
+test("composer and pending follow the SSE ask until the stream ends", () => {
   const chat = source("../components/Chat.tsx");
   const form = chat.search(/<form[\s\S]*?action=\{askOnChatSse\}/);
   const pending = chat.indexOf("<PendingAnswer");
@@ -282,9 +282,30 @@ test("composer and pending follow SSE in flight through useFormStatus", () => {
   assert.ok(form > 0, "the form posts through the SSE ask");
   assert.ok(pending > form, "the pending answer is inside that form");
   assert.ok(composer > pending, "the pending row sits above the composer");
-  assert.match(chat, /CHAT_SSE_PATH|askOnChatSse/);
-  assert.match(source("../components/answers/PendingAnswer.tsx"), /useFormStatus/);
-  assert.match(chat, /useFormStatus/);
+  assert.match(chat, /askOnChatSse/);
+  assert.doesNotMatch(chat, /askQuestion|thread-actions/);
   assert.match(source("./chat-ask.ts"), /fetch\(CHAT_SSE_PATH/);
+  assert.match(source("./chat-ask.ts"), /threadIdFromSse/);
   assert.doesNotMatch(chat, /EventSource|text\/event-stream/);
+});
+
+test("PRD Implementation Decisions and HTTP name the shipped SSE shell", () => {
+  const prd = readFileSync(new URL("../../../PRD.md", import.meta.url), "utf8");
+  const stack = prd.slice(prd.indexOf("### Stack"), prd.indexOf("### Surfaces"));
+  const http = prd.slice(prd.indexOf("### HTTP"), prd.indexOf("### Chat UI"));
+
+  assert.match(stack, /streamText/);
+  assert.match(stack, /route handler/);
+  assert.match(http, /POST/);
+  assert.match(http, /\/api\/chat/);
+  assert.match(http, /SSE/);
+  assert.match(http, /streamText/);
+  assert.doesNotMatch(http, /generateText|askQuestion|server action/i);
+});
+
+test("the generateText server-action ask path is gone", () => {
+  assert.equal(existsSync(new URL("./thread-actions.ts", import.meta.url)), false);
+  const chat = source("../components/Chat.tsx");
+  assert.doesNotMatch(chat, /askQuestion/);
+  assert.doesNotMatch(source("./chat-ask.ts"), /askQuestion|generateText|runAgentModel/);
 });

@@ -186,7 +186,7 @@ Follow-up: full message list in the **Thread**, including prior tool results. A 
 
 ### HTTP
 
-- `POST` chat SSE for the signed-in agent.
+- `POST /api/chat` SSE for the signed-in agent. `streamText` runs in the one LLM module the route handler calls.
 - LLM-free, curlable: rank, one airport by IATA, compare two IATAs. These call the same scoring functions the tools call. Equivalence test: HTTP body equals the module output for a pinned query.
 
 ### Chat UI states the build must name

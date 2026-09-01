@@ -6,7 +6,7 @@
  */
 import {
   NoProviderError,
-  runAgentModel,
+  streamAgentModel,
   type AgentRequest,
   type ModelAnswer,
 } from "./agent-model.ts";
@@ -84,7 +84,7 @@ export const AGENT_ERROR_ANSWER =
  */
 export async function answerQuestion(
   messages: readonly ThreadMessage[],
-  run: AgentRunner = runAgentModel,
+  run: AgentRunner = streamAgentModel,
 ): Promise<ThreadMessage> {
   try {
     const answer = await run({

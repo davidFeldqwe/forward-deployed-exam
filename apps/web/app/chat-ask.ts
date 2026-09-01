@@ -11,8 +11,7 @@ import { textField } from "@/app/form-fields";
 
 /**
  * Composer submit: POST the same form to the chat SSE route and wait until the
- * stream ends. `useFormStatus` is pending for that whole wait — the pending row
- * and held Send have no second signal.
+ * stream ends. The pending row and held Send follow that in-flight wait.
  */
 export async function askOnChatSse(formData: FormData): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));

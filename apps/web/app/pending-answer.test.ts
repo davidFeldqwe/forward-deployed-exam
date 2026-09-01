@@ -58,10 +58,11 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   const pending = chat.indexOf("<PendingAnswer");
   const composer = chat.indexOf("<Composer");
 
-  // `useFormStatus` only reports on an ancestor form, so the pending answer and
-  // the composer that submits it are inside the one form.
-  assert.ok(form > 0 && pending > form, "the pending answer is inside the composer's form");
+  // Pending is the SSE in-flight turn: it sits in the same form that posts to
+  // `/api/chat`, above the composer, until that stream ends.
+  assert.ok(form > 0 && pending > form, "the pending answer is inside the composer's SSE form");
   assert.ok(composer > pending, "the transcript's pending row is drawn above the composer");
+  assert.match(chat, /askOnChatSse/);
 });
 
 // Criterion 5's other half: "the in-flight question is a user turn, not part of

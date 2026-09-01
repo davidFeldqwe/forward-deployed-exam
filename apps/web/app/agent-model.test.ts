@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { readFileSync } from "node:fs";
+
 import {
   generateCompletion,
-  generateModelAnswer,
   streamModelAnswer,
   type AgentLanguageModel,
   type AgentRequest,
@@ -174,14 +175,24 @@ test("a stream observer sees complete tool payloads, then prose deltas, never a 
   assert.equal(seen.indexOf("tool") < seen.indexOf("text"), true);
 });
 
-test("what the stream stores is what generateText stores", async () => {
+test("what the stream stores is one assistant message the thread can parse", async () => {
   const streamed = await streamModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST);
-  const generated = await generateModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST);
 
-  assert.deepEqual(stored(streamed), stored(generated));
+  assert.equal(streamed.text, PROSE);
   // The thread holds one assistant message, and the store parses what it wrote.
   const message = assistantMessage(streamed.text, streamed.toolCalls);
   assert.deepEqual(parseThreadMessage(JSON.parse(JSON.stringify(message))), message);
+});
+
+test("generateText does not run the signed-in ask; streamText does", () => {
+  const llm = readFileSync(new URL("./agent-model.ts", import.meta.url), "utf8");
+
+  assert.match(llm, /\bstreamText\b/);
+  assert.match(llm, /\bstreamAgentModel\b/);
+  assert.doesNotMatch(llm, /\brunAgentModel\b|\bgenerateModelAnswer\b/);
+  assert.doesNotMatch(llm, /generateText\s*\(\s*modelCall/);
+  // A one-shot composer continuation may still call generateText; the tool loop
+  // must not. If generateText comes back as the ask runner, this fails.
 });
 
 test("the streamed loop stops at the step cap, however long the model keeps calling", async () => {

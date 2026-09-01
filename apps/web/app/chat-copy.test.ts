@@ -8,7 +8,6 @@ import { siteHeaderCopy } from "./site-header.ts";
 
 const chatChrome = readFileSync(new URL("../components/Chat.tsx", import.meta.url), "utf8");
 const composerChrome = readFileSync(new URL("../components/Composer.tsx", import.meta.url), "utf8");
-const askQuestionAction = readFileSync(new URL("./thread-actions.ts", import.meta.url), "utf8");
 const askOnChatSse = readFileSync(new URL("./chat-ask.ts", import.meta.url), "utf8");
 
 function visibleText(value: unknown): string {
@@ -115,8 +114,6 @@ test("header and composer stay on screen; the transcript is the region that shri
 });
 
 test("empty submit without JavaScript does not create a user turn", () => {
-  assert.match(askQuestionAction, /carriedPrompt/);
-  assert.match(askQuestionAction, /if \(!question\) \{\s*return;/);
   assert.match(askOnChatSse, /carriedPrompt/);
   assert.match(askOnChatSse, /if \(!question\) \{\s*return;/);
   assert.match(askOnChatSse, /fetch\(CHAT_SSE_PATH/);
