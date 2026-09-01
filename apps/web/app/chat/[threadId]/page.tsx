@@ -19,7 +19,7 @@ export default async function ThreadPage({
 
   const thread = readThread(session.email, threadId);
   if (!thread) {
-    // Someone else's thread, or one this process no longer holds.
+    // Someone else's thread, or one Convex no longer has.
     redirect(CHAT_PATH);
   }
 

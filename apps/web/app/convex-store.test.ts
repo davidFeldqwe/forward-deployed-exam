@@ -1,0 +1,117 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import {
+  accountExists,
+  authenticate,
+  createAccount,
+  sessionIfAccountLive,
+} from "./auth-accounts.ts";
+import { signSessionToken } from "./auth-token.ts";
+import {
+  CONVEX_TABLES,
+  convexDocuments,
+  convexThreadMap,
+  persistConvexStore,
+  reloadConvexStore,
+} from "./convex-store.ts";
+import { assistantMessage, userMessage } from "./thread-messages.ts";
+import { appendMessage, askOnThread, listThreads, readThread, startThread } from "./thread-store.ts";
+
+const NEW_ENGLAND = "Which airports in New England are renovation-investment candidates?";
+
+const methodology = {
+  tool: "describeMethodology" as const,
+  args: {},
+  result: { weights: { congestion: 35, unmetFlightDemand: 35, delay: 20, growth: 10 } },
+  durationMs: 4,
+};
+
+test("a Thread and its stored tool payloads survive a process restart", () => {
+  const analyst = "restart-thread@example.com";
+  const opened = startThread(analyst, NEW_ENGLAND)!;
+  appendMessage(analyst, opened.id, assistantMessage("Weights are fixed.", [methodology]));
+
+  reloadConvexStore();
+
+  const reread = readThread(analyst, opened.id);
+  assert.equal(reread?.title, NEW_ENGLAND);
+  assert.deepEqual(reread?.messages, [
+    userMessage(NEW_ENGLAND),
+    assistantMessage("Weights are fixed.", [methodology]),
+  ]);
+});
+
+test("an account survives a restart, and a signed-in cookie still maps to it", () => {
+  const analyst = "restart-account@example.com";
+  const password = "correct horse battery";
+  assert.deepEqual(createAccount(analyst, password), { ok: true, email: analyst });
+  const token = signSessionToken(analyst, "restart-secret");
+
+  reloadConvexStore();
+
+  assert.deepEqual(authenticate(analyst, password), { ok: true, email: analyst });
+  assert.equal(accountExists(analyst), true);
+  assert.deepEqual(sessionIfAccountLive(token, "restart-secret"), { email: analyst });
+});
+
+test("Convex documents are accounts and threads only: never airports or scores", () => {
+  const analyst = "convex-scope@example.com";
+  startThread(analyst, NEW_ENGLAND);
+
+  const tables = Object.keys(convexDocuments()).toSorted();
+  assert.deepEqual(tables, [...CONVEX_TABLES].toSorted());
+  assert.equal(tables.includes("airports"), false);
+  assert.equal(tables.includes("scores"), false);
+  assert.equal(tables.includes("snapshot"), false);
+});
+
+test("a persist drops airports and scores even if a caller stuck them on the store", () => {
+  const docs = convexDocuments() as Record<string, unknown>;
+  docs.airports = [{ iata: "BOS" }];
+  docs.scores = { BOS: 79 };
+  docs.snapshot = { asOf: "never" };
+
+  const opened = startThread("smuggle@example.com", NEW_ENGLAND)!;
+  const thread = convexThreadMap()[opened.id] as Record<string, unknown>;
+  thread.airports = [{ iata: "BOS", composite: 79 }];
+  persistConvexStore();
+  reloadConvexStore();
+
+  assert.deepEqual(Object.keys(convexDocuments()).toSorted(), [...CONVEX_TABLES].toSorted());
+  assert.equal("airports" in (convexThreadMap()[opened.id] ?? {}), false);
+  assert.equal(readThread("smuggle@example.com", opened.id)?.title, NEW_ENGLAND);
+});
+
+test("an SSE ask still stores one assistant message per question on the Convex Thread after a restart", async () => {
+  const analyst = "sse-restart@example.com";
+  const thread = await askOnThread(analyst, null, NEW_ENGLAND, async () =>
+    assistantMessage("Weights are fixed.", [methodology]),
+  );
+
+  reloadConvexStore();
+
+  const reread = readThread(analyst, thread!.id);
+  assert.deepEqual(
+    reread?.messages.map((message) => message.role),
+    ["user", "assistant"],
+  );
+  assert.equal(reread?.messages.filter((message) => message.role === "assistant").length, 1);
+  assert.deepEqual(reread?.messages.at(-1)?.toolCalls, [
+    assistantMessage("Weights are fixed.", [methodology]).toolCalls[0],
+  ]);
+});
+
+test("recents order survives a restart: the thread last spoken in stays first", () => {
+  const analyst = "recents-restart@example.com";
+  const first = startThread(analyst, NEW_ENGLAND)!;
+  const second = startThread(analyst, "How much unmet flight demand is there at SFO?")!;
+  appendMessage(analyst, first.id, assistantMessage("BOS leads at composite 79."));
+
+  reloadConvexStore();
+
+  assert.deepEqual(
+    listThreads(analyst).map((summary) => summary.id),
+    [first.id, second.id],
+  );
+});

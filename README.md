@@ -59,6 +59,8 @@ transcript.
 | `AUTOCOMPLETE_MODEL` | optional cheaper model for the composer ghost; same API key family as chat. |
 | `MOCK_LLM` | set to `1` for a canned New England composer ghost. CI leaves this unset and has no paid key. |
 | `AUTH_SECRET` | signs the session cookie. Required when `NODE_ENV` is `production`; development falls back to a dev-only secret. |
+| `CONVEX_URL` | the Convex deployment that holds Auth and Threads. Unset, those two tables live in `.convex/` so a process restart still keeps them. Scoring never reads it. |
+| `CONVEX_DEPLOY_KEY` | deploys that Convex project. Airports and scores stay files either way. |
 
 The root `.env.example` is that table with empty values. Copy it to
 `apps/web/.env.local` — that is where Next loads it from, and `.gitignore`
@@ -69,10 +71,10 @@ Those two key names are the only LLM credentials this repo reads
 an API key and nothing here looks for one — paste a vendor API key or leave both
 unset.
 
-Convex is scoped to Auth and Threads and is not provisioned yet: Threads live in
-the server process, so they survive a refresh but not a restart, and there is no
-Convex deployment to configure. The variables above are the whole list; when the
-deployment lands its own URL and deploy key join this table.
+Convex stores **Auth and Threads only** (`apps/web/app/convex-store.ts`). A live
+`CONVEX_URL` names the hosted project; without one, the same two documents are
+the on-disk file so accounts and Threads survive `pnpm dev` restart. Snapshot,
+scoring, and every number stay in `packages/`.
 
 ## A clone is offline
 

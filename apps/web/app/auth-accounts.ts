@@ -1,5 +1,8 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
+import { readSessionToken, type Session } from "./auth-token.ts";
+import { convexAccountMap, putAccount } from "./convex-store.ts";
+
 /** Open signup: long enough to be a password, no composition theatre. */
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -17,12 +20,10 @@ export type AccountResult =
   | { ok: false; errors: CredentialErrors };
 
 /**
- * The identity store seam. Convex Auth owns accounts once a deployment exists
- * (PRD: Convex stores auth and Threads only); until then this process holds
- * them, so accounts do not survive a server restart.
+ * The identity store seam. Convex holds accounts (PRD: Auth and Threads only).
+ * Password hashes live in that document store, so a signed-in cookie still
+ * maps to a live account after a process restart.
  */
-const passwordHashByEmail = new Map<string, string>();
-
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -72,15 +73,35 @@ export function createAccount(email: string, password: string): AccountResult {
   }
 
   const normalized = normalizeEmail(email);
-  if (passwordHashByEmail.has(normalized)) {
+  if (Object.hasOwn(convexAccountMap(), normalized)) {
     return {
       ok: false,
       errors: { email: "That email already has an account. Sign in instead." },
     };
   }
 
-  passwordHashByEmail.set(normalized, hashPassword(password));
+  putAccount({ email: normalized, passwordHash: hashPassword(password) });
   return { ok: true, email: normalized };
+}
+
+/** Whether this email is an account the cookie can still map to. */
+export function accountExists(email: string): boolean {
+  return Object.hasOwn(convexAccountMap(), normalizeEmail(email));
+}
+
+/**
+ * A session cookie is live only while the account it names still exists. A
+ * restart that dropped in-process Maps used to leave a valid HMAC pointing at
+ * nobody; Convex keeps the account, and this check refuses a cookie for one
+ * that is gone.
+ */
+export function sessionIfAccountLive(
+  token: string,
+  secret: string,
+  now: number = Date.now(),
+): Session | null {
+  const session = readSessionToken(token, secret, now);
+  return session && accountExists(session.email) ? session : null;
 }
 
 /**
@@ -92,7 +113,7 @@ const NO_ACCOUNT_HASH = hashPassword(randomBytes(32).toString("hex"));
 
 export function authenticate(email: string, password: string): AccountResult {
   const normalized = normalizeEmail(email);
-  const stored = passwordHashByEmail.get(normalized);
+  const stored = convexAccountMap()[normalized]?.passwordHash;
   const matches = verifyPassword(password, stored ?? NO_ACCOUNT_HASH);
   // One message for both cases, so sign-in does not enumerate accounts.
   if (!stored || !matches) {

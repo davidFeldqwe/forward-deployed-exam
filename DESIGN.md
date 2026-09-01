@@ -133,9 +133,9 @@ Three things keep that boundary checkable rather than merely claimed:
 - The vendor SDK is imported in exactly one module, `apps/web/app/agent-model.ts`.
   `apps/web/app/agent-boundary.test.ts` fails the build if a second module
   imports one, so the whole LLM edge is one file a reviewer can read.
-- A tool payload is stored with the message and re-rendered on refresh, so the
-  numbers in an old thread are the numbers the tool returned, not prose a model
-  re-typed.
+- A tool payload is stored with the message and re-rendered after a refresh or a
+  process restart, so the numbers in an old thread are the numbers the tool
+  returned, not prose a model re-typed.
 
 Provider choice is `ANTHROPIC_API_KEY` first, then `OPENAI_API_KEY` (see
 `README.md`); tool steps are capped at eight. With neither key the app stores the
@@ -165,6 +165,14 @@ numbers still come from that stored payload, never from a streamed sentence.
 Spend cap and one-in-flight-ask are the same `askOnThread` seam the composer
 used to post through. The route imports no vendor SDK; `streamText` stays in
 `apps/web/app/agent-model.ts`. CI has no paid key: tests inject a runner.
+
+**Auth and Threads, Convex only.** Accounts and Threads are the two Convex
+tables (`apps/web/app/convex-store.ts`). Email + password, open signup; a session
+cookie maps to an account that still exists after a process restart. A Thread
+stores user text, assistant text, and the tool payloads the answer objects
+re-render from — one assistant message per SSE ask. Airports, scores, and the
+snapshot stay files. `CONVEX_URL` / `CONVEX_DEPLOY_KEY` name a hosted project
+when one exists; without them the same two documents live in `.convex/`.
 
 **LLM-free rank HTTP** is the curlable half of the same screen. `GET /api/rank`,
 `GET /api/airports/{iata}`, and `GET /api/compare/{left}/{right}` call
@@ -219,9 +227,3 @@ Two more that are true of the screen rather than the sources:
 - **Congestion is a proxy.** Enplanements per open runway is airside pressure
   standing in for terminal pressure. An airport with runways to spare and a full
   terminal is under-scored by this screen, and no free field would fix it.
-
-What the build has not landed yet:
-
-- **Convex** is not provisioned. Auth and Threads are in-process, so a thread
-  survives a refresh but not a restart. Airports and scores stay in files
-  whatever happens to Convex.
