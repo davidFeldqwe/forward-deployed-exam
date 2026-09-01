@@ -72,7 +72,7 @@ test("the composer's form is what the pending answer is drawn inside", () => {
 // set in, so Send does not change the shape of what is already on screen.
 test("the question in flight is a user turn above the pending answer, not inside it", () => {
   const pending = source(THE_PENDING_TURN);
-  const asked = pending.indexOf('<RoleLabel role="user" />');
+  const asked = pending.indexOf("<UserTurn");
   const answering = pending.indexOf('<RoleLabel role="assistant" />');
   const list = pending.indexOf("<ThreadAnswer");
 
@@ -81,7 +81,7 @@ test("the question in flight is a user turn above the pending answer, not inside
   assert.ok(answering < list, "which is what the pending list is drawn under");
   // The words under the user label are the question Send just accepted, not
   // leftover composer text.
-  assert.match(pending.slice(asked, answering), /<Prose text=\{asked\}/);
+  assert.match(pending.slice(asked, answering), /<UserTurn text=\{asked\}/);
   // Both sides of the same chrome: a question in flight is set like the same
   // question once it has landed in the transcript, so both files draw the turn
   // out of `Turn.tsx` rather than one of them writing its own.
@@ -92,7 +92,7 @@ test("the question in flight is a user turn above the pending answer, not inside
         ?.split(",")
         .map((name) => name.trim())
         .sort(),
-      ["Prose", "RoleLabel"],
+      ["RoleLabel", "UserTurn"],
       file,
     );
   }

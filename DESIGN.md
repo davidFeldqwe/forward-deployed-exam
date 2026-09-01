@@ -157,6 +157,8 @@ a paid model for a ghost.
 
 **Signed-in chat SSE.** `POST /api/chat` is the agent. A session is required;
 signed-out POSTs go to `/login`. The question is stored before the vendor call.
+User questions — landed and the in-flight pending turn — are a right-aligned
+muted grey pill (`--raised`); agent answers stay left, un-pilled, and full width.
 While the model runs, the transcript shows the pending row (no composite, no
 candidate lamp, no withheld-composite mark). Inspectable `queryAirports` /
 `describeMethodology` rows may appear as those tools finish, and model prose
