@@ -1,11 +1,12 @@
+import { Fragment } from "react";
 import Link from "next/link";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, GitBranchIcon } from "lucide-react";
 
 import { chatPathWithPrompt } from "@/app/auth-gate";
 import { landingCopy } from "@/app/landing-copy";
+import { stackMarks } from "@/app/stack-marks";
 import { PromptChips } from "@/components/PromptChips";
 import { SiteHeader } from "@/components/SiteHeader";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,7 +50,7 @@ export function Landing() {
             {hero.actions.map((action) => (
               <Button
                 key={action.href}
-                size="sm"
+                size="lg"
                 nativeButton={false}
                 render={<Link href={action.href} />}
               >
@@ -100,16 +101,30 @@ export function Landing() {
         </section>
 
         <section
-          className="mx-auto mb-12 flex w-full max-w-[720px] flex-nowrap items-baseline gap-x-[18px] gap-y-2.5 overflow-x-auto px-6 text-xs text-muted-foreground"
+          className="mx-auto mb-12 w-full max-w-[720px] px-6"
           aria-label="Built on"
         >
-          <span className="tracking-[0.08em] uppercase">Built on</span>
-          <ul className="flex list-none flex-nowrap gap-x-4 gap-y-2 p-0 text-body">
-            {builtOn.map((item) => (
-              <li key={item}>
-                <Badge variant="outline">{item}</Badge>
-              </li>
-            ))}
+          <p className="mb-3.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            Built on
+          </p>
+          <ul className="flex list-none flex-nowrap items-stretch gap-3 overflow-x-auto p-0">
+            {builtOn.map((item) => {
+              const mark = stackMarks[item];
+              return (
+                <li key={item} className="shrink-0">
+                  <span className="flex items-center gap-2.5 rounded-lg border bg-card px-3.5 py-2.5 text-sm text-foreground">
+                    <svg
+                      viewBox={mark.viewBox}
+                      aria-hidden="true"
+                      className="size-5 shrink-0"
+                    >
+                      <path fill="currentColor" d={mark.path} />
+                    </svg>
+                    {item}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
 
@@ -141,17 +156,18 @@ export function Landing() {
           </h2>
           <ol className="flex list-none flex-nowrap items-stretch overflow-x-auto p-0">
             {howItWorks.steps.map((step, index) => (
-              <li key={step} className="flex min-w-0 flex-1 items-center">
-                <div className="min-w-0 flex-1 rounded-lg border bg-card px-2.5 py-3 text-xs leading-snug text-foreground">
-                  {step}
-                </div>
-                {index < howItWorks.steps.length - 1 ? (
-                  <ArrowRightIcon
-                    aria-hidden="true"
-                    className="mx-1.5 size-3 shrink-0 text-muted-foreground"
-                  />
+              <Fragment key={step}>
+                {index > 0 ? (
+                  <li aria-hidden="true" className="flex shrink-0 items-center">
+                    <ArrowRightIcon className="mx-1.5 size-3 text-muted-foreground" />
+                  </li>
                 ) : null}
-              </li>
+                <li className="flex min-h-[4.75rem] min-w-[7.5rem] flex-1 basis-0">
+                  <div className="flex h-full w-full items-center justify-center rounded-lg border bg-card px-2.5 py-3 text-center text-xs leading-snug text-foreground">
+                    {step}
+                  </div>
+                </li>
+              </Fragment>
             ))}
           </ol>
           <p className="mt-3.5 text-[13px] leading-snug text-muted-foreground">
@@ -164,8 +180,17 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="px-6 pt-5 pb-7 text-center text-[13px]">
-        <a href={footer.githubHref}>{footer.githubLabel}</a>
+      <footer className="flex justify-center px-6 pt-5 pb-7">
+        <Button
+          variant="ghost"
+          size="sm"
+          nativeButton={false}
+          className="text-muted-foreground"
+          render={<a href={footer.githubHref} target="_blank" rel="noreferrer" />}
+        >
+          <GitBranchIcon aria-hidden="true" />
+          {footer.githubLabel}
+        </Button>
       </footer>
     </div>
   );
