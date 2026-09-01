@@ -122,16 +122,28 @@ export function convexThreadMap(): Record<string, ConvexThread> {
   return convexDocuments().threads;
 }
 
-export function putAccount(account: ConvexAccount): void {
+export async function getAccount(email: string): Promise<ConvexAccount | null> {
+  return convexAccountMap()[email] ?? null;
+}
+
+export async function putAccount(account: ConvexAccount): Promise<void> {
   convexAccountMap()[account.email] = accountDocument(account);
   persistConvexStore();
+}
+
+export async function getThread(
+  threadId: string,
+  ownerEmail: string,
+): Promise<ConvexThread | null> {
+  const thread = convexThreadMap()[threadId];
+  return thread && thread.ownerEmail === ownerEmail ? thread : null;
 }
 
 /**
  * Inserts the Thread last so recents order is object insertion order (last
  * spoken in last, first after reverse). Extra keys on the argument are dropped.
  */
-export function putThread(thread: ConvexThread): ConvexThread {
+export async function putThread(thread: ConvexThread): Promise<ConvexThread> {
   const threads = convexThreadMap();
   delete threads[thread.id];
   const stored = threadDocument({
@@ -141,6 +153,12 @@ export function putThread(thread: ConvexThread): ConvexThread {
   threads[thread.id] = stored;
   persistConvexStore();
   return stored;
+}
+
+export async function listThreadsByOwner(ownerEmail: string): Promise<ConvexThread[]> {
+  return Object.values(convexThreadMap())
+    .filter((thread) => thread.ownerEmail === ownerEmail)
+    .reverse();
 }
 
 /**
