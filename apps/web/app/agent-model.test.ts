@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
-
 import { readFileSync } from "node:fs";
+import { test } from "node:test";
 
 import {
   generateCompletion,
@@ -15,9 +14,10 @@ import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { assistantMessage, parseThreadMessage } from "./thread-messages.ts";
 
 /**
- * The two loops the one LLM module can run, on a scripted model rather than a
- * paid key. The model object is typed from `agent-model.ts`, so this test names
- * no vendor package and `agent-boundary.test.ts` still sees one importer.
+ * The LLM module, on a scripted model rather than a paid key: the streamed ask
+ * loop and the one-shot composer continuation. The model object is typed from
+ * `agent-model.ts`, so this test names no vendor package and
+ * `agent-boundary.test.ts` still sees one importer.
  */
 
 /** What the model says in one turn: prose, a tool call, or both. */
@@ -47,10 +47,10 @@ const REQUEST: AgentRequest = {
 };
 
 /**
- * One script, read the same way by `doGenerate` and by `doStream`, so a
- * difference between the two loops is a difference in this module and not in
- * two hand-written fixtures. Prose arrives in two deltas: a streamed answer is
- * accumulated, never a single chunk.
+ * One script, read the same way by `doGenerate` (composer continuation) and by
+ * `doStream` (the ask), so a difference between those paths is a difference in
+ * this module and not in two hand-written fixtures. Prose arrives in two
+ * deltas: a streamed answer is accumulated, never a single chunk.
  */
 function scriptedModel(script: readonly ScriptedTurn[]): AgentLanguageModel {
   let turn = 0;
@@ -82,7 +82,7 @@ function scriptedModel(script: readonly ScriptedTurn[]): AgentLanguageModel {
   };
 }
 
-/** The scripted call itself, so both loops are handed the same one. */
+/** The scripted call itself, so stream and generate are handed the same one. */
 function toolCallPart({ name, input }: NonNullable<ScriptedTurn["toolCall"]>, turn: number) {
   return {
     type: "tool-call" as const,

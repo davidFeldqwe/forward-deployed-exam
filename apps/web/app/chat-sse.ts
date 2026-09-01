@@ -4,14 +4,8 @@
  * assistant Thread answer when the loop ends. Ranking numbers are not events:
  * they re-render from the stored `queryAirports` payload.
  */
-import {
-  streamAgentModel,
-  type AgentRequest,
-  type AgentStreamEvent,
-  type AgentStreamObserver,
-  type ModelAnswer,
-} from "./agent-model.ts";
-import { answerQuestion } from "./agent.ts";
+import { answerQuestion, type AgentRunner } from "./agent.ts";
+import { streamAgentModel, type AgentStreamEvent } from "./agent-model.ts";
 import {
   carriedPrompt,
   chatPathWithPrompt,
@@ -33,7 +27,7 @@ export type ChatSseAsk = {
   clientIp: string;
   /** Milliseconds since epoch; omitted means now, the same clock `askOnThread` takes. */
   at?: number;
-  run?: (request: AgentRequest, onEvent?: AgentStreamObserver) => Promise<ModelAnswer>;
+  run?: AgentRunner;
 };
 
 export async function chatSseResponse(request: Request, ask: ChatSseAsk): Promise<Response> {

@@ -62,7 +62,7 @@ type WithModel<T> = (model: AgentLanguageModel) => Promise<T>;
  * The signed-in ask: the tool loop as a stream. The SSE chat route (#65)
  * builds its pending row and tool rows from this. Nothing partial comes back
  * here: the ranking is drawn from a finished `queryAirports` payload, never
- * from a half-read one. There is no `generateText` twin.
+ * from a half-read one.
  */
 export function streamAgentModel(
   request: AgentRequest,
