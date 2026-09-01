@@ -9,7 +9,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ANTHROPIC_KEY, OPENAI_KEY, chooseProvider } from "../app/agent-provider.ts";
-import type { CitationVerdict } from "../app/citation-check.ts";
 import { runCompareEval } from "./compare.eval.ts";
 import { runNewEnglandEval } from "./new-england.eval.ts";
 import { runParisEval } from "./paris.eval.ts";
@@ -44,23 +43,22 @@ async function main(): Promise<void> {
     { name: "paris", run: runParisEval },
   ] as const;
 
-  const failed: string[] = [];
+  let failed = false;
   for (const { name, run } of cases) {
     const result = await run();
     writeFileSync(
       join(traceDir, `${name}.json`),
       `${JSON.stringify({ at: new Date().toISOString(), ...result }, null, 2)}\n`,
     );
-    const verdict: CitationVerdict = result.verdict;
-    if (!verdict.ok) {
-      failed.push(`${name}: ${verdict.reason}`);
-      process.stderr.write(`Evalite ${name} failed: ${verdict.reason}\n`);
+    if (!result.verdict.ok) {
+      failed = true;
+      process.stderr.write(`Evalite ${name} failed: ${result.verdict.reason}\n`);
     } else {
-      process.stdout.write(`Evalite ${name} passed: ${verdict.reason}\n`);
+      process.stdout.write(`Evalite ${name} passed: ${result.verdict.reason}\n`);
     }
   }
 
-  if (failed.length > 0) {
+  if (failed) {
     process.exitCode = 1;
   }
 }

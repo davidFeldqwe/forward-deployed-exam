@@ -10,6 +10,7 @@ import { ACCEPTED_PLACE_PHRASES, OFF_THESIS_REFUSAL, unknownPlaceRefusal } from 
 import { rankingRows, type ThreadMessage, type ToolCall } from "./thread-messages.ts";
 
 const NEW_ENGLAND = "new england";
+const COMPARE_IATA = ["LAX", "SNA"] as const;
 
 /** Signed integer or decimal as the agent writes it in prose. */
 const NUMBER = String.raw`-?\d+(?:\.\d+)?`;
@@ -75,12 +76,15 @@ const NOT_IATA = new Set([
 
 export type CitationVerdict = { ok: boolean; reason: string };
 
+/** A place filter the payload could not resolve; field is quoted, not re-validated. */
+type CitedUnknownPlace = { field: string; value: string };
+
 /** The ranking fields the checker reads; the rest of a query payload is unused. */
 type RankingCitation = {
   rows: readonly ScoredAirport[];
   matched: number;
   resolvedIata: readonly string[];
-  unknownPlace: readonly { field: string; value: string }[];
+  unknownPlace: readonly CitedUnknownPlace[];
 };
 
 /**
@@ -117,21 +121,19 @@ export function checkCompareCongestion(answer: ThreadMessage): CitationVerdict {
     return fail("the turn never called queryAirports");
   }
   const codes = namedIata(query.args);
-  if (!codes.includes("LAX") || !codes.includes("SNA")) {
+  const missing = COMPARE_IATA.filter((code) => !codes.includes(code));
+  if (missing.length > 0) {
     if (typeof query.args.municipality === "string" && query.args.municipality.trim() !== "") {
       return fail("a compare must name LAX and SNA, not a municipality");
     }
-    const missing = [!codes.includes("LAX") ? "LAX" : null, !codes.includes("SNA") ? "SNA" : null]
-      .filter((code): code is string => code !== null)
-      .join(" and ");
-    return fail(`queryAirports iata must name LAX and SNA, missing ${missing}`);
+    return fail(`queryAirports iata must name LAX and SNA, missing ${missing.join(" and ")}`);
   }
   const payload = queryPayload(query);
   if (!payload) {
     return fail("queryAirports did not return a ranking payload");
   }
   const resolved = new Set(payload.resolvedIata);
-  if (!resolved.has("LAX") || !resolved.has("SNA")) {
+  if (!COMPARE_IATA.every((code) => resolved.has(code))) {
     return fail("queryAirports must resolve both LAX and SNA");
   }
   const metric = queryMetric(query);
@@ -162,7 +164,7 @@ export function checkOffThesisRefusal(answer: ThreadMessage): CitationVerdict {
  */
 export function checkParisRefusal(answer: ThreadMessage): CitationVerdict {
   const query = lastQueryCall(answer.toolCalls);
-  if (!query) {
+  if (query === null) {
     if (answer.toolCalls.length > 0) {
       return fail("Paris no-tool path must call no tools");
     }
@@ -182,7 +184,7 @@ export function checkParisRefusal(answer: ThreadMessage): CitationVerdict {
   if (!citations.ok) {
     return citations;
   }
-  const expected = unknownPlaceRefusal([...payload.unknownPlace]);
+  const expected = unknownPlaceRefusal(payload.unknownPlace);
   if (expected === null || answer.text.trim() !== expected) {
     return fail("prose must equal unknownPlaceRefusal from this payload");
   }
@@ -243,7 +245,7 @@ function fail(reason: string): CitationVerdict {
 function stripAcceptedPhrases(prose: string): string {
   let stripped = prose;
   for (const phrase of ACCEPTED_PLACE_PHRASES) {
-    stripped = stripped.split(phrase).join("");
+    stripped = stripped.replaceAll(phrase, "");
   }
   return stripped;
 }
@@ -270,7 +272,14 @@ function queryPayload(call: ToolCall): RankingCitation | null {
 
 function namedIata(args: ToolCall["args"]): string[] {
   const raw = args.iata;
-  const parts = typeof raw === "string" ? [raw] : Array.isArray(raw) ? raw : [];
+  let parts: unknown[];
+  if (typeof raw === "string") {
+    parts = [raw];
+  } else if (Array.isArray(raw)) {
+    parts = raw;
+  } else {
+    parts = [];
+  }
   const codes: string[] = [];
   for (const part of parts) {
     if (typeof part !== "string") continue;
@@ -282,6 +291,10 @@ function namedIata(args: ToolCall["args"]): string[] {
   return codes;
 }
 
+/**
+ * The metric the payload echoed, as a string. Not `lookupMetric`: an unknown
+ * metric must fail a congestion compare rather than look like a ranking.
+ */
 function queryMetric(call: ToolCall): string | null {
   if (!isRecord(call.result)) {
     return null;
@@ -289,12 +302,12 @@ function queryMetric(call: ToolCall): string | null {
   return typeof call.result.metric === "string" ? call.result.metric : null;
 }
 
-function unknownPlacesOf(result: Record<string, unknown>): { field: string; value: string }[] {
+function unknownPlacesOf(result: Record<string, unknown>): CitedUnknownPlace[] {
   const raw = result.unknownPlace;
   if (!Array.isArray(raw)) {
     return [];
   }
-  const places: { field: string; value: string }[] = [];
+  const places: CitedUnknownPlace[] = [];
   for (const item of raw) {
     if (!isRecord(item) || typeof item.field !== "string" || typeof item.value !== "string") {
       continue;

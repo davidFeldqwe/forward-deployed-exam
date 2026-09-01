@@ -212,10 +212,14 @@ test("the ROI refusal is the locked copy with no tools", () => {
   );
 });
 
-const parisUnknown = queryTool({ municipality: "Paris" });
-const parisRefusal = unknownPlaceRefusal(
-  (parisUnknown.result as { unknownPlace: { field: string; value: string }[] }).unknownPlace,
-);
+const parisResult = runAgentTool("queryAirports", { municipality: "Paris" });
+const parisUnknown: ToolCall = {
+  tool: "queryAirports",
+  args: { municipality: "Paris" },
+  result: toolPayloadJson(parisResult),
+  durationMs: 5,
+};
+const parisRefusal = unknownPlaceRefusal(parisResult.unknownPlace);
 assert.ok(parisRefusal);
 
 const noToolParis = [
