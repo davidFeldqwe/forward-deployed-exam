@@ -50,11 +50,23 @@ export type SkylineInput = {
 };
 
 /**
+ * How the canvas is made. The only production caller is `createRenderer`; a
+ * test hands in a renderer of its own, because a WebGL context is the one thing
+ * in this mount a Node process cannot have. Everything else it does — the ease,
+ * the re-frame, deciding whether a frame is worth drawing — is arithmetic.
+ */
+export type MakeRenderer = () => THREE.WebGLRenderer | null;
+
+/**
  * Draws the skyline inside `host` and returns the teardown, or null when there
  * is no WebGL context to draw on.
  */
-export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => void) | null {
-  const renderer = createRenderer();
+export function mountSkyline(
+  host: HTMLElement,
+  input: SkylineInput,
+  makeRenderer: MakeRenderer = createRenderer,
+): (() => void) | null {
+  const renderer = makeRenderer();
   if (!renderer) {
     return null;
   }
@@ -87,6 +99,16 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   // starts before they are built.
   const controls = orbit(camera, renderer.domElement, CONUS_VIEW.target);
 
+  // Nothing in this scene moves on its own, so a frame is worth drawing only
+  // when something moved it: the opening ease, a drag or a scroll — both of
+  // which the controls report as a change — or a resize. The first frame is
+  // always one. Left open on a desk the page then costs nothing, rather than a
+  // GPU frame every 16 ms for pixels that are already on screen.
+  let pending = true;
+  controls.addEventListener("change", () => {
+    pending = true;
+  });
+
   // A pane that changes shape — a phone turned on its side — is re-framed, but
   // only until the visitor takes the controls: after that the view is theirs,
   // and a resize must not throw it away.
@@ -95,6 +117,9 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
     untouched = false;
   });
   const resize = fitToHost(host, renderer, camera, () => {
+    // A pane of a new shape is a new frustum even where the camera has not
+    // moved, so the next frame is drawn whether or not it is re-framed.
+    pending = true;
     // How far out the country can be held is the new pane's business, whoever
     // is driving: a visitor who has taken the controls still has to be able to
     // zoom out far enough to see it after turning the phone.
@@ -117,7 +142,13 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
     if (elapsed < intro.durationMs) {
       camera.position.lerpVectors(from, to, easeOut(elapsed / intro.durationMs));
     }
+    // `update` carries the ease's step, a drag, and the damping still running
+    // after one into the camera, and says so through the change event above.
     controls.update();
+    if (!pending) {
+      return;
+    }
+    pending = false;
     renderer.render(scene, camera);
   });
 

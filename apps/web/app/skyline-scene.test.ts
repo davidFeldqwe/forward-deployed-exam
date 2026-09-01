@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 
 import { lampVariable } from "./lamp-hue.ts";
+import { type ScenePoint, introEase, openingPosition } from "./map-camera.ts";
 import { COLUMN_RADIUS, type MapMark, columnHeight } from "./map-view.ts";
 import {
   FALLBACK_HUE,
@@ -234,4 +235,247 @@ test("every hue the canvas asks the stylesheet for is one it can read", () => {
     // a console warning to say so.
     assert.ok(readable(declared.trim()), `${variable}: ${declared.trim()}`);
   }
+});
+
+/**
+ * The mount itself. A WebGL context is the one thing this module needs that a
+ * Node process cannot give it, so the test hands `mountSkyline` a renderer that
+ * counts its draws instead: the ease, the re-frame and the redraw decision are
+ * arithmetic, and they are what has never been looked at outside a browser.
+ */
+type FakeRenderer = {
+  frame: (now: number) => void;
+  draws: number;
+  /** The camera the last frame was drawn through: the mount's own. */
+  camera: THREE.PerspectiveCamera | null;
+  size: { width: number; height: number };
+  loopStopped: boolean;
+  disposed: boolean;
+};
+
+/** A canvas as far as this module and OrbitControls reach into one. */
+function fakeCanvas() {
+  const root = { addEventListener() {}, removeEventListener() {} };
+  return {
+    style: {} as Record<string, string>,
+    listeners: new Map<string, (event: unknown) => void>(),
+    addEventListener(type: string, handler: (event: unknown) => void) {
+      this.listeners.set(type, handler);
+    },
+    removeEventListener(type: string) {
+      this.listeners.delete(type);
+    },
+    getRootNode: () => root,
+    ownerDocument: root,
+    removed: false,
+    remove() {
+      this.removed = true;
+    },
+  };
+}
+
+/** A camera-module point as a vector, for measuring the mount's camera by. */
+function vector3(point: ScenePoint): THREE.Vector3 {
+  return new THREE.Vector3(point.x, point.y, point.z);
+}
+
+/** A scroll on the canvas: the zoom the controls report as the visitor's own. */
+function scroll(map: MountedSkyline, deltaY: number): void {
+  const wheel = map.canvas.listeners.get("wheel");
+  assert.ok(wheel, "the canvas listens for a scroll");
+  wheel({ deltaMode: 0, deltaY, clientX: 0, clientY: 0, preventDefault: () => {} });
+}
+
+type MountedSkyline = {
+  renderer: FakeRenderer;
+  canvas: ReturnType<typeof fakeCanvas>;
+  /** Re-measures the host, the way a browser's ResizeObserver would. */
+  resize: (width: number, height: number) => void;
+  observerDisconnected: boolean;
+  teardown: () => void;
+};
+
+/**
+ * Mounts the skyline into a host of the given shape. The globals a canvas host
+ * brings — the computed stylesheet and the resize observer — are stubbed here
+ * for the same reason the renderer is: they are the browser, not the module.
+ */
+function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedSkyline {
+  const canvas = fakeCanvas();
+  let loop: ((now: number) => void) | null = null;
+  const renderer: FakeRenderer = {
+    draws: 0,
+    camera: null,
+    size: { width: 0, height: 0 },
+    loopStopped: false,
+    disposed: false,
+    // The loop is handed the clock the mount reads its own start from, so a
+    // frame at 100 is 100 ms into the page rather than into the process.
+    frame: (now) => loop?.(mountedAt + now),
+  };
+  const fake = {
+    domElement: canvas,
+    setSize: (w: number, h: number) => {
+      renderer.size = { width: w, height: h };
+    },
+    setAnimationLoop: (fn: ((now: number) => void) | null) => {
+      loop = fn;
+      if (fn === null) renderer.loopStopped = true;
+    },
+    render: (_scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+      renderer.draws += 1;
+      renderer.camera = camera;
+    },
+    dispose: () => {
+      renderer.disposed = true;
+    },
+  };
+
+  const host = {
+    clientWidth: width,
+    clientHeight: height,
+    appendChild: () => {},
+  };
+  let observed: (() => void) | null = null;
+  const state = { observerDisconnected: false };
+  const globals = globalThis as unknown as Record<string, unknown>;
+  globals.getComputedStyle = () => ({ getPropertyValue: () => "#4cb782" });
+  globals.ResizeObserver = class {
+    constructor(callback: () => void) {
+      observed = callback;
+    }
+    observe() {}
+    disconnect() {
+      state.observerDisconnected = true;
+    }
+  };
+
+  const mountedAt = performance.now();
+  const teardown = mountSkyline(
+    host as unknown as HTMLElement,
+    { marks: SKYLINE, outlines: GROUND_OUTLINES, reducedMotion },
+    () => fake as unknown as THREE.WebGLRenderer,
+  );
+  assert.ok(teardown, "a renderer is a mount");
+
+  return {
+    renderer,
+    canvas,
+    resize: (w, h) => {
+      host.clientWidth = w;
+      host.clientHeight = h;
+      observed?.();
+    },
+    get observerDisconnected() {
+      return state.observerDisconnected;
+    },
+    teardown,
+  };
+}
+
+test("a still skyline is drawn once, not sixty times a second", () => {
+  // Reduced motion opens on the finished frame, so nothing is moving at all:
+  // every frame after the first would be the same pixels, and a public page
+  // left open on a desk must not spend a GPU on redrawing them.
+  const map = mountFake(true);
+
+  map.renderer.frame(0);
+  const opening = map.renderer.draws;
+  for (const now of [16, 32, 48, 64, 1_000, 10_000]) {
+    map.renderer.frame(now);
+  }
+
+  assert.equal(opening, 1, "the opening frame is drawn");
+  assert.equal(map.renderer.draws, 1, "a still canvas is not redrawn");
+});
+
+test("the opening ease is drawn while it moves, and stops when it arrives", () => {
+  const map = mountFake(false, 1280, 720);
+  const aspect = 1280 / 720;
+  const ease = introEase(false, aspect);
+
+  map.renderer.frame(0);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+  // The first frame is the ease's own start: nearly overhead, further out.
+  assert.ok(camera.position.distanceTo(vector3(ease.from)) < 1e-3, "opens where the ease starts");
+
+  for (const now of [100, 300, 500, 700, 840]) {
+    map.renderer.frame(now);
+  }
+  const drawnByArrival = map.renderer.draws;
+  // Every frame of a moving camera is a frame worth drawing.
+  assert.equal(drawnByArrival, 6, "the ease is drawn frame by frame");
+  assert.ok(
+    camera.position.distanceTo(vector3(openingPosition(aspect))) < 1e-2,
+    "the ease arrives at the frame the pane is wide enough for",
+  );
+
+  for (const now of [900, 1_600, 5_000]) {
+    map.renderer.frame(now);
+  }
+  assert.equal(map.renderer.draws, drawnByArrival, "an arrived camera is not redrawn");
+});
+
+test("a scroll is drawn: the gate is a still canvas, not a frozen one", () => {
+  const map = mountFake(true);
+  map.renderer.frame(0);
+  assert.equal(map.renderer.draws, 1);
+
+  scroll(map, -240);
+  map.renderer.frame(16);
+  assert.ok(map.renderer.draws > 1, "the zoom the visitor asked for is drawn");
+
+  // Damping runs the move on for a few frames, and then the canvas is still.
+  for (let now = 32; now < 3_000; now += 16) {
+    map.renderer.frame(now);
+  }
+  const settled = map.renderer.draws;
+  for (let now = 3_000; now < 4_000; now += 16) {
+    map.renderer.frame(now);
+  }
+  assert.equal(map.renderer.draws, settled, "the canvas is still again once it settles");
+});
+
+test("a resize re-frames the view nobody has taken, and never one they have", () => {
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+
+  // A phone turned on its side: the country has to be held from further out.
+  map.resize(390, 780);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+  assert.equal(camera.aspect, 390 / 780);
+  // One measurement: the drawing buffer is the pane the frustum was cut for.
+  assert.deepEqual(map.renderer.size, { width: 390, height: 780 });
+  assert.ok(
+    camera.position.distanceTo(vector3(openingPosition(390 / 780))) < 1e-6,
+    "an untouched view is re-framed against the new pane",
+  );
+  map.renderer.frame(16);
+  const drawnAfterResize = map.renderer.draws;
+  assert.equal(drawnAfterResize, 2, "a new frustum is a frame worth drawing");
+
+  scroll(map, -240);
+  map.renderer.frame(32);
+  const taken = camera.position.clone();
+  map.resize(780, 390);
+  assert.deepEqual(camera.position.toArray(), taken.toArray(), "a taken view is left alone");
+  // The pane is still the new pane's, whoever is driving: scroll has to reach
+  // the frame that would hold the country here.
+  assert.equal(camera.aspect, 780 / 390);
+});
+
+test("teardown stops the loop, drops the canvas and hands the context back", () => {
+  const map = mountFake(true);
+  map.renderer.frame(0);
+
+  map.teardown();
+
+  assert.equal(map.renderer.loopStopped, true, "the animation loop is stopped");
+  assert.equal(map.observerDisconnected, true, "the resize observer is disconnected");
+  assert.equal(map.canvas.removed, true, "the canvas leaves the page");
+  assert.equal(map.renderer.disposed, true, "the context is handed back");
+  // The controls let the page's own listeners go with them.
+  assert.equal(map.canvas.listeners.size, 0, "no listener outlives the canvas");
 });
