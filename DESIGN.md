@@ -142,8 +142,10 @@ Provider choice is `ANTHROPIC_API_KEY` first, then `OPENAI_API_KEY` (see
 question and says it has no model — the screen, its tests, and CI still run.
 
 Composer **autocomplete** is prompt UX, not scoring. After a pause the thread
-composer may show one muted ghost continuation (`apps/web/app/api/autocomplete`).
-Tab accepts it into the draft; Escape, further typing, or Send drops it, so
+composer may show one muted ghost continuation (`apps/web/app/api/autocomplete`)
+— a brief tail after the cursor, not a drafted question. An empty Thread still
+gets a ghost; sample chips vs typing your own does not gate it. Tab accepts the
+shown continuation into the draft; Escape, further typing, or Send drops it, so
 unaccepted grey text is never a user message. Send empties the field as soon as
 the question is accepted: those words become the pending user turn (and the
 form's `prompt`), not leftover composer text a second click could post again.

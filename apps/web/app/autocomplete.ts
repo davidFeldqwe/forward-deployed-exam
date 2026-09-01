@@ -13,6 +13,8 @@ export const AUTOCOMPLETE_PATH = "/api/autocomplete";
 export const GHOST_PAUSE_MS = 400;
 export const MOCK_LLM = "MOCK_LLM";
 export const RECENT_PROMPT_LIMIT = 3;
+/** Inline hint after the cursor: a few words, not a finished question. */
+export const GHOST_MAX_WORDS = 4;
 
 const NEW_ENGLAND_QUESTION = chatCopy.chips[0];
 
@@ -47,6 +49,16 @@ export function mockContinuation(partial: string): string {
   return "";
 }
 
+/** Keep a leading space; take only the first few words of the tail. */
+export function clipGhostContinuation(suggestion: string): string {
+  const trimmed = suggestion.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+  const lead = suggestion.match(/^\s*/)?.[0] ?? "";
+  return `${lead}${trimmed.split(/\s+/).slice(0, GHOST_MAX_WORDS).join(" ")}`;
+}
+
 /** Drop emptiness and an echo of the partial so the ghost is only the tail. Keep a leading space. */
 export function normalizeSuggestion(
   partial: string,
@@ -60,11 +72,15 @@ export function normalizeSuggestion(
   if (suggestion.trim() === prefix) {
     return null;
   }
+  let rest = suggestion;
   if (prefix.length > 0 && suggestion.toLowerCase().startsWith(prefix.toLowerCase())) {
-    const rest = suggestion.slice(prefix.length);
-    return rest.trim().length === 0 ? null : rest;
+    rest = suggestion.slice(prefix.length);
   }
-  return suggestion;
+  const clipped = clipGhostContinuation(rest);
+  if (clipped.trim().length === 0) {
+    return null;
+  }
+  return clipped;
 }
 
 /**
@@ -145,8 +161,9 @@ export function typeDraft(draft: ComposerDraft, nextText: string): ComposerDraft
 
 const AUTOCOMPLETE_SYSTEM = [
   "Continue the analyst's question about the US airport capacity-pressure screen.",
-  "Reply with only the text that should appear after the partial prompt.",
+  "Reply with only a few words that should appear after the partial prompt — a short inline hint, not a finished question.",
   "Do not repeat the partial. Invent no numbers, ranks, composites or lamps.",
+  "An empty thread still gets a continuation; earlier prompts are optional context.",
 ].join(" ");
 
 export function completionRequest(pack: AutocompletePack): { system: string; prompt: string } {

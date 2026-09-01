@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -240,6 +240,10 @@ function suggestionFromBody(partial: string, body: unknown): string | null {
 
 function GhostFetchPlugin({ recentPrompts }: { recentPrompts: readonly string[] }) {
   const [editor] = useLexicalComposerContext();
+  // Chat builds a new `recentPrompts` array each render. Keep the pause tied to
+  // the editor and read prompts only when the timer fires.
+  const recentPromptsRef = useRef(recentPrompts);
+  recentPromptsRef.current = recentPrompts;
 
   useEffect(() => {
     let timer: number | undefined;
@@ -267,7 +271,7 @@ function GhostFetchPlugin({ recentPrompts }: { recentPrompts: readonly string[] 
           return;
         }
         request = new AbortController();
-        void fetchGhost(editor, snapshot.text, recentPrompts, request.signal);
+        void fetchGhost(editor, snapshot.text, recentPromptsRef.current, request.signal);
       }, GHOST_PAUSE_MS);
     });
 
@@ -276,7 +280,7 @@ function GhostFetchPlugin({ recentPrompts }: { recentPrompts: readonly string[] 
       window.clearTimeout(timer);
       request?.abort();
     };
-  }, [editor, recentPrompts]);
+  }, [editor]);
 
   return null;
 }

@@ -6,6 +6,7 @@ import { PROMPT_MAX_LENGTH } from "./auth-gate.ts";
 import { chatCopy } from "./chat-copy.ts";
 import {
   AUTOCOMPLETE_PATH,
+  GHOST_MAX_WORDS,
   GHOST_PAUSE_MS,
   MOCK_LLM,
   RECENT_PROMPT_LIMIT,
@@ -43,6 +44,18 @@ test("a New England prefix returns the rest of the sample question, and nothing 
   assert.equal(mockContinuation("New England"), "");
   assert.equal(mockContinuation(NEW_ENGLAND), "");
   assert.equal(mockContinuation("  "), "");
+});
+
+test("a shown ghost is a short tail, not a drafted question", () => {
+  const long =
+    " are renovation-investment candidates waiting for a full ranking of every New England hub?";
+  const shown = showGhost({ text: PREFIX, ghost: null }, long);
+  assert.equal(GHOST_MAX_WORDS, 4);
+  assert.ok(shown.ghost !== null);
+  assert.equal(shown.ghost.trim().split(/\s+/).length, GHOST_MAX_WORDS);
+  assert.ok(!shown.ghost.includes("ranking of every"));
+  // Tab still takes the whole shown continuation — the clip, not the paragraph.
+  assert.equal(acceptGhost(shown).text, `${PREFIX}${shown.ghost}`);
 });
 
 test("empty, echo, and whitespace suggestions are not a ghost", () => {
@@ -178,6 +191,31 @@ test("the composer is Lexical: Tab accepts, Escape or Send drops, pause fetches 
   assert.match(composer, /AUTOCOMPLETE_PATH/);
   assert.match(composer, /submit/);
   assert.match(source("../components/Chat.tsx"), /<Composer/);
+});
+
+test("an empty thread still fetches a ghost; the pause is not reset by recentPrompts identity", async () => {
+  assert.equal(
+    await autocompleteContinuation(
+      { partialPrompt: PREFIX, recentPrompts: [] },
+      {
+        mock: true,
+        complete: async () => {
+          throw new Error("paid model");
+        },
+      },
+    ),
+    normalizeSuggestion(PREFIX, mockContinuation(PREFIX)),
+  );
+
+  const composer = source("../components/Composer.tsx");
+  // Chat passes a new `recentPrompts` array each render (`/chat` also omits
+  // `messages`). The pause must read prompts from a ref, not effect deps.
+  assert.match(composer, /recentPromptsRef/);
+  assert.doesNotMatch(composer, /if\s*\(\s*recentPrompts\.length/);
+  const chat = source("../components/Chat.tsx");
+  assert.match(chat, /recentUserPrompts\(messages\)/);
+  assert.match(chat, /<PromptChips/);
+  assert.match(chat, /EMPTY_THREAD/);
 });
 
 test("autocomplete is prompt UX, not a scoring path", () => {
