@@ -59,7 +59,13 @@ test("the page says what height is, and that it is the only thing height is", ()
 });
 
 test("copy stays inside the glossary", () => {
-  const words = [mapCopy.title, mapCopy.intro, mapCopy.encoding, mapCopy.noWebgl.body]
+  const words = [
+    mapCopy.title,
+    mapCopy.intro,
+    mapCopy.encoding,
+    mapCopy.canvasLabel,
+    mapCopy.noWebgl.body,
+  ]
     .concat(mapCopy.legend.map((entry) => entry.meaning))
     .join(" ");
 
@@ -77,6 +83,15 @@ test("no WebGL is a short empty state that points at the numbers, and invents no
   // A short empty state, not a second map — and no numbers made up to fill it.
   assert.ok(body.length < 300);
   assert.doesNotMatch(body, /\d/);
+});
+
+test("a screen reader is told what the canvas is, since the mesh cannot be read", () => {
+  const canvas = source("components/SkylineCanvas.tsx");
+
+  assert.match(mapCopy.canvasLabel, /skyline/i);
+  // The label is the copy module's, not a second sentence written in the JSX.
+  assert.match(canvas, /role="img"/);
+  assert.match(canvas, /aria-label=\{mapCopy\.canvasLabel\}/);
 });
 
 test("the map wears the shared bar, with the comparison window years in it", () => {

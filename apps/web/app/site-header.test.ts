@@ -19,6 +19,9 @@ function doc(file: string): string {
   return readFileSync(new URL(file, repo), "utf8");
 }
 
+/** Every surface that wears the shared bar, `/map` included. */
+const SURFACES = ["components/Landing.tsx", "components/Chat.tsx", "components/Skyline.tsx"];
+
 /** The one header link with this key, whichever surface is asking. */
 function link(signedIn: boolean, key: HeaderLink["key"]): HeaderLink {
   const found = siteHeader(signedIn).links.find((action) => action.key === key);
@@ -26,7 +29,7 @@ function link(signedIn: boolean, key: HeaderLink["key"]): HeaderLink {
   return found;
 }
 
-test("the product name is one string, and both surfaces wear the same header", () => {
+test("the product name is one string, and every surface wears the same header", () => {
   assert.equal(siteHeaderCopy.wordmark, "Airport Investment Intelligence Agent");
   assert.equal(siteHeader(false).wordmark, siteHeaderCopy.wordmark);
   assert.equal(siteHeader(true).wordmark, siteHeaderCopy.wordmark);
@@ -36,7 +39,7 @@ test("the product name is one string, and both surfaces wear the same header", (
   assert.equal("header" in landingCopy, false);
   assert.equal("wordmark" in loginCopy, false);
 
-  for (const file of ["components/Landing.tsx", "components/Chat.tsx"]) {
+  for (const file of SURFACES) {
     assert.match(source(file), /<SiteHeader\b/, file);
   }
 });
@@ -105,8 +108,8 @@ test("the bar is sticky, full-bleed, and still", () => {
   // Chrome that is always there does not enter or leave.
   assert.doesNotMatch(header, /animate-|slide-in|fade-in/);
 
-  // Neither surface draws a bar of its own beside the shared one.
-  for (const file of ["components/Landing.tsx", "components/Chat.tsx"]) {
+  // No surface draws a bar of its own beside the shared one.
+  for (const file of SURFACES) {
     assert.doesNotMatch(source(file), /<header/, file);
   }
 });
@@ -134,7 +137,7 @@ test("focus order is identity, then the header actions, then the page", () => {
   assert.ok(header.indexOf("<Wordmark") < header.indexOf("<HeaderAction"));
   assert.ok(header.indexOf("<HeaderAction") < header.indexOf("<Profile"));
 
-  for (const file of ["components/Landing.tsx", "components/Chat.tsx"]) {
+  for (const file of SURFACES) {
     const surface = source(file);
     assert.ok(surface.indexOf("<SiteHeader") < surface.indexOf("<main"), file);
   }

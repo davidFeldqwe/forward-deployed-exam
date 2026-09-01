@@ -90,7 +90,6 @@ function HeaderAction({ link }: { link: HeaderLink }) {
       size="sm"
       nativeButton={false}
       aria-current={link.current ? "page" : undefined}
-      // The action a visitor is already on takes the foreground; the rest stay grey.
       className={cn("px-2 md:px-3", link.current ? "text-foreground" : "text-muted-foreground")}
       render={
         link.external ? (

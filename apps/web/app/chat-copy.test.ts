@@ -21,6 +21,7 @@ function visibleText(value: unknown): string {
 test("the wordmark and the window are the shared header's, not second copies", () => {
   assert.equal("wordmark" in chatCopy, false);
   assert.equal("comparisonWindow" in chatCopy, false);
+  assert.equal("comparisonWindowYears" in chatCopy, false);
   assert.equal(siteHeaderCopy.wordmark, "Airport Investment Intelligence Agent");
   // `site-header.test.ts` holds the phrase-and-years pair itself.
   assert.match(siteHeaderCopy.comparisonWindow, /Comparison window/);

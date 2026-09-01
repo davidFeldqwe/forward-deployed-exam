@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { test } from "node:test";
 
 /**
@@ -34,6 +34,11 @@ function localPath(specifier: string, importer: string): string | null {
   return new URL(specifier, `file:///${directory}/`).pathname.slice(1);
 }
 
+/** Whether that path is a file this app holds: a specifier may omit `.ts`. */
+function isFile(path: string): boolean {
+  return statSync(new URL(path, web), { throwIfNoEntry: false })?.isFile() ?? false;
+}
+
 /** Every file in this app the route reaches, the entry included. */
 function reachableFrom(entry: string): string[] {
   const seen = new Set<string>();
@@ -46,14 +51,7 @@ function reachableFrom(entry: string): string[] {
     for (const specifier of importsOf(file)) {
       const local = localPath(specifier, file);
       if (local === null || local.endsWith(".json")) continue;
-      const resolved = [local, `${local}.ts`, `${local}.tsx`].find((candidate) => {
-        try {
-          readFileSync(new URL(candidate, web));
-          return true;
-        } catch {
-          return false;
-        }
-      });
+      const resolved = [local, `${local}.ts`, `${local}.tsx`].find(isFile);
       if (resolved) queue.push(resolved);
     }
   }

@@ -322,11 +322,13 @@ function fitToHost(
   onFit: () => void,
 ): ResizeObserver {
   const fit = (): void => {
+    // One measurement for both, so the drawing buffer and the frustum cannot be
+    // told two different shapes by a layout that moved between the reads.
     const { width, height } = hostSize(host);
     // `setSize` writes the CSS size as well as the drawing buffer, so a device
     // pixel ratio above 1 sharpens the canvas rather than doubling its box.
     renderer.setSize(width, height);
-    camera.aspect = hostAspect(host);
+    camera.aspect = width / height;
     // The far plane follows the far limit: a pane that has to be seen from
     // further out must be able to see that far.
     camera.far = farPlane(camera.aspect);
