@@ -135,7 +135,11 @@ test("credential rules apply before an account is created", () => {
 
 test("returning Sign in accepts the Create-account password from a later process", () => {
   const cwd = mkdtempSync(join(tmpdir(), "aii-auth-return-"));
-  const authModule = JSON.stringify(fileURLToPath(new URL("./auth-accounts.ts", import.meta.url)));
+  const authAccounts = JSON.stringify(
+    fileURLToPath(new URL("./auth-accounts.ts", import.meta.url)),
+  );
+  const email = JSON.stringify("returning-sign-in@example.com");
+  const password = JSON.stringify("correct horse battery");
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
 
@@ -150,21 +154,21 @@ test("returning Sign in accepts the Create-account password from a later process
   }
 
   run(`
-    const { createAccount } = await import(${authModule});
-    const created = createAccount("returning-sign-in@example.com", "correct horse battery");
+    const { createAccount } = await import(${authAccounts});
+    const created = createAccount(${email}, ${password});
     if (!created.ok) throw new Error(JSON.stringify(created));
   `);
   const signedIn = run(`
-    const { authenticate } = await import(${authModule});
-    const result = authenticate("returning-sign-in@example.com", "correct horse battery");
+    const { authenticate } = await import(${authAccounts});
+    const result = authenticate(${email}, ${password});
     if (!result.ok) throw new Error("sign-in refused the create-account password: " + JSON.stringify(result));
     console.log(result.email);
   `);
   assert.equal(signedIn.trim(), "returning-sign-in@example.com");
 
   const wrong = run(`
-    const { authenticate } = await import(${authModule});
-    const result = authenticate("returning-sign-in@example.com", "guess password");
+    const { authenticate } = await import(${authAccounts});
+    const result = authenticate(${email}, "guess password");
     console.log(result.ok ? "accepted" : result.errors.email);
   `);
   assert.match(wrong, /Email or password is incorrect/);
@@ -176,6 +180,7 @@ test("Create account then Sign in is one pair: the form mode does not change the
 
   assert.deepEqual(attemptLogin("signUp", email, password), { ok: true, email });
   assert.deepEqual(attemptLogin("signIn", email, password), { ok: true, email });
+  assert.deepEqual(attemptLogin("not-a-mode", email, password), { ok: true, email });
   assert.equal(attemptLogin("signIn", email, "sign-in password").ok, false);
   assert.deepEqual(attemptLogin("signIn", email, password), { ok: true, email });
 

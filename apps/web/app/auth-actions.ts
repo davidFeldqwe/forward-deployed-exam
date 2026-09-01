@@ -21,11 +21,7 @@ export async function submitLogin(
 ): Promise<LoginState> {
   const email = textField(formData, "email");
   const password = textField(formData, "password");
-  const result = attemptLogin(
-    textField(formData, "mode") === "signUp" ? "signUp" : "signIn",
-    email,
-    password,
-  );
+  const result = attemptLogin(textField(formData, "mode"), email, password);
 
   if (!result.ok) {
     return { email, errors: result.errors };

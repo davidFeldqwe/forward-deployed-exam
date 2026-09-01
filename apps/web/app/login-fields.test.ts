@@ -92,6 +92,5 @@ test("Sign in and Create account post one mode, so they share one password", () 
 
   assert.match(login, /name="mode"/);
   assert.match(login, /value=\{mode\}/);
-  assert.match(actions, /attemptLogin\(/);
-  assert.match(actions, /"signUp" \? "signUp" : "signIn"/);
+  assert.match(actions, /attemptLogin\(textField\(formData, "mode"\)/);
 });

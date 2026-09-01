@@ -71,11 +71,14 @@ export function verifyPassword(password: string, stored: string): boolean {
  * picks the path; it does not pick a second password.
  */
 export function attemptLogin(
-  mode: "signIn" | "signUp",
+  mode: string,
   email: string,
   password: string,
 ): AccountResult {
-  return mode === "signUp" ? createAccount(email, password) : authenticate(email, password);
+  if (mode === "signUp") {
+    return createAccount(email, password);
+  }
+  return authenticate(email, password);
 }
 
 export function createAccount(email: string, password: string): AccountResult {
