@@ -36,9 +36,10 @@ const web = new URL("../", import.meta.url);
 const ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5, 0.4, 0.33];
 
 /**
- * Alaska, Hawaii and Puerto Rico. The opening frame is the contiguous states —
- * the inset viewports that would carry the rest are #68's follow-on — so those
- * three are outside it by design, and reachable by orbiting out to them.
+ * Alaska, Hawaii and Puerto Rico. The opening frame is the contiguous states,
+ * so those three are outside it by design: Alaska and Hawaii are held in the
+ * atlas insets (`app/map-insets.ts`), and all three are reachable by orbiting
+ * out to them.
  */
 const OFF_FRAME = new Set(["AK", "HI", "PR"]);
 

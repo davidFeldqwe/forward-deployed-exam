@@ -34,6 +34,9 @@ export const CONUS_VIEW: Readonly<{ position: ScenePoint; target: ScenePoint }> 
  */
 export const FIELD_OF_VIEW = 45;
 
+/** Half of it, in radians: the frustum's own half-angle above its axis. */
+const HALF_FOV = (FIELD_OF_VIEW * Math.PI) / 360;
+
 /**
  * Half the contiguous states' east–west reach, in the world units `groundPoint`
  * places them in. The frame is centred on x = 0 and the country is not centred
@@ -41,8 +44,9 @@ export const FIELD_OF_VIEW = 45;
  * one. A test pins it to the committed outline.
  *
  * Alaska, Hawaii and Puerto Rico are outside this: framing them would shrink
- * the contiguous states to nothing, and the inset viewports that carry them are
- * #68's follow-on. They are drawn, and an orbit reaches them.
+ * the contiguous states to nothing. All three are drawn where they are, and an
+ * orbit reaches them; Alaska and Hawaii are also held in the atlas insets
+ * (`app/map-insets.ts`), which is what a visitor reaches them by.
  */
 export const CONUS_HALF_WIDTH = 8.3;
 
@@ -124,7 +128,7 @@ function atDistance(heading: ScenePoint, distance: number): ScenePoint {
  * zoom's far limit is worked out from this rather than the other way round.
  */
 function openingDistance(aspect: number): number {
-  const halfHeightPerUnit = Math.tan((FIELD_OF_VIEW * Math.PI) / 360);
+  const halfHeightPerUnit = Math.tan(HALF_FOV);
   const needed = CONUS_HALF_WIDTH / (halfHeightPerUnit * aspect * FRAME_FILL);
   return Math.max(needed, BASE_DISTANCE);
 }
@@ -156,6 +160,49 @@ export function farLimit(aspect: number): number {
 export function farPlane(aspect: number): number {
   return farLimit(aspect) + WORLD_REACH;
 }
+
+/**
+ * How far back a camera has to stand for a sphere of this radius, centred on
+ * what it is looking at, to sit inside the frustum of a pane this shape. The
+ * narrower of the two half-angles is the one that has to hold it: a portrait
+ * pane is cut by its width, a landscape one by its height.
+ *
+ * This is the atlas insets' framing (`app/map-insets.ts`) and the frame a click
+ * on one eases the main camera to, so a region is framed by the same arithmetic
+ * whichever viewport it is drawn in.
+ */
+function framedDistance(radius: number, aspect: number): number {
+  const halfWidth = Math.atan(Math.tan(HALF_FOV) * aspect);
+  return radius / (Math.sin(Math.min(HALF_FOV, halfWidth)) * FRAME_FILL);
+}
+
+/** The direction the country is seen from: `CONUS_VIEW`'s own, as a unit ray. */
+const TILT: ScenePoint = {
+  x: (CONUS_VIEW.position.x - CONUS_VIEW.target.x) / BASE_DISTANCE,
+  y: (CONUS_VIEW.position.y - CONUS_VIEW.target.y) / BASE_DISTANCE,
+  z: (CONUS_VIEW.position.z - CONUS_VIEW.target.z) / BASE_DISTANCE,
+};
+
+/**
+ * Where a camera framing that sphere stands: back along the tilt the country is
+ * seen from, so an inset is the same view of a smaller place rather than a plan
+ * view in which every column is a coloured dot.
+ */
+export function framedPosition(target: ScenePoint, radius: number, aspect: number): ScenePoint {
+  const distance = framedDistance(radius, aspect);
+  return {
+    x: target.x + TILT.x * distance,
+    y: target.y + TILT.y * distance,
+    z: target.z + TILT.z * distance,
+  };
+}
+
+/**
+ * How long the main camera takes to reach the region an inset was clicked for:
+ * a move the eye can follow from one frame to the other, not a tour. A visitor
+ * who asked for less motion is put there instead — see `mountSkyline`.
+ */
+export const REGION_EASE_MS = 700;
 
 /**
  * Where the camera opens on a pane of this shape: the `CONUS_VIEW` tilt, moved

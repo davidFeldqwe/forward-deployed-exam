@@ -8,7 +8,14 @@ import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 
 import { lampVariable } from "./lamp-hue.ts";
 import { CONUS_VIEW, type ScenePoint, introEase, openingPosition } from "./map-camera.ts";
-import { COLUMN_RADIUS, type MapMark, columnHeight } from "./map-view.ts";
+import {
+  INSET_REGIONS,
+  type InsetRect,
+  MAIN_LAYER,
+  insetFrame,
+  insetRects,
+} from "./map-insets.ts";
+import { COLUMN_RADIUS, type MapMark, columnHeight, groundPoint } from "./map-view.ts";
 import {
   FALLBACK_HUE,
   type LampColours,
@@ -60,6 +67,36 @@ const SKYLINE: readonly MapMark[] = [
   column("LAX", "Weak candidate", 40, 4),
   ring("HYA", "Partial inputs", 5),
   ring("GUM", "No data", 6),
+];
+
+/** One airport at its own coordinates, scored as the snapshot would have it. */
+function located(
+  iata: string,
+  lamp: CandidateLamp,
+  composite: number,
+  at: { latitude: number; longitude: number },
+): MapMark {
+  return {
+    iata,
+    name: iata,
+    lamp,
+    composite,
+    shape: "column",
+    height: columnHeight(composite),
+    ...groundPoint(at),
+  };
+}
+
+/**
+ * The marks a mount is handed: the skyline above, and one airport in each of
+ * the two places the atlas frames — Anchorage and Honolulu, at their own
+ * coordinates. Nothing in the mount may move them; what the insets do is look
+ * at them from somewhere else.
+ */
+const MOUNTED: readonly MapMark[] = [
+  ...SKYLINE,
+  located("ANC", "Weak candidate", 20, { latitude: 61.179004, longitude: -149.992561 }),
+  located("HNL", "Weak candidate", 28, { latitude: 21.318387, longitude: -157.92567 }),
 ];
 
 /** The hue one mesh is drawn in, as a hex string. */
@@ -244,9 +281,15 @@ test("every hue the canvas asks the stylesheet for is one it can read", () => {
  */
 type FakeRenderer = {
   frame: (now: number) => void;
+  /** How many frames something was drawn in; a frame is three viewports now. */
   draws: number;
-  /** The camera the last frame was drawn through: the mount's own. */
+  /** Every viewport the last drawn frame was made of, in the order drawn. */
+  passes: RenderPass[];
+  /** The camera the last frame's main viewport was drawn through. */
   camera: THREE.PerspectiveCamera | null;
+  /** How many times a WebGL context was asked for: the insets add none. */
+  contextsAsked: number;
+  scissorTest: boolean;
   size: { width: number; height: number };
   /** What one CSS pixel is worth in the drawing buffer the last fit asked for. */
   pixelRatio: number;
@@ -258,18 +301,51 @@ type FakeRenderer = {
   listenersAtRelease: number;
 };
 
-/** A canvas as far as this module and OrbitControls reach into one. */
+/** One viewport of one frame: where it was drawn, and what through. */
+type RenderPass = {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  /** From the drawing buffer's bottom-left corner, the way WebGL reads one. */
+  viewport: Box | null;
+  /** The same box, as the scissor that keeps a pass off the rest of the pane. */
+  scissor: Box | null;
+};
+
+type Box = { x: number; y: number; width: number; height: number };
+
+/**
+ * A canvas as far as this module and OrbitControls reach into one. Handlers are
+ * kept per type rather than one to a type: the mount and the controls both
+ * listen for a pointer going down, and a fake that dropped one of them would be
+ * testing an arrangement the browser does not have.
+ */
 function fakeCanvas() {
   const root = { addEventListener() {}, removeEventListener() {} };
   return {
     style: {} as Record<string, string>,
-    listeners: new Map<string, (event: unknown) => void>(),
+    listeners: new Map<string, Set<(event: unknown) => void>>(),
     addEventListener(type: string, handler: (event: unknown) => void) {
-      this.listeners.set(type, handler);
+      const handlers = this.listeners.get(type) ?? new Set<(event: unknown) => void>();
+      handlers.add(handler);
+      this.listeners.set(type, handlers);
     },
-    removeEventListener(type: string) {
-      this.listeners.delete(type);
+    removeEventListener(type: string, handler: (event: unknown) => void) {
+      const handlers = this.listeners.get(type);
+      handlers?.delete(handler);
+      if (handlers?.size === 0) this.listeners.delete(type);
     },
+    /** How many handlers are listening at all, of every type. */
+    get listenerCount(): number {
+      return [...this.listeners.values()].reduce((total, set) => total + set.size, 0);
+    },
+    /** Everything listening for this event, told in the order it was added. */
+    dispatch(type: string, event: unknown): boolean {
+      const handlers = this.listeners.get(type);
+      for (const handler of [...(handlers ?? [])]) handler(event);
+      return handlers !== undefined && handlers.size > 0;
+    },
+    setPointerCapture() {},
+    releasePointerCapture() {},
     getRootNode: () => root,
     ownerDocument: root,
     removed: false,
@@ -286,9 +362,56 @@ function vector3(point: ScenePoint): THREE.Vector3 {
 
 /** A scroll on the canvas: the zoom the controls report as the visitor's own. */
 function scroll(map: MountedSkyline, deltaY: number): void {
-  const wheel = map.canvas.listeners.get("wheel");
-  assert.ok(wheel, "the canvas listens for a scroll");
-  wheel({ deltaMode: 0, deltaY, clientX: 0, clientY: 0, preventDefault: () => {} });
+  const heard = map.canvas.dispatch("wheel", {
+    deltaMode: 0,
+    deltaY,
+    clientX: 0,
+    clientY: 0,
+    preventDefault: () => {},
+  });
+  assert.ok(heard, "the canvas listens for a scroll");
+}
+
+/** A pointer event on the canvas, at a point in the pane's own frame. */
+function pointerEvent(at: { x: number; y: number }) {
+  return {
+    pointerId: 1,
+    pointerType: "mouse",
+    button: 0,
+    buttons: 1,
+    offsetX: at.x,
+    offsetY: at.y,
+    clientX: at.x,
+    clientY: at.y,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    preventDefault: () => {},
+  };
+}
+
+/**
+ * A click at a point in the pane: the pointer goes down and comes up in the
+ * same place, which is what a browser then reports as a click.
+ */
+function click(map: MountedSkyline, at: { x: number; y: number }): void {
+  map.canvas.dispatch("pointerdown", pointerEvent(at));
+  map.canvas.dispatch("click", pointerEvent(at));
+}
+
+/** A drag that lets go somewhere else: a browser reports this as a click too. */
+function dragTo(
+  map: MountedSkyline,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): void {
+  map.canvas.dispatch("pointerdown", pointerEvent(from));
+  map.canvas.dispatch("click", pointerEvent(to));
+}
+
+/** The pointer moving over the canvas without any button held. */
+function hover(map: MountedSkyline, at: { x: number; y: number }): void {
+  map.canvas.dispatch("pointermove", { ...pointerEvent(at), buttons: 0 });
 }
 
 /**
@@ -297,9 +420,8 @@ function scroll(map: MountedSkyline, deltaY: number): void {
  * that really happens rather than a one-way failure.
  */
 function restoreContext(map: MountedSkyline): void {
-  const restored = map.canvas.listeners.get("webglcontextrestored");
-  assert.ok(restored, "the canvas listens for its context coming back");
-  restored({});
+  const heard = map.canvas.dispatch("webglcontextrestored", {});
+  assert.ok(heard, "the canvas listens for its context coming back");
 }
 
 /** The display the window is on, as the browser's media queries report it. */
@@ -331,9 +453,17 @@ type MountedSkyline = {
 function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedSkyline {
   const canvas = fakeCanvas();
   let loop: ((now: number) => void) | null = null;
+  // What the fake below records as it is called: the passes of the frame being
+  // drawn, and the box the last `setViewport`/`setScissor` named for the next.
+  let drawing: RenderPass[] = [];
+  let viewport: Box | null = null;
+  let scissor: Box | null = null;
   const renderer: FakeRenderer = {
     draws: 0,
+    passes: [],
     camera: null,
+    contextsAsked: 0,
+    scissorTest: false,
     size: { width: 0, height: 0 },
     pixelRatio: 0,
     loopStopped: false,
@@ -342,7 +472,17 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
     listenersAtRelease: -1,
     // The loop is handed the clock the mount reads its own start from, so a
     // frame at 100 is 100 ms into the page rather than into the process.
-    frame: (now) => loop?.(mountedAt + now),
+    frame: (now) => {
+      // A frame is however many viewports the mount draws it in, so the count
+      // is of frames that drew something rather than of render calls.
+      drawing = [];
+      loop?.(mountedAt + now);
+      if (drawing.length > 0) {
+        renderer.passes = drawing;
+        renderer.camera = drawing[0].camera;
+        renderer.draws += 1;
+      }
+    },
   };
   const fake = {
     domElement: canvas,
@@ -352,20 +492,28 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
     setPixelRatio: (ratio: number) => {
       renderer.pixelRatio = ratio;
     },
+    setViewport: (x: number, y: number, width: number, height: number) => {
+      viewport = { x, y, width, height };
+    },
+    setScissor: (x: number, y: number, width: number, height: number) => {
+      scissor = { x, y, width, height };
+    },
+    setScissorTest: (on: boolean) => {
+      renderer.scissorTest = on;
+    },
     setAnimationLoop: (fn: ((now: number) => void) | null) => {
       loop = fn;
       if (fn === null) renderer.loopStopped = true;
     },
-    render: (_scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
-      renderer.draws += 1;
-      renderer.camera = camera;
+    render: (scene: THREE.Scene, camera: THREE.PerspectiveCamera) => {
+      drawing.push({ scene, camera, viewport, scissor });
     },
     dispose: () => {
       renderer.disposed = true;
     },
     forceContextLoss: () => {
       renderer.contextReleased = true;
-      renderer.listenersAtRelease = canvas.listeners.size;
+      renderer.listenersAtRelease = canvas.listenerCount;
     },
   };
 
@@ -405,8 +553,11 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
   const mountedAt = performance.now();
   const teardown = mountSkyline(
     host as unknown as HTMLElement,
-    { marks: SKYLINE, outlines: GROUND_OUTLINES, reducedMotion },
-    () => fake as unknown as THREE.WebGLRenderer,
+    { marks: MOUNTED, outlines: GROUND_OUTLINES, reducedMotion },
+    () => {
+      renderer.contextsAsked += 1;
+      return fake as unknown as THREE.WebGLRenderer;
+    },
   );
   assert.ok(teardown, "a renderer is a mount");
 
@@ -600,7 +751,7 @@ test("teardown stops the loop, drops the canvas and frees what three holds", () 
   assert.equal(map.renderer.disposed, true, "three's own caches are freed");
   // The controls let the page's own listeners go with them, and the fit lets go
   // of the display it was watching the resolution of.
-  assert.equal(map.canvas.listeners.size, 0, "no listener outlives the canvas");
+  assert.equal(map.canvas.listenerCount, 0, "no listener outlives the canvas");
   assert.equal(map.displayWatchers, 0, "no watcher outlives the mount");
 });
 
@@ -673,4 +824,238 @@ test("teardown hands the GL context back, so the next visit has one to ask for",
   // The loss is announced on the canvas, so it is given up only once nothing is
   // left listening to it — a teardown must not provoke its own redraw.
   assert.equal(map.renderer.listenersAtRelease, 0, "nothing is listening when it goes");
+});
+
+/** The middle of an inset's box, where a pointer would land on the place. */
+function centreOf(rect: InsetRect): { x: number; y: number } {
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+}
+
+/** The boxes the atlas puts the insets in on a pane of this shape. */
+function boxes(width: number, height: number): InsetRect[] {
+  return insetRects({ width, height });
+}
+
+/** Whether the camera is looking at a point, rather than merely standing off it. */
+function looksAt(camera: THREE.PerspectiveCamera, at: ScenePoint): boolean {
+  const wanted = vector3(at).sub(camera.position).normalize();
+  return camera.getWorldDirection(new THREE.Vector3()).distanceTo(wanted) < 1e-3;
+}
+
+test("one frame draws the country and both insets, out of one renderer", () => {
+  // Three viewports, one WebGL context, one scene: an inset column is the same
+  // instance of the same mesh the main view draws, so the two surfaces cannot
+  // hold different composites or lamps for the same airport.
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+  const passes = map.renderer.passes;
+
+  assert.equal(map.renderer.contextsAsked, 1, "the insets are not a second canvas");
+  assert.equal(passes.length, 1 + INSET_REGIONS.length);
+  for (const pass of passes) {
+    assert.equal(pass.scene, passes[0].scene, "one scene, drawn three times");
+  }
+  // Without the scissor a viewport's clear would wipe the whole pane.
+  assert.equal(map.renderer.scissorTest, true);
+
+  // The country is the whole pane, drawn through the mount's own camera.
+  assert.deepEqual(passes[0].viewport, { x: 0, y: 0, width: 1280, height: 720 });
+  assert.deepEqual(passes[0].scissor, passes[0].viewport);
+
+  // The insets are the atlas's own boxes, in the frame WebGL reads a viewport
+  // in: its origin is the bottom-left corner, and a box's is the top-left.
+  boxes(1280, 720).forEach((rect, index) => {
+    const pass = passes[index + 1];
+    const expected = {
+      x: rect.x,
+      y: 720 - rect.y - rect.height,
+      width: rect.width,
+      height: rect.height,
+    };
+    assert.deepEqual(pass.viewport, expected, rect.region.key);
+    assert.deepEqual(pass.scissor, expected, rect.region.key);
+    assert.ok(
+      Math.abs(pass.camera.aspect - rect.width / rect.height) < 1e-9,
+      `${rect.region.key} is framed against its own box`,
+    );
+    const frame = insetFrame(rect.region, pass.camera.aspect);
+    assert.ok(pass.camera.position.distanceTo(vector3(frame.position)) < 1e-6, rect.region.key);
+    assert.ok(looksAt(pass.camera, frame.target), `${rect.region.key} is looked at`);
+  });
+});
+
+test("an inset draws its own region; the main view draws every one of them", () => {
+  const map = mountFake(true);
+  map.renderer.frame(0);
+  const [main, ...insets] = map.renderer.passes;
+
+  assert.ok(main.camera.layers.isEnabled(MAIN_LAYER), "the country");
+  for (const region of INSET_REGIONS) {
+    assert.ok(main.camera.layers.isEnabled(region.layer), `and ${region.key}, at true coordinates`);
+  }
+
+  insets.forEach((pass, index) => {
+    const region = INSET_REGIONS[index];
+    assert.ok(pass.camera.layers.isEnabled(region.layer), region.key);
+    // A camera standing off Alaska sees the contiguous states between it and
+    // the target: an inset that drew them would be a country in a corner box.
+    assert.equal(pass.camera.layers.isEnabled(MAIN_LAYER), false, `${region.key} draws no CONUS`);
+    for (const other of INSET_REGIONS) {
+      if (other.key === region.key) continue;
+      const drawn = pass.camera.layers.isEnabled(other.layer);
+      assert.equal(drawn, false, `${region.key} draws no ${other.key}`);
+    }
+  });
+});
+
+test("the scene is split between the layers, not thinned or copied", () => {
+  const map = mountFake(true);
+  map.renderer.frame(0);
+  const scene = map.renderer.passes[0].scene;
+
+  const instanced: THREE.InstancedMesh[] = [];
+  const lines: THREE.LineSegments[] = [];
+  const lights: THREE.Light[] = [];
+  scene.traverse((object) => {
+    if (object instanceof THREE.InstancedMesh) instanced.push(object);
+    else if (object instanceof THREE.LineSegments) lines.push(object);
+    else if (object instanceof THREE.Light) lights.push(object);
+  });
+
+  const drawnOn = (layer: number) =>
+    instanced
+      .filter((mesh) => mesh.layers.isEnabled(layer))
+      .reduce((total, mesh) => total + mesh.count, 0);
+
+  assert.equal(
+    INSET_REGIONS.reduce((total, region) => total + drawnOn(region.layer), drawnOn(MAIN_LAYER)),
+    MOUNTED.length,
+    "every mark is drawn once, on the layer of the place it stands in",
+  );
+  assert.equal(drawnOn(MAIN_LAYER), SKYLINE.length, "the contiguous marks");
+  for (const region of INSET_REGIONS) {
+    assert.equal(drawnOn(region.layer), 1, `${region.key} has its own airport`);
+  }
+
+  // The outline is split the same way, and no state is dropped on the way.
+  const vertices = lines.reduce(
+    (total, line) => total + line.geometry.getAttribute("position").count,
+    0,
+  );
+  const whole = GROUND_OUTLINES.reduce(
+    (total, outline) =>
+      total + outline.rings.reduce((ring, points) => ring + 2 * (points.length - 1), 0),
+    0,
+  );
+  assert.equal(vertices, whole);
+
+  // A light that lit only the country would leave both insets black.
+  assert.ok(lights.length > 0);
+  for (const light of lights) {
+    for (const region of INSET_REGIONS) {
+      assert.ok(light.layers.isEnabled(region.layer), `${light.type} lights ${region.key}`);
+    }
+  }
+});
+
+test("clicking an inset eases the main camera to that region, at full size", () => {
+  const map = mountFake(false, 1280, 720);
+  map.renderer.frame(0);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+  const alaska = boxes(1280, 720)[0];
+  const frame = insetFrame(alaska.region, camera.aspect);
+
+  click(map, centreOf(alaska));
+  map.renderer.frame(16);
+  assert.ok(
+    camera.position.distanceTo(vector3(frame.position)) > 1,
+    "an ease, not a cut: one frame in, the camera is on its way",
+  );
+  const started = map.renderer.draws;
+
+  for (let now = 32; now <= 1_200; now += 16) {
+    map.renderer.frame(now);
+  }
+
+  assert.ok(camera.position.distanceTo(vector3(frame.position)) < 1e-2, "it arrives at Alaska");
+  assert.ok(looksAt(camera, frame.target), "and is looking at it, not past it");
+  assert.ok(map.renderer.draws > started, "the move is drawn frame by frame");
+
+  const settled = map.renderer.draws;
+  for (let now = 1_216; now < 2_400; now += 16) {
+    map.renderer.frame(now);
+  }
+  assert.equal(map.renderer.draws, settled, "and the canvas is still again once it is there");
+});
+
+test("a visitor who asked for less motion is put there instead of flown", () => {
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+  const hawaii = boxes(1280, 720)[1];
+  const frame = insetFrame(hawaii.region, camera.aspect);
+
+  click(map, centreOf(hawaii));
+
+  assert.ok(camera.position.distanceTo(vector3(frame.position)) < 1e-6, "already at Hawaii");
+  assert.ok(looksAt(camera, frame.target));
+  map.renderer.frame(16);
+  assert.equal(map.renderer.draws, 2, "and the frame it was snapped to is drawn");
+});
+
+test("a drag that lets go over an inset is not a click on it", () => {
+  // A browser reports a click wherever a drag ends, so an orbit that finishes
+  // over the corner would fly the visitor to Alaska for turning the country.
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+  const before = camera.position.clone();
+  const alaska = boxes(1280, 720)[0];
+
+  dragTo(map, { x: 900, y: 200 }, centreOf(alaska));
+  for (const now of [16, 200, 900]) {
+    map.renderer.frame(now);
+  }
+
+  assert.deepEqual(camera.position.toArray(), before.toArray(), "the view is where it was");
+});
+
+test("the boxes follow the pane, and so does what a click on one means", () => {
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+
+  // A phone turned on its side: the corner the atlas sits in has moved.
+  map.resize(390, 780);
+  map.renderer.frame(16);
+  const rects = boxes(390, 780);
+  rects.forEach((rect, index) => {
+    assert.deepEqual(map.renderer.passes[index + 1].viewport, {
+      x: rect.x,
+      y: 780 - rect.y - rect.height,
+      width: rect.width,
+      height: rect.height,
+    });
+  });
+
+  // And the hit test is against the boxes as they are now, not as they opened.
+  click(map, centreOf(rects[0]));
+  const frame = insetFrame(rects[0].region, camera.aspect);
+  assert.ok(camera.position.distanceTo(vector3(frame.position)) < 1e-6, "Alaska, on the new pane");
+});
+
+test("the pointer over an inset says that it can be clicked", () => {
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+  const alaska = boxes(1280, 720)[0];
+
+  hover(map, centreOf(alaska));
+  assert.equal(map.canvas.style.cursor, "pointer");
+
+  hover(map, { x: 640, y: 300 });
+  assert.equal(map.canvas.style.cursor, "", "the skyline itself is dragged, not clicked");
 });

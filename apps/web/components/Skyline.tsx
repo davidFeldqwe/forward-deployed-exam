@@ -33,8 +33,9 @@ export function Skyline({
 }
 
 /**
- * The key: the five lamp words beside the hue and the shape each one draws, and
- * what height means. Hue is allowed on the canvas because this is under it.
+ * The key: the five lamp words beside the hue and the shape each one draws,
+ * what height means, and what the two corner insets are. Hue is allowed on the
+ * canvas because this is under it.
  */
 function LampKey() {
   return (
@@ -58,6 +59,9 @@ function LampKey() {
       </div>
       <p className="mt-2 max-w-[52rem] text-[11.5px] leading-snug text-muted-foreground">
         {mapCopy.encoding}
+      </p>
+      <p className="mt-1 max-w-[52rem] text-[11.5px] leading-snug text-muted-foreground">
+        {mapCopy.insets}
       </p>
     </section>
   );

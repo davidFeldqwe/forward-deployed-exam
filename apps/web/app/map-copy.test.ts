@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { CANDIDATE_LAMPS, MIXED_VECTOR_AT, STRONG_CANDIDATE_AT } from "@repo/scoring";
 
 import { mapCopy } from "./map-copy.ts";
+import { INSET_REGIONS } from "./map-insets.ts";
 
 const web = new URL("../", import.meta.url);
 
@@ -62,6 +63,7 @@ test("copy stays inside the glossary", () => {
     mapCopy.title,
     mapCopy.intro,
     mapCopy.encoding,
+    mapCopy.insets,
     mapCopy.canvasLabel,
     mapCopy.noWebgl.body,
   ]
@@ -91,6 +93,20 @@ test("a screen reader is told what the canvas is, since the mesh cannot be read"
   // The label is the copy module's, not a second sentence written in the JSX.
   assert.match(canvas, /role="img"/);
   assert.match(canvas, /aria-label=\{mapCopy\.canvasLabel\}/);
+});
+
+test("the key names the corner boxes, and says what clicking one does", () => {
+  // A corner of the country is not self-evidently Alaska, and a viewport that
+  // answers a click has to say so: there is no cursor on a phone to discover it.
+  for (const region of INSET_REGIONS) {
+    assert.match(mapCopy.insets, new RegExp(`\\b${region.label}\\b`), region.key);
+  }
+  assert.match(mapCopy.insets, /click|tap/i);
+  // The places are drawn where they are: an inset is a second camera, not a
+  // corner an airport was moved into.
+  assert.match(mapCopy.insets, /own coordinates|true coordinates/i);
+  // And the key is where a visitor reads it, out of the one copy module.
+  assert.match(source("components/Skyline.tsx"), /mapCopy\.insets/);
 });
 
 test("the map wears the shared bar, with the comparison window years in it", () => {

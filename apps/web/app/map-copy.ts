@@ -46,6 +46,13 @@ export const mapCopy = {
     "Column height is the composite score, 0–100, linear: a composite of 80 is " +
     "twice the column of 40. Every column is the same width, so FAA hub size is " +
     "not a second thing to read off the canvas.",
+  /**
+   * The corner viewports. The two places are drawn where they are, so the note
+   * says what the boxes are rather than dressing them as a separate map.
+   */
+  insets:
+    "Alaska and Hawaii stand in corner insets of this same view, at their own " +
+    "coordinates and on the same scoring payload. Click one to bring the map to it.",
   legendHeading: "Candidate lamp",
   legend: CANDIDATE_LAMPS.map((lamp) => ({
     lamp,
