@@ -9,15 +9,20 @@
  * columns stand on.
  */
 
-/** A point in the scene's world units; the ground plane is y = 0. */
-export type ScenePoint = { x: number; y: number; z: number };
+/**
+ * A point in the scene's world units; the ground plane is y = 0. Read-only,
+ * because these points are shared rather than copied — a reduced-motion ease
+ * hands back the same point as both its start and its finish, and the scene
+ * copies them into its own vectors before moving anything.
+ */
+export type ScenePoint = { readonly x: number; readonly y: number; readonly z: number };
 
 /**
  * The frame the map opens in on a wide pane: a tilt over the contiguous states,
  * from the south and above. A narrower pane opens further back along this same
  * ray — see `openingPosition`.
  */
-export const CONUS_VIEW: { position: ScenePoint; target: ScenePoint } = {
+export const CONUS_VIEW: Readonly<{ position: ScenePoint; target: ScenePoint }> = {
   position: { x: 0, y: 11, z: 17 },
   target: { x: 0, y: 0, z: 1 },
 };
@@ -125,13 +130,22 @@ function openingDistance(aspect: number): number {
 }
 
 /**
+ * How far out the opening move starts on a pane of this shape: the opening
+ * frame, stepped back. `farLimit` is never nearer than this and the ease starts
+ * exactly here, so the two cannot drift into a step the controls clamp away.
+ */
+function steppedBackDistance(aspect: number): number {
+  return openingDistance(aspect) * INTRO_PULL_BACK;
+}
+
+/**
  * How far scroll may take the camera out on a pane of this shape. Never nearer
  * than where the map opens and steps back from — a limit that stopped short of
  * the opening frame would be clamping the country's own coasts off a narrow
  * pane, and holding the intro ease still while it did it.
  */
 export function farLimit(aspect: number): number {
-  return Math.max(MAX_DISTANCE, openingDistance(aspect) * INTRO_PULL_BACK);
+  return Math.max(MAX_DISTANCE, steppedBackDistance(aspect));
 }
 
 /**
@@ -173,7 +187,7 @@ export function introEase(reducedMotion: boolean, aspect: number): IntroEase {
   }
 
   return {
-    from: atDistance(INTRO_HEADING, openingDistance(aspect) * INTRO_PULL_BACK),
+    from: atDistance(INTRO_HEADING, steppedBackDistance(aspect)),
     to,
     durationMs: INTRO_MS,
   };

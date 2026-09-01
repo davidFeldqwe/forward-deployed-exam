@@ -5,7 +5,6 @@ import { test } from "node:test";
 import { CANDIDATE_LAMPS, MIXED_VECTOR_AT, STRONG_CANDIDATE_AT } from "@repo/scoring";
 
 import { mapCopy } from "./map-copy.ts";
-import { siteHeaderCopy } from "./site-header.ts";
 
 const web = new URL("../", import.meta.url);
 
@@ -99,7 +98,7 @@ test("the map wears the shared bar, with the comparison window years in it", () 
 
   assert.match(skyline, /<SiteHeader\b/);
   assert.match(skyline, /status=\{<ComparisonWindow/);
-  // One home for the window's strings: the surfaces do not keep copies.
-  assert.match(siteHeaderCopy.comparisonWindowYears, /^2023.2024$/);
+  // One home for the window's strings — `site-header.test.ts` pins them — so
+  // the surfaces keep no copies of the years.
   assert.doesNotMatch(skyline, /2023|2024/);
 });

@@ -133,12 +133,6 @@ test("the canvas lights the same custom properties the pills do, and greys the r
   for (const lamp of CANDIDATE_LAMPS) {
     assert.match(lampPill(lamp), new RegExp(lampVariable(lamp).replace("--", "")));
   }
-});
-
-test("every hue the canvas asks for is a property the stylesheet defines", () => {
-  const globals = source("app/globals.css");
-
-  for (const lamp of CANDIDATE_LAMPS) {
-    assert.match(globals, new RegExp(`\\n\\s*${lampVariable(lamp)}:`), lamp);
-  }
+  // That the stylesheet declares each of those properties, in a syntax the
+  // canvas can read, is `skyline-scene.test.ts`: one file reads `globals.css`.
 });
