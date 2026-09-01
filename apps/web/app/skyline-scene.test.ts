@@ -69,18 +69,7 @@ const SKYLINE: readonly MapMark[] = [
   ring("GUM", "No data", 6),
 ];
 
-/**
- * The marks a mount is handed: the skyline above, and one airport in each of
- * the two places the atlas frames — Anchorage and Honolulu, at their own
- * coordinates. Nothing in the mount may move them; what the insets do is look
- * at them from somewhere else.
- */
-const MOUNTED: readonly MapMark[] = [
-  ...SKYLINE,
-  located("ANC", "Weak candidate", 20, { latitude: 61.179004, longitude: -149.992561 }),
-  located("HNL", "Weak candidate", 28, { latitude: 21.318387, longitude: -157.92567 }),
-];
-
+/** One airport at its own coordinates, scored as the snapshot would have it. */
 function located(
   iata: string,
   lamp: CandidateLamp,
@@ -97,6 +86,18 @@ function located(
     ...groundPoint(at),
   };
 }
+
+/**
+ * The marks a mount is handed: the skyline above, and one airport in each of
+ * the two places the atlas frames — Anchorage and Honolulu, at their own
+ * coordinates. Nothing in the mount may move them; what the insets do is look
+ * at them from somewhere else.
+ */
+const MOUNTED: readonly MapMark[] = [
+  ...SKYLINE,
+  located("ANC", "Weak candidate", 20, { latitude: 61.179004, longitude: -149.992561 }),
+  located("HNL", "Weak candidate", 28, { latitude: 21.318387, longitude: -157.92567 }),
+];
 
 /** The hue one mesh is drawn in, as a hex string. */
 function colourOf(mesh: THREE.InstancedMesh): string {
@@ -452,6 +453,11 @@ type MountedSkyline = {
 function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedSkyline {
   const canvas = fakeCanvas();
   let loop: ((now: number) => void) | null = null;
+  // What the fake below records as it is called: the passes of the frame being
+  // drawn, and the box the last `setViewport`/`setScissor` named for the next.
+  let drawing: RenderPass[] = [];
+  let viewport: Box | null = null;
+  let scissor: Box | null = null;
   const renderer: FakeRenderer = {
     draws: 0,
     passes: [],
@@ -478,9 +484,6 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
       }
     },
   };
-  let drawing: RenderPass[] = [];
-  let viewport: Box | null = null;
-  let scissor: Box | null = null;
   const fake = {
     domElement: canvas,
     setSize: (w: number, h: number) => {

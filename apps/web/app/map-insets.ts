@@ -105,7 +105,7 @@ function holds(bounds: RegionBounds, point: { x: number; z: number }): boolean {
  * A mark carries no state code, and it does not need one: an inset draws what
  * stands inside the box it frames.
  */
-export function regionAt(point: { x: number; z: number }): InsetRegion | null {
+function regionAt(point: { x: number; z: number }): InsetRegion | null {
   return INSET_REGIONS.find((region) => holds(region.bounds, point)) ?? null;
 }
 
@@ -169,7 +169,7 @@ function boxAspect(region: InsetRegion): number {
  */
 export function insetRects(pane: PaneSize): InsetRect[] {
   const tallest = Math.min(MAX_INSET_HEIGHT, pane.height * MAX_INSET_HEIGHT_SHARE);
-  const height = Math.min(Math.max(pane.height * INSET_HEIGHT_SHARE, MIN_INSET_HEIGHT), tallest);
+  const height = clamp(pane.height * INSET_HEIGHT_SHARE, MIN_INSET_HEIGHT, tallest);
   const widths = INSET_REGIONS.map((region) => height * boxAspect(region));
 
   const gaps = INSET_GAP * (INSET_REGIONS.length - 1);
@@ -182,16 +182,14 @@ export function insetRects(pane: PaneSize): InsetRect[] {
   const scale = Math.min(1, room / widths.reduce((total, width) => total + width, 0));
 
   const boxHeight = Math.max(height * scale, 1);
+  // Both boxes are the same height, so both sit on the one line above the
+  // pane's bottom margin; only the left edge moves along.
+  const y = Math.max(pane.height - INSET_MARGIN - boxHeight, 0);
+
   let x = INSET_MARGIN;
   return INSET_REGIONS.map((region, index) => {
     const width = Math.max(widths[index] * scale, 1);
-    const rect = {
-      region,
-      x,
-      y: Math.max(pane.height - INSET_MARGIN - boxHeight, 0),
-      width,
-      height: boxHeight,
-    };
+    const rect = { region, x, y, width, height: boxHeight };
     x += width + INSET_GAP;
     return rect;
   });

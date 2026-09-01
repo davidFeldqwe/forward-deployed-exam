@@ -41,6 +41,7 @@ import {
   type InsetRect,
   type InsetRegion,
   MAIN_LAYER,
+  type PaneSize,
   insetAt,
   insetFrame,
   insetRects,
@@ -105,8 +106,7 @@ export function mountSkyline(
   camera.layers.enableAll();
   scene.add(...lights(), ...layered(input, palette));
 
-  const atlas = makeAtlas();
-  let pane = hostSize(host);
+  const atlas = makeAtlas(hostSize(host));
 
   // A canvas is inline by default, which would leave a text descender's worth
   // of gap under it inside a pane sized to the viewport.
@@ -169,7 +169,6 @@ export function mountSkyline(
     // a resize re-frames the pane after this, never the country.
     untouched = false;
     if (input.reducedMotion) {
-      flight = null;
       camera.position.copy(stands);
       controls.target.copy(looksAt);
       // Which the controls report as a change, so the frame is drawn.
@@ -195,8 +194,7 @@ export function mountSkyline(
     // The atlas is laid out against the pane it is drawn in, so the boxes stay
     // in the corner of a phone turned on its side — and a click on one means
     // the box it is in now rather than the one the page opened with.
-    pane = size;
-    layOutAtlas(atlas, pane);
+    layOutAtlas(atlas, size);
     // How far out the country can be held is the new pane's business, whoever
     // is driving: a visitor who has taken the controls still has to be able to
     // zoom out far enough to see it after turning the phone.
@@ -241,7 +239,7 @@ export function mountSkyline(
       return;
     }
     pending = false;
-    drawViewports(renderer, scene, camera, pane, atlas);
+    drawViewports(renderer, scene, camera, atlas);
   });
 
   return () => {
@@ -267,14 +265,6 @@ export function mountSkyline(
 /** A camera-module point as three.js wants it. The two agree on world units. */
 function vector(point: ScenePoint): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.y, point.z);
-}
-
-/** How far a pointer may slip between going down and coming up to be a click. */
-const CLICK_SLOP = 4;
-
-/** Where a pointer event landed in the pane, which is the box the canvas fills. */
-function panedPoint(event: MouseEvent): { x: number; y: number } {
-  return { x: event.offsetX, y: event.offsetY };
 }
 
 /** The main camera's move onto a region, while it is running. */
@@ -312,16 +302,19 @@ function layered(input: SkylineInput, palette: Palette): THREE.Object3D[] {
 }
 
 /**
- * The corner viewports: one camera per region, and the boxes the last fit laid
- * them out in. The two travel together because they are one claim twice over —
- * a camera framed against a box, and the box it is drawn in.
+ * The corner viewports as the last layout left them: the pane the boxes are
+ * measured in, the boxes themselves, and the camera each one is drawn through.
+ * The three travel together because they are one claim from three sides — a box
+ * in a pane, and a camera framed against that box.
  */
 type Atlas = {
   cameras: Record<InsetKey, THREE.PerspectiveCamera>;
+  pane: PaneSize;
   rects: readonly InsetRect[];
 };
 
-function makeAtlas(): Atlas {
+/** An atlas laid out in a pane of this size: never a camera without a box. */
+function makeAtlas(pane: PaneSize): Atlas {
   const cameras = Object.fromEntries(
     INSET_REGIONS.map((region) => {
       // One layer: its own region, and nothing standing between the camera and
@@ -332,11 +325,14 @@ function makeAtlas(): Atlas {
     }),
   ) as Record<InsetKey, THREE.PerspectiveCamera>;
 
-  return { cameras, rects: [] };
+  const atlas: Atlas = { cameras, pane, rects: [] };
+  layOutAtlas(atlas, pane);
+  return atlas;
 }
 
 /** Puts the boxes in a pane of this size, and frames each region in its own. */
-function layOutAtlas(atlas: Atlas, pane: { width: number; height: number }): void {
+function layOutAtlas(atlas: Atlas, pane: PaneSize): void {
+  atlas.pane = pane;
   atlas.rects = insetRects(pane);
 
   for (const rect of atlas.rects) {
@@ -351,6 +347,14 @@ function layOutAtlas(atlas: Atlas, pane: { width: number; height: number }): voi
     camera.far = camera.position.distanceTo(vector(target)) + rect.region.bounds.radius;
     camera.updateProjectionMatrix();
   }
+}
+
+/** How far a pointer may slip between going down and coming up to be a click. */
+const CLICK_SLOP = 4;
+
+/** Where a pointer event landed in the pane, which is the box the canvas fills. */
+function panedPoint(event: MouseEvent): { x: number; y: number } {
+  return { x: event.offsetX, y: event.offsetY };
 }
 
 /**
@@ -412,21 +416,22 @@ function drawViewports(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
-  pane: { width: number; height: number },
   atlas: Atlas,
 ): void {
+  const { cameras, pane, rects } = atlas;
+
   renderer.setScissorTest(true);
   renderer.setViewport(0, 0, pane.width, pane.height);
   renderer.setScissor(0, 0, pane.width, pane.height);
   renderer.render(scene, camera);
 
-  for (const rect of atlas.rects) {
+  for (const rect of rects) {
     // A box is measured from the pane's top-left corner and a viewport from the
     // drawing buffer's bottom-left one.
     const bottom = pane.height - rect.y - rect.height;
     renderer.setViewport(rect.x, bottom, rect.width, rect.height);
     renderer.setScissor(rect.x, bottom, rect.width, rect.height);
-    renderer.render(scene, atlas.cameras[rect.region.key]);
+    renderer.render(scene, cameras[rect.region.key]);
   }
 }
 
@@ -617,7 +622,7 @@ function orbit(
  * an aspect ratio has to divide by the height, and a drawing buffer of no width
  * is not a canvas. A pane inside a flex column is briefly both.
  */
-function hostSize(host: HTMLElement): { width: number; height: number } {
+function hostSize(host: HTMLElement): PaneSize {
   return { width: Math.max(host.clientWidth, 1), height: Math.max(host.clientHeight, 1) };
 }
 
@@ -690,7 +695,7 @@ function fitToHost(
   host: HTMLElement,
   renderer: THREE.WebGLRenderer,
   camera: THREE.PerspectiveCamera,
-  onFit: (pane: { width: number; height: number }) => void,
+  onFit: (pane: PaneSize) => void,
 ): () => void {
   const fit = (): void => {
     // One measurement for both, so the drawing buffer and the frustum cannot be

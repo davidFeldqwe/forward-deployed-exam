@@ -35,7 +35,16 @@ import { GROUND_OUTLINES } from "./us-ground.ts";
  * checkable without a WebGL context.
  */
 
-/** The pane shapes the map is drawn in, from an ultrawide desk to a phone. */
+/**
+ * The shapes a main pane comes in, from an ultrawide desk to a phone held
+ * upright: the aspects `map-camera.test.ts` frames the country against.
+ */
+const PANE_ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5, 0.4, 0.33];
+
+/** And the shapes an inset box itself comes in, inside its own aspect limits. */
+const BOX_ASPECTS = [2.4, 1.7, 1, 0.8];
+
+/** The pane sizes the map is drawn in, from an ultrawide desk to a phone. */
 const PANES = [
   { width: 2560, height: 1080 },
   { width: 1280, height: 720 },
@@ -161,7 +170,7 @@ test("an inset is seen from the same tilt the country is, so a column is a colum
   const base = orbitOf(CONUS_VIEW.position, CONUS_VIEW.target);
 
   for (const one of INSET_REGIONS) {
-    for (const aspect of [2.4, 1.7, 1, 0.8]) {
+    for (const aspect of BOX_ASPECTS) {
       const frame = insetFrame(one, aspect);
       const seen = orbitOf(frame.position, frame.target);
 
@@ -175,7 +184,7 @@ test("the frame a click flies to is somewhere the orbit could have been put", ()
   // Clicking an inset eases the main camera there; an endpoint outside the
   // orbit's own limits would be clamped away on the frame after it arrived.
   for (const one of INSET_REGIONS) {
-    for (const aspect of [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5, 0.4, 0.33]) {
+    for (const aspect of PANE_ASPECTS) {
       const frame = insetFrame(one, aspect);
       const { distance, polar } = orbitOf(frame.position, frame.target);
 
