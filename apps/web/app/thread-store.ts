@@ -1,14 +1,18 @@
 /**
  * The Thread store seam: one persisted conversation per signed-in analyst,
- * owned by the account that started it. Convex owns Threads once a deployment
- * exists (PRD: Convex stores Auth and Threads only, never airports or scores);
- * until then this process holds them, so threads survive a refresh but not a
- * restart.
+ * owned by the account that started it. Convex stores Auth and Threads only
+ * (PRD), never airports or scores. Tool payloads live on the Thread messages
+ * so a ranking re-renders after a process restart.
  */
 import { randomBytes } from "node:crypto";
 
 import { SPEND_CAP_REFUSAL, reserveAgentCall } from "./agent-spend.ts";
 import { normalizeEmail } from "./auth-accounts.ts";
+import {
+  type ConvexThread,
+  convexThreadMap,
+  persistConvexStore,
+} from "./convex-store.ts";
 import {
   type ThreadMessage,
   assistantMessage,
@@ -33,24 +37,21 @@ export type ThreadSummary = {
 };
 
 type ThreadHost = {
-  __aiiThreadStore?: Map<string, Thread>;
   __aiiThreadAsks?: Map<string, Promise<void>>;
 };
 
 /**
- * The store hangs off `globalThis` because Next bundles the page graph and the
- * server-action graph separately: a module-level Map would give the action that
- * writes a thread and the page that renders it a store each — and the queue in
- * `askOnThread` a lock each, which is no lock at all.
+ * Ask queues hang off `globalThis` because Next bundles the page graph and the
+ * server-action graph separately: a module-level Map would give each bundle a
+ * lock of its own, which is no lock at all. Threads themselves live in the
+ * Convex document store, which is the same `globalThis` plus disk.
  */
 function threadHost(): ThreadHost {
   return globalThis as unknown as ThreadHost;
 }
 
-function threadsById(): Map<string, Thread> {
-  const host = threadHost();
-  host.__aiiThreadStore ??= new Map();
-  return host.__aiiThreadStore;
+function threadsById(): Record<string, ConvexThread> {
+  return convexThreadMap();
 }
 
 /** Each thread's queue of asks, held as its tail: what the next one waits on. */
@@ -69,16 +70,47 @@ function newThreadId(): string {
  * is keyed the way sign-in keys an account, so it is the same analyst however
  * they typed their email.
  */
-function ownedThread(ownerEmail: string, threadId: string): Thread | null {
-  const thread = threadsById().get(threadId);
+function ownedThread(ownerEmail: string, threadId: string): ConvexThread | null {
+  const thread = threadsById()[threadId];
   return thread && thread.ownerEmail === normalizeEmail(ownerEmail)
     ? thread
     : null;
 }
 
-/** Handed out as a copy, so a caller cannot edit the store by accident. */
-function snapshotOf(thread: Thread): Thread {
-  return structuredClone(thread);
+/**
+ * Handed out as a copy, messages parsed: Convex (and the on-disk file) can
+ * hand back a document this process never validated.
+ */
+function snapshotOf(thread: ConvexThread): Thread {
+  const messages: ThreadMessage[] = [];
+  for (const message of thread.messages) {
+    const parsed = parseThreadMessage(message);
+    if (parsed) {
+      messages.push(structuredClone(parsed));
+    }
+  }
+  return {
+    id: thread.id,
+    ownerEmail: thread.ownerEmail,
+    title: thread.title,
+    createdAt: thread.createdAt,
+    updatedAt: thread.updatedAt,
+    messages,
+  };
+}
+
+function putThread(thread: ConvexThread): void {
+  const threads = threadsById();
+  delete threads[thread.id];
+  threads[thread.id] = {
+    id: thread.id,
+    ownerEmail: thread.ownerEmail,
+    title: thread.title,
+    createdAt: thread.createdAt,
+    updatedAt: thread.updatedAt,
+    messages: structuredClone(thread.messages),
+  };
+  persistConvexStore();
 }
 
 /**
@@ -92,7 +124,7 @@ export function startThread(ownerEmail: string, question: string): Thread | null
     return null;
   }
   const now = Date.now();
-  const thread: Thread = {
+  const thread: ConvexThread = {
     id: newThreadId(),
     ownerEmail: normalizeEmail(ownerEmail),
     title: threadTitle(question),
@@ -100,7 +132,7 @@ export function startThread(ownerEmail: string, question: string): Thread | null
     updatedAt: now,
     messages: [opening],
   };
-  threadsById().set(thread.id, thread);
+  putThread(thread);
   return snapshotOf(thread);
 }
 
@@ -119,12 +151,13 @@ export function appendMessage(
     return null;
   }
   // Stored as a copy, so the caller's message and the store cannot diverge.
-  thread.messages.push(structuredClone(parsed));
-  thread.updatedAt = Date.now();
   // Re-insert so the thread just spoken in is the most recent one.
-  threadsById().delete(thread.id);
-  threadsById().set(thread.id, thread);
-  return snapshotOf(thread);
+  putThread({
+    ...thread,
+    messages: [...thread.messages, structuredClone(parsed)],
+    updatedAt: Date.now(),
+  });
+  return snapshotOf(threadsById()[thread.id]!);
 }
 
 /**
@@ -165,7 +198,7 @@ export function readThread(ownerEmail: string, threadId: string): Thread | null 
  */
 export function listThreads(ownerEmail: string): ThreadSummary[] {
   const owner = normalizeEmail(ownerEmail);
-  return [...threadsById().values()]
+  return Object.values(threadsById())
     .filter((thread) => thread.ownerEmail === owner)
     .reverse()
     .map(({ id, title }) => ({ id, title }));

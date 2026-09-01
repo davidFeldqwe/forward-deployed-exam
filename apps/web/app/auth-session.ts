@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
 
+import { sessionIfAccountLive } from "@/app/auth-accounts";
 import {
   SESSION_MAX_AGE_SECONDS,
   type Session,
-  readSessionToken,
   signSessionToken,
 } from "@/app/auth-token";
 
@@ -22,7 +22,7 @@ function sessionSecret(): string {
 
 export async function currentSession(): Promise<Session | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  return token ? readSessionToken(token, sessionSecret()) : null;
+  return token ? sessionIfAccountLive(token, sessionSecret()) : null;
 }
 
 export async function startSession(email: string): Promise<void> {

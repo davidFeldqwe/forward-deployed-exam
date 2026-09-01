@@ -9,9 +9,8 @@
  *
  * Exactly one destination is current. An open thread lights its own row; an
  * empty chat lights **New thread**, because that is the destination the screen
- * is already showing. A `threadId` that recents does not hold (a restart drops
- * the in-process store) lights nothing, rather than pointing at a thread the
- * rail cannot open.
+ * is already showing. A `threadId` that recents does not hold lights nothing,
+ * rather than pointing at a thread the rail cannot open.
  */
 import { CHAT_PATH, chatDestination } from "./auth-gate.ts";
 import type { ThreadSummary } from "./thread-store.ts";

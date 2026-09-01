@@ -210,7 +210,7 @@ test("a thread needs a first question: a blank one is refused, not stored untitl
 
 test("a question sent to a thread that is gone opens a new one instead of vanishing", () => {
   // The composer posts the open thread id in a hidden field, so a thread this
-  // process no longer holds — every restart, until Convex owns them — used to
+  // account never owned — a forged id, or one Convex no longer has — used to
   // send the analyst to an empty chat with their question dropped on the floor.
   const analyst = "restarted@example.com";
 
