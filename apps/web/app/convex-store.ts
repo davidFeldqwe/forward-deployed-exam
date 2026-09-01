@@ -79,9 +79,19 @@ function convexDir(): string {
   return join(process.cwd(), ".convex");
 }
 
+/**
+ * One file for the Next server, so Sign in after Sign out (or in another
+ * worker) still sees the account Create account wrote. `node:test` runs files
+ * as parallel processes in this cwd, so those writers keep a pid suffix.
+ */
+function convexStoreFileName(): string {
+  return process.env.NODE_TEST_CONTEXT
+    ? `auth-and-threads-${process.pid}.json`
+    : "auth-and-threads.json";
+}
+
 function dataPath(): string {
-  // Pid in the name so parallel test files in this cwd do not share a JSON file.
-  return join(convexDir(), `auth-and-threads-${process.pid}.json`);
+  return join(convexDir(), convexStoreFileName());
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

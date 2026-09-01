@@ -66,6 +66,21 @@ export function verifyPassword(password: string, stored: string): boolean {
   return timingSafeEqual(expected, actual);
 }
 
+/**
+ * Create account and Sign in are one credential pair. The login form's mode
+ * picks the path; it does not pick a second password.
+ */
+export async function attemptLogin(
+  mode: string,
+  email: string,
+  password: string,
+): Promise<AccountResult> {
+  if (mode === "signUp") {
+    return createAccount(email, password);
+  }
+  return authenticate(email, password);
+}
+
 export async function createAccount(email: string, password: string): Promise<AccountResult> {
   const errors = validateCredentials(email, password);
   if (errors.email || errors.password) {

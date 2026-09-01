@@ -85,3 +85,12 @@ test("Login binds email as a controlled value and password as an empty default",
   assert.match(login, /defaultValue=\{field\.defaultValue\}/);
   assert.doesNotMatch(login, /defaultValue: field\.name === "email"/);
 });
+
+test("Sign in and Create account post one mode, so they share one password", () => {
+  const login = readFileSync(new URL("../components/Login.tsx", import.meta.url), "utf8");
+  const actions = readFileSync(new URL("./auth-actions.ts", import.meta.url), "utf8");
+
+  assert.match(login, /name="mode"/);
+  assert.match(login, /value=\{mode\}/);
+  assert.match(actions, /attemptLogin\(textField\(formData, "mode"\)/);
+});
