@@ -21,7 +21,7 @@ const COLUMNS = ["IATA", "Name", "Composite", "Candidate lamp", "Why-labels"] as
 
 /** Tab-separated ranking columns, for the clipboard. */
 export function rankingTableTsv(rows: readonly RankingRowView[]): string {
-  return table(rows, "\t", identity);
+  return table(rows, "\t");
 }
 
 /** Comma-separated ranking columns, for the download. */
@@ -32,9 +32,10 @@ export function rankingTableCsv(rows: readonly RankingRowView[]): string {
 function table(
   rows: readonly RankingRowView[],
   delimiter: string,
-  encode: (value: string) => string,
+  encode: (value: string) => string = (value) => value,
 ): string {
-  return [[...COLUMNS], ...rows.map(cells)].map((line) => line.map(encode).join(delimiter)).join("\n");
+  const lines = [[...COLUMNS], ...rows.map(cells)];
+  return lines.map((line) => line.map(encode).join(delimiter)).join("\n");
 }
 
 function cells(row: RankingRowView): string[] {
@@ -57,10 +58,6 @@ function compositeCell(composite: RankingRowView["composite"]): string {
     return "";
   }
   return composite;
-}
-
-function identity(value: string): string {
-  return value;
 }
 
 function csvField(value: string): string {

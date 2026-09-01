@@ -18,6 +18,7 @@
  */
 import { carriedContext, type CarriedContext } from "./carried-context.ts";
 import { pendingAnswer } from "./pending-answer.ts";
+import { compositeChart, type CompositeChartView } from "./ranking-chart.ts";
 import {
   rankingView,
   type RankingRowView,
@@ -25,7 +26,6 @@ import {
   type RankingView,
   type ResolvedSet,
 } from "./ranking-view.ts";
-import { compositeChart, type CompositeChartView } from "./ranking-chart.ts";
 import { spokenProse } from "./read-aloud.ts";
 import { resolvedMap, type ResolvedMapView } from "./resolved-map.ts";
 import { previousQuestion, type ThreadMessage, type ToolCall } from "./thread-messages.ts";

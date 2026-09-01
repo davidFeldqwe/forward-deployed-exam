@@ -39,10 +39,7 @@ export const COMPOSITE_CHART_CAPTION =
  */
 export function compositeChart(call: ToolCall | undefined): CompositeChartView | null {
   const rows = rankingRows(call);
-  if (!call || !rows || rows.length === 0) {
-    return null;
-  }
-  if (lookupMetric(call) !== null) {
+  if (!call || !rows || rows.length === 0 || lookupMetric(call) !== null) {
     return null;
   }
   return {

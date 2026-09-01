@@ -19,14 +19,7 @@ const BAR_HEIGHT = 8;
  */
 export function CompositeChart({ chart }: { chart: CompositeChartView }) {
   const height = Math.max(chart.bars.length * ROW_HEIGHT, ROW_HEIGHT);
-  const description =
-    `Composite score by IATA for this ranking: ` +
-    chart.bars
-      .map((bar) =>
-        bar.composite === null ? `${bar.iata} withheld` : `${bar.iata} ${bar.composite}`,
-      )
-      .join(", ") +
-    ". Numbers come from the same queryAirports payload as the ranking table.";
+  const description = chartDescription(chart.bars);
 
   return (
     <section className="flex flex-col gap-3 overflow-hidden rounded-lg border bg-card">
@@ -58,13 +51,12 @@ export function CompositeChart({ chart }: { chart: CompositeChartView }) {
 function Bar({ bar, y }: { bar: CompositeBar; y: number }) {
   const composite = bar.composite;
   const scored = composite !== null;
+  const track = { x: BAR_X, y: BAR_Y, width: BAR_MAX, height: BAR_HEIGHT, rx: 1 };
   const width = scored ? (composite / 100) * BAR_MAX : 0;
 
   return (
     <g transform={`translate(0, ${y})`}>
-      <title>
-        {scored ? `${bar.iata} · ${bar.name} · ${composite} · ${bar.lamp}` : `${bar.iata} · ${bar.name} · ${bar.lamp}`}
-      </title>
+      <title>{barTitle(bar)}</title>
       <text
         x={LABEL_WIDTH}
         y={BAR_Y + 7}
@@ -73,24 +65,10 @@ function Bar({ bar, y }: { bar: CompositeBar; y: number }) {
       >
         {bar.iata}
       </text>
-      <rect
-        x={BAR_X}
-        y={BAR_Y}
-        width={BAR_MAX}
-        height={BAR_HEIGHT}
-        rx={1}
-        className="fill-white/8"
-      />
+      <rect {...track} className="fill-white/8" />
       {scored ? (
         <>
-          <rect
-            x={BAR_X}
-            y={BAR_Y}
-            width={width}
-            height={BAR_HEIGHT}
-            rx={1}
-            className={lampBar(bar.lamp)}
-          />
+          <rect {...track} width={width} className={lampBar(bar.lamp)} />
           <text
             x={BAR_X + width + 4}
             y={BAR_Y + 7}
@@ -100,17 +78,28 @@ function Bar({ bar, y }: { bar: CompositeBar; y: number }) {
           </text>
         </>
       ) : (
-        <rect
-          x={BAR_X}
-          y={BAR_Y}
-          width={BAR_MAX}
-          height={BAR_HEIGHT}
-          rx={1}
-          fill="none"
-          strokeWidth={1}
-          className="stroke-muted-foreground"
-        />
+        <rect {...track} fill="none" strokeWidth={1} className="stroke-muted-foreground" />
       )}
     </g>
   );
+}
+
+function chartDescription(bars: readonly CompositeBar[]): string {
+  const scores = bars.map((bar) => {
+    if (bar.composite === null) {
+      return `${bar.iata} withheld`;
+    }
+    return `${bar.iata} ${bar.composite}`;
+  });
+  return (
+    `Composite score by IATA for this ranking: ${scores.join(", ")}. ` +
+    "Numbers come from the same queryAirports payload as the ranking table."
+  );
+}
+
+function barTitle(bar: CompositeBar): string {
+  if (bar.composite === null) {
+    return `${bar.iata} · ${bar.name} · ${bar.lamp}`;
+  }
+  return `${bar.iata} · ${bar.name} · ${bar.composite} · ${bar.lamp}`;
 }

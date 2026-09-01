@@ -1,7 +1,7 @@
 "use client";
 
 import { CopyIcon, DownloadIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   rankingExport,
@@ -11,6 +11,9 @@ import {
 import type { RankingRowView } from "@/app/ranking-view";
 import { Button } from "@/components/ui/button";
 
+const COPIED_MS = 1500;
+const EXPORT_BUTTON = "h-7 gap-1.5 px-2 text-[11.5px] text-muted-foreground";
+
 /**
  * Copy and CSV on the ranking table (issue #30). Both serialize the same
  * payload columns the table drew — IATA, name, composite, candidate lamp,
@@ -19,11 +22,18 @@ import { Button } from "@/components/ui/button";
 export function RankingExport({ rows }: { rows: readonly RankingRowView[] }) {
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (!copied) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setCopied(false), COPIED_MS);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(rankingTableTsv(rows));
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
     } catch {
       setCopied(false);
     }
@@ -46,7 +56,7 @@ export function RankingExport({ rows }: { rows: readonly RankingRowView[] }) {
         variant="ghost"
         size="sm"
         onClick={() => void copy()}
-        className="h-7 gap-1.5 px-2 text-[11.5px] text-muted-foreground"
+        className={EXPORT_BUTTON}
       >
         <CopyIcon aria-hidden="true" />
         {copied ? rankingExport.copiedLabel : rankingExport.copyLabel}
@@ -56,7 +66,7 @@ export function RankingExport({ rows }: { rows: readonly RankingRowView[] }) {
         variant="ghost"
         size="sm"
         onClick={download}
-        className="h-7 gap-1.5 px-2 text-[11.5px] text-muted-foreground"
+        className={EXPORT_BUTTON}
       >
         <DownloadIcon aria-hidden="true" />
         {rankingExport.csvLabel}
