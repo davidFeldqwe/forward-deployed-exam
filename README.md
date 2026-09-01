@@ -123,8 +123,10 @@ vendor SDK).
 ## Local Evalite
 
 A reviewer with `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` can grade the New
-England candidates question against the real agent loop (`answerQuestion` /
-`streamAgentModel`, same provider picker as chat):
+England candidates question, the Los Angeles / Santa Ana compare chip, an
+off-thesis ROI refusal, and a Paris unknown-place refusal against the real
+agent loop (`answerQuestion` / `streamAgentModel`, same provider picker as
+chat):
 
 ```sh
 pnpm --filter @repo/web eval
