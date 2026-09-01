@@ -49,6 +49,12 @@ export type ThreadAnswerPart =
 /** The tag of every block a Thread answer may draw. */
 export type ThreadAnswerTag = ThreadAnswerPart["tag"];
 
+/** The prose part, as the block that draws it takes it. */
+export type ProsePart = Extract<ThreadAnswerPart, { tag: "prose" }>;
+
+/** The one part the pending Thread answer is made of, as the row draws it. */
+export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
+
 /**
  * The locked order as a list: the sequence every answer below is composed to
  * read down, and what the order test walks. `satisfies` keeps it from naming a
@@ -71,12 +77,6 @@ export const THREAD_ANSWER_TAGS = [
  * something on the other side of it.
  */
 export const PROSE_HEADING = "AI explanation";
-
-/** The prose part, as the block that draws it takes it. */
-export type ProsePart = Extract<ThreadAnswerPart, { tag: "prose" }>;
-
-/** The one part the pending Thread answer is made of, as the row draws it. */
-export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
 
 /**
  * The answer between Send and the tool payload landing (PRD story 35): a row,

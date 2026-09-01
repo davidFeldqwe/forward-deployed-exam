@@ -22,11 +22,12 @@ import {
   type ToolCall,
 } from "./thread-messages.ts";
 
+const web = new URL("../", import.meta.url);
 const THE_TAG_SWITCH = "components/answers/ThreadAnswer.tsx";
 const THE_TRANSCRIPT = "components/Transcript.tsx";
 
 function source(file: string): string {
-  return readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+  return readFileSync(new URL(file, web), "utf8");
 }
 
 function query(args: Record<string, string | string[]>): ToolCall {
@@ -248,7 +249,7 @@ test("only the tag switch draws a Thread answer's blocks", () => {
   // Every file that draws markup at all: the routes as well as the components,
   // since a page is as able to reach past the list as the transcript is.
   const drawing = ["app", "components"].flatMap((directory) =>
-    readdirSync(new URL(`../${directory}/`, import.meta.url), {
+    readdirSync(new URL(`${directory}/`, web), {
       encoding: "utf8",
       recursive: true,
     })
