@@ -40,14 +40,28 @@ test("Start asking is the large primary hero action, and the only one", () => {
   assertStill(hero);
 });
 
+test("How it works fits the landing column without a nested scrollbar", () => {
+  const strip = section('aria-labelledby="how-heading"', 'aria-label="Privacy"');
+
+  // The page is the only scroller. Wrapping or stacking is allowed; a nested
+  // overflow region on the strip is not (issue #91).
+  assert.doesNotMatch(strip, /overflow-x-auto/);
+  assert.doesNotMatch(strip, /overflow-y-auto/);
+  assert.doesNotMatch(strip, /overflow-auto/);
+  assert.doesNotMatch(strip, /overflow-scroll/);
+  assert.match(strip, /flex-wrap/);
+  assert.doesNotMatch(strip, /flex-nowrap/);
+  assert.equal(landingCopy.howItWorks.steps.length, 5);
+  assertStill(strip);
+});
+
 test("How it works tiles share width and height; arrows sit between them", () => {
   const strip = section('aria-labelledby="how-heading"', 'aria-label="Privacy"');
 
   // Equal flex allotment, not content-sized boxes. A shared min width keeps
-  // a wrapping label from eating a neighbour, and overflow scrolls the row.
-  assert.match(strip, /flex-nowrap/);
+  // a wrapping label from eating a neighbour; extra steps wrap instead of
+  // scrolling the row.
   assert.match(strip, /items-stretch/);
-  assert.match(strip, /overflow-x-auto/);
   assert.match(strip, /flex-1 basis-0/);
   assert.match(strip, /min-w-\[/);
   assert.match(strip, /min-h-\[/);
