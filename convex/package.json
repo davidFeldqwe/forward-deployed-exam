@@ -1,0 +1,12 @@
+{
+  "name": "@repo/convex-backend",
+  "private": true,
+  "scripts": {
+    "dev": "cd .. && convex dev",
+    "deploy": "convex deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "convex": "^1.45.0"
+  }
+}

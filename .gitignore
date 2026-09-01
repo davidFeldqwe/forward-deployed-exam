@@ -11,7 +11,7 @@ dist
 !.env.example
 .vercel
 .convex
-apps/web/convex/_generated/
+convex/_generated/ai/ai-files.state.json
 .sandcastle/.env
 .sandcastle/logs/
 .sandcastle/worktrees/
