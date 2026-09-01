@@ -37,10 +37,7 @@ test("close zoom labels the nearest capped set in the frustum, and zoom out remo
 
   assert.equal(inView.length, IATA_LABEL_CAP);
   assert.equal(IATA_LABEL_CAP, 20);
-  assert.deepEqual(
-    inView,
-    crowd.slice(0, IATA_LABEL_CAP).map((column) => column.iata),
-  );
+  assert.deepEqual(inView, crowd.slice(0, IATA_LABEL_CAP));
 
   const zoomedOut = iataLabels(crowd, {
     distance: openingDistance,
@@ -57,5 +54,5 @@ test("a column outside the frustum is not labelled, even when nearer than one in
     camera,
     inFrustum: (point) => point.x > 1,
   });
-  assert.deepEqual(labeled, ["FAR"]);
+  assert.deepEqual(labeled, [mark("FAR", 8)]);
 });

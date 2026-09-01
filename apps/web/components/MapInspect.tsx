@@ -9,8 +9,6 @@ import { LampPill } from "@/components/LampPill";
  * render this — never a native `title`, never a dossier.
  */
 export function MapInspect({ tooltip }: { tooltip: InspectTooltip }) {
-  const composite = tooltip.composite === null ? "—" : String(tooltip.composite);
-
   return (
     <div
       role="tooltip"
@@ -22,8 +20,7 @@ export function MapInspect({ tooltip }: { tooltip: InspectTooltip }) {
         </span>
         <LampPill lamp={tooltip.lamp} />
         <span className="font-mono text-[13px] text-muted-foreground">
-          {composite}
-          {tooltip.composite !== null ? "/100" : null}
+          {compositeLine(tooltip.composite)}
         </span>
       </div>
       <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
@@ -41,4 +38,11 @@ export function MapInspect({ tooltip }: { tooltip: InspectTooltip }) {
       </dl>
     </div>
   );
+}
+
+function compositeLine(composite: number | null): string {
+  if (composite === null) {
+    return "—";
+  }
+  return `${composite}/100`;
 }

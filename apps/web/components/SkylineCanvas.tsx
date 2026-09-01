@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { mapCopy } from "@/app/map-copy";
 import {
   emptyInspect,
   inspectIata,
@@ -10,7 +11,6 @@ import {
   type InspectIntent,
 } from "@/app/map-inspect";
 import type { PlacedIataLabel } from "@/app/map-labels";
-import { mapCopy } from "@/app/map-copy";
 import type { MapMark } from "@/app/map-view";
 import { mountSkyline } from "@/app/skyline-scene";
 import { GROUND_OUTLINES } from "@/app/us-ground";
@@ -57,7 +57,8 @@ export function SkylineCanvas({ marks }: { marks: readonly MapMark[] }) {
   }, [marks, onPointer]);
 
   const shown = inspectIata(inspect);
-  const tooltip = shown === null ? null : inspectOf(byIata.get(shown));
+  const mark = shown === null ? undefined : byIata.get(shown);
+  const tooltip = mark === undefined ? null : inspectTooltip(mark);
 
   if (webgl === "missing") {
     return <NoWebgl />;
@@ -77,10 +78,6 @@ export function SkylineCanvas({ marks }: { marks: readonly MapMark[] }) {
       ))}
     </div>
   );
-}
-
-function inspectOf(mark: MapMark | undefined) {
-  return mark === undefined ? null : inspectTooltip(mark);
 }
 
 function IataLabel({

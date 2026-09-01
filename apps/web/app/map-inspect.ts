@@ -16,10 +16,10 @@ export type InspectTooltip = {
   scoreVector: ScoreVector;
 };
 
-export type InspectIntent =
-  | { kind: "hover"; iata: string | null }
-  | { kind: "focus"; iata: string | null }
-  | { kind: "tap"; iata: string | null };
+export type InspectIntent = {
+  kind: "hover" | "focus" | "tap";
+  iata: string | null;
+};
 
 /**
  * Three ways to name a column, kept separate so a pin can outlive the pointer

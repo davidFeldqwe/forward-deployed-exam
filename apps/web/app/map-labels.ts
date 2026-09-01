@@ -51,14 +51,14 @@ export function labelFade(distance: number): number {
 }
 
 /**
- * IATA codes to draw for this view, nearest first, capped, or none when zoomed
- * out. `inFrustum` is the caller's: the scene asks a camera, a test stubs it.
+ * Marks to name for this view, nearest first, capped, or none when zoomed out.
+ * `inFrustum` is the caller's: the scene asks a camera, a test stubs it.
  */
 export function iataLabels(
   marks: readonly LabelMark[],
   view: LabelView,
   cap: number = IATA_LABEL_CAP,
-): string[] {
+): LabelMark[] {
   if (labelFade(view.distance) <= 0) {
     return [];
   }
@@ -66,8 +66,7 @@ export function iataLabels(
   return marks
     .filter((mark) => view.inFrustum({ x: mark.x, y: mark.height, z: mark.z }))
     .sort((left, right) => distanceTo(view.camera, left) - distanceTo(view.camera, right))
-    .slice(0, cap)
-    .map((mark) => mark.iata);
+    .slice(0, cap);
 }
 
 function distanceTo(camera: LabelView["camera"], mark: LabelMark): number {

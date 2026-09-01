@@ -21,13 +21,6 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 
 import { lampVariable } from "./lamp-hue.ts";
-import type { InspectIntent } from "./map-inspect.ts";
-import {
-  iataLabels,
-  labelFade,
-  labelPoint,
-  type PlacedIataLabel,
-} from "./map-labels.ts";
 import {
   CONUS_VIEW,
   FIELD_OF_VIEW,
@@ -42,6 +35,7 @@ import {
   introEase,
   openingPosition,
 } from "./map-camera.ts";
+import type { InspectIntent } from "./map-inspect.ts";
 import {
   INSET_REGIONS,
   type InsetKey,
@@ -55,6 +49,12 @@ import {
   layerAt,
   layerOfState,
 } from "./map-insets.ts";
+import {
+  iataLabels,
+  labelFade,
+  labelPoint,
+  type PlacedIataLabel,
+} from "./map-labels.ts";
 import { COLUMN_RADIUS, type MapMark } from "./map-view.ts";
 import type { PlacedOutline } from "./us-ground.ts";
 
@@ -113,7 +113,11 @@ export function mountSkyline(
   // Every layer, so the main view is one country with Alaska and Hawaii on it
   // at their own coordinates; each inset camera sees only the region it frames.
   camera.layers.enableAll();
-  scene.add(...lights(), ...layered(input, palette));
+  const objects = layered(input, palette);
+  scene.add(...lights(), ...objects);
+  const columns = objects.filter(
+    (object): object is THREE.InstancedMesh => object instanceof THREE.InstancedMesh,
+  );
 
   const atlas = makeAtlas(hostSize(host));
 
@@ -196,7 +200,7 @@ export function mountSkyline(
   const unwatchPointer = watchPointer(
     canvas,
     () => atlas.rects,
-    (at) => pickIata(at, scene, camera, atlas),
+    (at) => pickIata(at, columns, camera, atlas),
     easeToRegion,
     input.onPointer,
   );
@@ -374,8 +378,8 @@ function panedPoint(event: MouseEvent): { x: number; y: number } {
 }
 
 /**
- * Listens for a click on one of the boxes and hands back the region it was in.
- * Returns the teardown.
+ * Pointer on the pane: hover and tap name a column for inspect, and a click in
+ * an inset box flies the main camera there. Returns the teardown.
  *
  * A click is a pointer that went down and came up in the same place: a browser
  * reports one wherever a drag lets go, so an orbit that finished over the
@@ -448,12 +452,15 @@ function watchPointer(
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const projected = new THREE.Vector3();
+const frustumPoint = new THREE.Vector3();
 const frustum = new THREE.Frustum();
 const frustumMatrix = new THREE.Matrix4();
+/** Which scored rows one instanced mesh stands in for, keyed by the mesh itself. */
+const INSTANCED_MEMBERS = new WeakMap<THREE.InstancedMesh, readonly MapMark[]>();
 
 function pickIata(
   at: { x: number; y: number },
-  scene: THREE.Scene,
+  columns: readonly THREE.InstancedMesh[],
   main: THREE.PerspectiveCamera,
   atlas: Atlas,
 ): string | null {
@@ -464,22 +471,11 @@ function pickIata(
   ndc.set((at.x / width) * 2 - 1, -(at.y / height) * 2 + 1);
   raycaster.setFromCamera(ndc, main);
   raycaster.layers.mask = main.layers.mask;
-  const hit = raycaster.intersectObjects(instancedMeshes(scene), false)[0];
+  const hit = raycaster.intersectObjects([...columns], false)[0];
   if (!hit || !(hit.object instanceof THREE.InstancedMesh)) {
     return null;
   }
-  const members = hit.object.userData.members as MapMark[] | undefined;
-  return members?.[hit.instanceId ?? 0]?.iata ?? null;
-}
-
-function instancedMeshes(scene: THREE.Scene): THREE.InstancedMesh[] {
-  const meshes: THREE.InstancedMesh[] = [];
-  scene.traverse((object) => {
-    if (object instanceof THREE.InstancedMesh) {
-      meshes.push(object);
-    }
-  });
-  return meshes;
+  return INSTANCED_MEMBERS.get(hit.object)?.[hit.instanceId ?? 0]?.iata ?? null;
 }
 
 function publishLabels(
@@ -491,22 +487,29 @@ function publishLabels(
   if (!input.onLabels) {
     return;
   }
-  const placed: PlacedIataLabel[] = [];
+  const byLayer = new Map<number, MapMark[]>();
+  for (const mark of input.marks) {
+    const layer = layerAt(mark);
+    const group = byLayer.get(layer);
+    if (group) {
+      group.push(mark);
+    } else {
+      byLayer.set(layer, [mark]);
+    }
+  }
   const pane = { x: 0, y: 0, width: atlas.pane.width, height: atlas.pane.height };
-  placed.push(
-    ...labelsInView(
-      input.marks.filter((mark) => layerAt(mark) === MAIN_LAYER),
-      camera,
-      pane,
-      camera.position.distanceTo(controls.target),
-    ),
+  const placed: PlacedIataLabel[] = labelsInView(
+    byLayer.get(MAIN_LAYER) ?? [],
+    camera,
+    pane,
+    camera.position.distanceTo(controls.target),
   );
   for (const rect of atlas.rects) {
     const insetCamera = atlas.cameras[rect.region.key];
     const { target } = insetFrame(rect.region, insetCamera.aspect);
     placed.push(
       ...labelsInView(
-        input.marks.filter((mark) => layerAt(mark) === rect.region.layer),
+        byLayer.get(rect.region.layer) ?? [],
         insetCamera,
         rect,
         insetCamera.position.distanceTo(vector(target)),
@@ -523,31 +526,23 @@ function labelsInView(
   distance: number,
 ): PlacedIataLabel[] {
   const fade = labelFade(distance);
-  const codes = iataLabels(marks, {
+  if (fade <= 0) {
+    return [];
+  }
+  frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  frustum.setFromProjectionMatrix(frustumMatrix);
+  const placed: PlacedIataLabel[] = [];
+  for (const mark of iataLabels(marks, {
     distance,
     camera: camera.position,
-    inFrustum: (point) => frustumContains(camera, point),
-  });
-  const byIata = new Map(marks.map((mark) => [mark.iata, mark]));
-  const placed: PlacedIataLabel[] = [];
-  for (const iata of codes) {
-    const mark = byIata.get(iata);
-    if (!mark) continue;
+    inFrustum: (point) => frustum.containsPoint(frustumPoint.set(point.x, point.y, point.z)),
+  })) {
     const at = projectToPane(camera, labelPoint(mark), viewport);
     if (at) {
-      placed.push({ iata, x: at.x, y: at.y, fade });
+      placed.push({ iata: mark.iata, x: at.x, y: at.y, fade });
     }
   }
   return placed;
-}
-
-function frustumContains(
-  camera: THREE.PerspectiveCamera,
-  point: { x: number; y: number; z: number },
-): boolean {
-  frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-  frustum.setFromProjectionMatrix(frustumMatrix);
-  return frustum.containsPoint(projected.set(point.x, point.y, point.z));
 }
 
 function projectToPane(
@@ -742,7 +737,7 @@ export function markMeshes(
       placement.setPosition(mark.x, groundOffset, mark.z);
       mesh.setMatrixAt(index, placement);
     });
-    mesh.userData.members = members;
+    INSTANCED_MEMBERS.set(mesh, members);
     return mesh;
   });
 }
