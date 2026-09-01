@@ -33,13 +33,21 @@ function source(file: string): string {
 
 /**
  * Every file that draws markup at all: the routes as well as the components,
- * since a page is as able to reach past the list as the transcript is.
+ * since a page is as able to reach past the list as the transcript is. The
+ * directories are found off disk rather than named, so a block that moves
+ * somewhere this test has never heard of is still walked — a listed walk only
+ * answers for the directories it lists.
  */
-const DRAWING = ["app", "components"].flatMap((directory) =>
-  readdirSync(new URL(`${directory}/`, web), { encoding: "utf8", recursive: true })
-    .filter((file) => file.endsWith(".tsx"))
-    .map((file) => `${directory}/${file}`),
-);
+const DRAWING = readdirSync(web, { withFileTypes: true })
+  // Source only: not the installed packages, and not the build output.
+  .filter(
+    (entry) => entry.isDirectory() && entry.name !== "node_modules" && !entry.name.startsWith("."),
+  )
+  .flatMap((entry) =>
+    readdirSync(new URL(`${entry.name}/`, web), { encoding: "utf8", recursive: true })
+      .filter((file) => file.endsWith(".tsx"))
+      .map((file) => `${entry.name}/${file}`),
+  );
 
 function query(args: Record<string, string | string[]>): ToolCall {
   return {
