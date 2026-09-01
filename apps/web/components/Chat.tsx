@@ -22,10 +22,12 @@ import {
   InputGroupButton,
 } from "@/components/ui/input-group";
 
+const EMPTY_THREAD: readonly ThreadMessage[] = [];
+
 export function Chat({
   initialPrompt = null,
   threadId = null,
-  messages = [],
+  messages = EMPTY_THREAD,
   recents,
 }: {
   initialPrompt?: string | null;
