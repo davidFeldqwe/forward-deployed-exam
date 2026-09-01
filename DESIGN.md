@@ -151,6 +151,13 @@ snapshot, no `queryAirports`. It uses the same API key family as chat
 New England continuation for that prefix and empty otherwise, so CI never calls
 a paid model for a ghost.
 
+**LLM-free rank HTTP** is the curlable half of the same screen. `GET /api/rank`,
+`GET /api/airports/{iata}`, and `GET /api/compare/{left}/{right}` call
+`queryAirports` on the scored universe the agent tools use. The JSON body is
+that module result — key order included — and the routes import no vendor SDK.
+Default limit 10 and cap 25 are the module's; naming two codes returns those two
+rows. No session and no API key.
+
 ## Snapshot vintage
 
 `packages/snapshot/data/us-airports-snapshot.json` is the committed universe: the
@@ -196,10 +203,6 @@ Two more that are true of the screen rather than the sources:
 
 What the build has not landed yet:
 
-- **LLM-free rank HTTP** (curlable rank / one IATA / compare two IATAs) is not
-  built. The equivalence test that pins an HTTP body to the module output arrives
-  with it; today the module output itself is pinned, including its key order, and
-  is asserted to survive a JSON round trip so that route can only agree with it.
 - **Convex** is not provisioned. Auth and Threads are in-process, so a thread
   survives a refresh but not a restart. Airports and scores stay in files
   whatever happens to Convex.

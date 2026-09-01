@@ -33,6 +33,16 @@ No LLM key is needed to start. Without one the app still stores your question
 and says so in the transcript; the screen itself — snapshot, scoring, answer
 objects — needs no key at all.
 
+A reviewer can curl the screen the same way, with no key and no session. The
+JSON body is the `queryAirports` result for that query:
+
+```sh
+curl -s http://localhost:3000/api/rank
+curl -s 'http://localhost:3000/api/rank?region=New%20England'
+curl -s http://localhost:3000/api/airports/LAX
+curl -s http://localhost:3000/api/compare/LAX/SNA
+```
+
 ## Environment
 
 | Variable | Used for |
