@@ -10,7 +10,7 @@ import { queryAirports, scoreUniverse } from "@repo/scoring";
 
 const scored = scoreUniverse(loadSnapshot());
 queryAirports(scored, { region: "New England" });
-// PVD 87 Strong candidate, BDL 58, PWM 51, BOS 50 — the national composite, filtered
+// PVD 89 Strong candidate, BGR 74 Strong candidate, PSM 73 Strong candidate, ACK 66 Mixed vector, ORH 64 Mixed vector, PWM 62 Mixed vector, HYA 61 Mixed vector, BDL 58 Mixed vector, MVY 58 Mixed vector, BOS 50 Mixed vector — the national composite, filtered
 ```
 
 ## Score vector and composite
@@ -43,7 +43,7 @@ the vector an analyst expands is the vector the composite is built from. Santa
 Ana's 77th percentile is a medium-hub rank and Los Angeles's 89th is a large-hub
 rank; they are not comparable, and the module never pretends otherwise. The
 composite inherits that: a national ranking sorts four peer groups into one
-list, so small-hub PVD at 87 sits above large-hub BOS at 50 without claiming to
+list, so small-hub PVD at 89 sits above large-hub BOS at 50 without claiming to
 be under more pressure. Every row carries that caveat in `assumptions`.
 
 ## Candidate lamp
