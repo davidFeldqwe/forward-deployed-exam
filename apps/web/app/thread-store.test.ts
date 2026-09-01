@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
+import { chatCopy } from "./chat-copy.ts";
 import { rankingView } from "./ranking-view.ts";
 import {
   type ToolCall,
@@ -16,6 +17,7 @@ import {
   askOnThread,
   latestThreadId,
   listThreads,
+  openEmptyThread,
   readThread,
   recordQuestion,
   startThread,
@@ -198,14 +200,58 @@ test("two copies of this module share one store, as Next's route bundles are", a
 });
 
 test("a thread needs a first question: a blank one is refused, not stored untitled", async () => {
-  // Recents shows the first user question, so a thread with no question is a
-  // blank row that opens a blank transcript. `appendMessage` already refuses a
-  // message that cannot render; starting one is held to the same rule.
+  // Recents shows the first user question, so a question with nothing in it is
+  // still refused. An empty recents row is New thread's job, not a blank Send.
   const analyst = "blank@example.com";
 
   assert.equal(await startThread(analyst, "   \n\t "), null);
   assert.deepEqual(await listThreads(analyst), []);
   assert.equal(await latestThreadId(analyst), null);
+});
+
+test("New thread stores an empty Thread in recents under the standing copy name", async () => {
+  const analyst = "empty-recents@example.com";
+
+  const opened = await openEmptyThread(analyst);
+
+  assert.deepEqual(opened.messages, []);
+  assert.equal(opened.title, chatCopy.newThreadLabel);
+  assert.notEqual(opened.title, "");
+  assert.equal(
+    chatCopy.chips.includes(opened.title as (typeof chatCopy.chips)[number]),
+    false,
+  );
+  assert.deepEqual(await listThreads(analyst), [
+    { id: opened.id, title: chatCopy.newThreadLabel },
+  ]);
+  assert.equal(await latestThreadId(analyst), opened.id);
+  assert.deepEqual(await readThread(analyst, opened.id), opened);
+});
+
+test("a second New thread while an empty Thread exists reuses it instead of stacking", async () => {
+  const analyst = "no-stack@example.com";
+  const titled = await startThread(analyst, NEW_ENGLAND);
+  const first = await openEmptyThread(analyst);
+  const second = await openEmptyThread(analyst);
+
+  assert.equal(second.id, first.id);
+  assert.notEqual(first.id, titled?.id);
+  assert.deepEqual(await listThreads(analyst), [
+    { id: first.id, title: chatCopy.newThreadLabel },
+    { id: titled!.id, title: NEW_ENGLAND },
+  ]);
+});
+
+test("the first question retitles that empty Thread and does not add a recents row", async () => {
+  const analyst = "retitle@example.com";
+  const opened = await openEmptyThread(analyst);
+
+  const same = await recordQuestion(analyst, opened.id, `  ${NEW_ENGLAND}  `);
+
+  assert.equal(same?.id, opened.id);
+  assert.equal(same?.title, NEW_ENGLAND);
+  assert.deepEqual(same?.messages, [userMessage(NEW_ENGLAND)]);
+  assert.deepEqual(await listThreads(analyst), [{ id: opened.id, title: NEW_ENGLAND }]);
 });
 
 test("a question sent to a thread that is gone opens a new one instead of vanishing", async () => {

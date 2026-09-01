@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 
 import { SPEND_CAP_REFUSAL, reserveAgentCall } from "./agent-spend.ts";
 import { normalizeEmail } from "./auth-accounts.ts";
+import { chatCopy } from "./chat-copy.ts";
 import {
   type ConvexThread,
   getThread,
@@ -31,7 +32,7 @@ export type Thread = {
   messages: ThreadMessage[];
 };
 
-/** A recents entry: the id to open and the first user question to show. */
+/** A recents entry: the id to open and the title to show. */
 export type ThreadSummary = {
   id: string;
   title: string;
@@ -72,6 +73,19 @@ function ownedThread(ownerEmail: string, threadId: string): Promise<ConvexThread
 }
 
 /**
+ * Recents title: the first user question once one exists, otherwise the
+ * standing New thread name. Not `threadTitle("")`, and not a chip.
+ */
+function titleFromMessages(messages: readonly ThreadMessage[]): string {
+  const first = messages.find((message) => message.role === "user");
+  return first ? threadTitle(first.text) : chatCopy.newThreadLabel;
+}
+
+function hasUserQuestion(thread: ConvexThread): boolean {
+  return thread.messages.some((message) => parseThreadMessage(message)?.role === "user");
+}
+
+/**
  * Handed out as a copy, messages parsed: Convex (and the on-disk file) can
  * hand back a document this process never validated.
  */
@@ -93,27 +107,47 @@ function snapshotOf(thread: ConvexThread): Thread {
   };
 }
 
+async function insertOwnedThread(
+  ownerEmail: string,
+  messages: ThreadMessage[],
+): Promise<Thread> {
+  const now = Date.now();
+  return snapshotOf(
+    await putThread({
+      id: newThreadId(),
+      ownerEmail: normalizeEmail(ownerEmail),
+      title: titleFromMessages(messages),
+      createdAt: now,
+      updatedAt: now,
+      messages,
+    }),
+  );
+}
+
 /**
  * A new conversation, titled with the question that opened it. A question with
  * nothing in it is refused, the same way `appendMessage` refuses a message that
- * cannot render: recents would show a blank row opening a blank transcript.
+ * cannot render. An empty recents row is `openEmptyThread`, not a blank Send.
  */
 export async function startThread(ownerEmail: string, question: string): Promise<Thread | null> {
   const opening = parseThreadMessage(userMessage(question));
   if (!opening) {
     return null;
   }
-  const now = Date.now();
-  const thread: ConvexThread = {
-    id: newThreadId(),
-    ownerEmail: normalizeEmail(ownerEmail),
-    title: threadTitle(question),
-    createdAt: now,
-    updatedAt: now,
-    messages: [opening],
-  };
-  const stored = await putThread(thread);
-  return stored ? snapshotOf(stored) : null;
+  return insertOwnedThread(ownerEmail, [opening]);
+}
+
+/**
+ * New thread: a real recents row before the first question. A second click
+ * reuses the empty Thread instead of stacking another row.
+ */
+export async function openEmptyThread(ownerEmail: string): Promise<Thread> {
+  const owner = normalizeEmail(ownerEmail);
+  const existing = (await listThreadsByOwner(owner)).find((thread) => !hasUserQuestion(thread));
+  if (existing) {
+    return snapshotOf(await putThread({ ...existing, updatedAt: Date.now() }));
+  }
+  return insertOwnedThread(owner, []);
 }
 
 /**
@@ -131,10 +165,13 @@ export async function appendMessage(
     return null;
   }
   // Stored as a copy, so the caller's message and the store cannot diverge.
-  // Re-insert so the thread just spoken in is the most recent one.
+  // Re-insert so the thread just spoken in is the most recent one. The first
+  // user question retitles an empty Thread; later turns keep that title.
+  const messages = [...snapshotOf(thread).messages, structuredClone(parsed)];
   const stored = await putThread({
     ...thread,
-    messages: [...thread.messages, structuredClone(parsed)],
+    messages,
+    title: titleFromMessages(messages),
     updatedAt: Date.now(),
   });
   return stored ? snapshotOf(stored) : null;
@@ -169,7 +206,8 @@ export async function readThread(ownerEmail: string, threadId: string): Promise<
 }
 
 /**
- * The analyst's threads for the header recents control, most recent first.
+ * The analyst's threads for the recents list, most recent first — including
+ * empty Threads New thread created before the first question.
  * Insertion order is the recents order — `appendMessage` re-inserts the thread
  * just spoken in — which is what an index on (owner, updatedAt) will do in
  * Convex without depending on two writes landing in different milliseconds.

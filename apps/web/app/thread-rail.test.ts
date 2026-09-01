@@ -27,7 +27,7 @@ function currentDestinations(openThreadId: string | null): string[] {
     .map((destination) => destination.href);
 }
 
-test("the rail lists the analyst's threads by first question, newest first", () => {
+test("the rail lists the analyst's threads in recents order", () => {
   const { rows } = threadRail(RECENTS, null);
 
   assert.deepEqual(
@@ -47,6 +47,21 @@ test("the open thread is the one current row", () => {
 
 test("an empty chat makes New thread the current destination and no row current", () => {
   assert.deepEqual(currentDestinations(null), [CHAT_PATH]);
+});
+
+test("an empty Thread in recents is the current row when that Thread is open", () => {
+  const empty = { id: "e0", title: chatCopy.newThreadLabel };
+  const rail = threadRail([empty, ...RECENTS], empty.id);
+
+  assert.equal(rail.newThread.current, false);
+  assert.equal(rail.rows[0]?.current, true);
+  assert.equal(rail.rows[0]?.title, chatCopy.newThreadLabel);
+  assert.deepEqual(
+    [rail.newThread, ...rail.rows]
+      .filter((destination) => destination.current)
+      .map((destination) => destination.href),
+    [chatDestination(empty.id)],
+  );
 });
 
 test("a thread the recents list does not hold leaves nothing marked current", () => {
@@ -81,6 +96,7 @@ test("the rail is a labelled list of thread links, and marks the open one", () =
   assert.match(rail, /aria-current=\{[^}]*"page"/);
   assert.match(rail, /chatCopy\.newThreadLabel/);
   assert.match(rail, /chatCopy\.noRecentsLabel/);
+  assert.match(rail, /openNewThread/);
   // A long first question is clipped to the row, not wrapped into a paragraph.
   assert.match(rail, /truncate/);
 });

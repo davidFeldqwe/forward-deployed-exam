@@ -19,7 +19,7 @@ The public home page. Signed-out people see it. It is not the chat and not a ran
 _Avoid_: marketing site, dashboard, home as a synonym for the agent
 
 **Thread**:
-One persisted conversation for a signed-in user. Its title is the first user question.
+One persisted conversation for a signed-in user. Its title is the first user question once one is sent; until then it uses standing New thread copy.
 _Avoid_: session, chat history (as the object)
 
 **Map**:

@@ -1,9 +1,10 @@
 /**
  * What a Thread is made of: messages, the tool payloads they carry, and the
- * title the first user question gives the thread (CONTEXT.md). The message list
- * is the only record of an answer — there is no second store for the last
- * resolved set, so a follow-up reads prior tool payloads back out of it, and
- * every message crossing the store boundary is checked in both directions.
+ * title helper recents uses once a first user question exists (CONTEXT.md).
+ * The message list is the only record of an answer — there is no second store
+ * for the last resolved set, so a follow-up reads prior tool payloads back out
+ * of it, and every message crossing the store boundary is checked in both
+ * directions.
  */
 import {
   isScoredAirport,

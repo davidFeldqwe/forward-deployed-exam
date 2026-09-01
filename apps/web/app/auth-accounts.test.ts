@@ -26,7 +26,7 @@ function refusedErrors(result: AccountResult): CredentialErrors {
 }
 
 /** Median cost of an attempt, so one scheduling hiccup cannot decide a run. */
-async function medianMillis(attempt: () => Promise<void>): Promise<number> {
+async function medianMillis(attempt: () => Promise<unknown>): Promise<number> {
   const samples = [];
   for (let run = 0; run < 5; run += 1) {
     const started = performance.now();
@@ -112,12 +112,12 @@ test("sign-in refuses a wrong password or an unknown email without saying which"
 test("an unknown email costs the same password work as a wrong password, so timing cannot enumerate", async () => {
   await createAccount("timed@example.com", "correct horse battery");
 
-  const wrongPassword = await medianMillis(async () => {
-    await authenticate("timed@example.com", "guess password");
-  });
-  const unknownEmail = await medianMillis(async () => {
-    await authenticate("nobody@example.com", "guess password");
-  });
+  const wrongPassword = await medianMillis(() =>
+    authenticate("timed@example.com", "guess password"),
+  );
+  const unknownEmail = await medianMillis(() =>
+    authenticate("nobody@example.com", "guess password"),
+  );
 
   assert.ok(
     unknownEmail > wrongPassword / 2,
