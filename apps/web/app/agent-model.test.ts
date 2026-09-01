@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import {
   generateCompletion,
-  generateModelAnswer,
   streamModelAnswer,
   type AgentLanguageModel,
   type AgentRequest,
@@ -14,9 +14,10 @@ import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { assistantMessage, parseThreadMessage } from "./thread-messages.ts";
 
 /**
- * The two loops the one LLM module can run, on a scripted model rather than a
- * paid key. The model object is typed from `agent-model.ts`, so this test names
- * no vendor package and `agent-boundary.test.ts` still sees one importer.
+ * The LLM module, on a scripted model rather than a paid key: the streamed ask
+ * loop and the one-shot composer continuation. The model object is typed from
+ * `agent-model.ts`, so this test names no vendor package and
+ * `agent-boundary.test.ts` still sees one importer.
  */
 
 /** What the model says in one turn: prose, a tool call, or both. */
@@ -46,10 +47,10 @@ const REQUEST: AgentRequest = {
 };
 
 /**
- * One script, read the same way by `doGenerate` and by `doStream`, so a
- * difference between the two loops is a difference in this module and not in
- * two hand-written fixtures. Prose arrives in two deltas: a streamed answer is
- * accumulated, never a single chunk.
+ * One script, read the same way by `doGenerate` (composer continuation) and by
+ * `doStream` (the ask), so a difference between those paths is a difference in
+ * this module and not in two hand-written fixtures. Prose arrives in two
+ * deltas: a streamed answer is accumulated, never a single chunk.
  */
 function scriptedModel(script: readonly ScriptedTurn[]): AgentLanguageModel {
   let turn = 0;
@@ -81,7 +82,7 @@ function scriptedModel(script: readonly ScriptedTurn[]): AgentLanguageModel {
   };
 }
 
-/** The scripted call itself, so both loops are handed the same one. */
+/** The scripted call itself, so stream and generate are handed the same one. */
 function toolCallPart({ name, input }: NonNullable<ScriptedTurn["toolCall"]>, turn: number) {
   return {
     type: "tool-call" as const,
@@ -174,14 +175,24 @@ test("a stream observer sees complete tool payloads, then prose deltas, never a 
   assert.equal(seen.indexOf("tool") < seen.indexOf("text"), true);
 });
 
-test("what the stream stores is what generateText stores", async () => {
+test("what the stream stores is one assistant message the thread can parse", async () => {
   const streamed = await streamModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST);
-  const generated = await generateModelAnswer(scriptedModel(RANK_THEN_ANSWER), REQUEST);
 
-  assert.deepEqual(stored(streamed), stored(generated));
+  assert.equal(streamed.text, PROSE);
   // The thread holds one assistant message, and the store parses what it wrote.
   const message = assistantMessage(streamed.text, streamed.toolCalls);
   assert.deepEqual(parseThreadMessage(JSON.parse(JSON.stringify(message))), message);
+});
+
+test("generateText does not run the signed-in ask; streamText does", () => {
+  const llm = readFileSync(new URL("./agent-model.ts", import.meta.url), "utf8");
+
+  assert.match(llm, /\bstreamText\b/);
+  assert.match(llm, /\bstreamAgentModel\b/);
+  assert.doesNotMatch(llm, /\brunAgentModel\b|\bgenerateModelAnswer\b/);
+  assert.doesNotMatch(llm, /generateText\s*\(\s*modelCall/);
+  // A one-shot composer continuation may still call generateText; the tool loop
+  // must not. If generateText comes back as the ask runner, this fails.
 });
 
 test("the streamed loop stops at the step cap, however long the model keeps calling", async () => {

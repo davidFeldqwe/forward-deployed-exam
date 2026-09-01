@@ -6,15 +6,20 @@
  */
 import {
   NoProviderError,
-  runAgentModel,
+  streamAgentModel,
   type AgentRequest,
+  type AgentStreamObserver,
   type ModelAnswer,
 } from "./agent-model.ts";
 import { NO_PROVIDER_ANSWER } from "./agent-provider.ts";
 import { ACCEPTED_PLACE_PHRASES, OFF_THESIS_REFUSAL } from "./refusals.ts";
 import { assistantMessage, type ThreadMessage } from "./thread-messages.ts";
 
-export type AgentRunner = (request: AgentRequest) => Promise<ModelAnswer>;
+/** Same contract as `streamAgentModel`: tests (and SSE) inject a runner here. */
+export type AgentRunner = (
+  request: AgentRequest,
+  onEvent?: AgentStreamObserver,
+) => Promise<ModelAnswer>;
 
 /**
  * The rules the boundary rests on: the model resolves a place phrase and writes
@@ -84,7 +89,7 @@ export const AGENT_ERROR_ANSWER =
  */
 export async function answerQuestion(
   messages: readonly ThreadMessage[],
-  run: AgentRunner = runAgentModel,
+  run: AgentRunner = streamAgentModel,
 ): Promise<ThreadMessage> {
   try {
     const answer = await run({

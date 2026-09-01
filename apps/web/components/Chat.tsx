@@ -109,8 +109,8 @@ export function Chat({
           onClose={() => setRailOpen(false)}
         />
 
-        {/* Transcript and composer are one form, so the pending answer above the
-            composer can read the same submission `useFormStatus` reports on. */}
+        {/* Transcript and composer are one form so Send can wait on the SSE
+            POST until the stream ends; the pending row sits in that wait. */}
         <form
           action={askOnChatSse}
           onSubmit={acceptQuestion}

@@ -165,12 +165,13 @@ test("repeated asks on one account eventually refuse instead of calling the vend
   assert.deepEqual(capped?.messages.at(-1)?.toolCalls, []);
 });
 
-test("the composer action budgets through the ask seam, with the request's IP", () => {
-  const action = readFileSync(new URL("./thread-actions.ts", import.meta.url), "utf8");
+test("the SSE ask budgets through the ask seam, with the request's IP", () => {
+  const route = readFileSync(new URL("./api/chat/route.ts", import.meta.url), "utf8");
+  const helper = readFileSync(new URL("./chat-sse.ts", import.meta.url), "utf8");
 
-  assert.match(action, /from "next\/headers"/);
-  assert.match(action, /clientIpFromHeaders\(await headers\(\)\)/);
-  assert.match(action, /askOnThread\(/);
-  assert.match(action, /from "@\/app\/thread-store"/);
-  assert.doesNotMatch(action, /runAgentModel|streamText/);
+  assert.match(route, /clientIpFromHeaders\(request\.headers\)/);
+  assert.match(helper, /askOnThread\(/);
+  assert.match(helper, /streamAgentModel/);
+  assert.doesNotMatch(helper, /runAgentModel|generateText/);
+  assert.doesNotMatch(route, /runAgentModel|generateText|askQuestion/);
 });

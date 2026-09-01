@@ -59,18 +59,9 @@ export type AgentLanguageModel = Exclude<LanguageModel, string>;
 type WithModel<T> = (model: AgentLanguageModel) => Promise<T>;
 
 /**
- * Runs the tool loop in one call and returns the prose beside every tool call it
- * made, in the order it made them. This is the runner the chat server action
- * uses; `streamAgentModel` is the same answer over a stream.
- */
-export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
-  return withProvider(chooseProvider, (model) => generateModelAnswer(model, request));
-}
-
-/**
- * The same complete answer, with the loop run as a stream — what the SSE chat
- * route (#65) builds its pending row and tool rows from. Nothing partial comes
- * back here: the ranking is drawn from a finished `queryAirports` payload, never
+ * The signed-in ask: the tool loop as a stream. The SSE chat route (#65)
+ * builds its pending row and tool rows from this. Nothing partial comes back
+ * here: the ranking is drawn from a finished `queryAirports` payload, never
  * from a half-read one.
  */
 export function streamAgentModel(
@@ -127,23 +118,8 @@ async function withProvider<T>(
 }
 
 /**
- * The loop in one call. Tool calls are recorded by the tools themselves rather
- * than read back off the SDK's steps, because the transcript stores what the
- * tool actually returned and how long it took — that payload is what the ranking
- * re-renders from.
- */
-export async function generateModelAnswer(
-  model: AgentLanguageModel,
-  request: AgentRequest,
-): Promise<ModelAnswer> {
-  const toolCalls: ToolCall[] = [];
-  const { text } = await generateText(modelCall(model, request, toolCalls));
-  return { text, toolCalls };
-}
-
-/**
- * The loop as a stream, ending in the same stored answer: the tools record the
- * same payloads, and the prose is the accumulated deltas.
+ * The loop as a stream, ending in one stored answer: the tools record the
+ * payloads, and the prose is the accumulated deltas.
  */
 export async function streamModelAnswer(
   model: AgentLanguageModel,
