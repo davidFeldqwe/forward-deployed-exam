@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 
 import { lampVariable } from "./lamp-hue.ts";
-import { type ScenePoint, introEase, openingPosition } from "./map-camera.ts";
+import { CONUS_VIEW, type ScenePoint, introEase, openingPosition } from "./map-camera.ts";
 import { COLUMN_RADIUS, type MapMark, columnHeight } from "./map-view.ts";
 import {
   FALLBACK_HUE,
@@ -415,6 +415,44 @@ test("the opening ease is drawn while it moves, and stops when it arrives", () =
     map.renderer.frame(now);
   }
   assert.equal(map.renderer.draws, drawnByArrival, "an arrived camera is not redrawn");
+});
+
+test("a hand on the controls mid-ease keeps the view, and the ease lets go", () => {
+  // The opening move is a demo moment, not a ride the visitor is strapped into:
+  // an ease that keeps writing the camera's position drops every drag and every
+  // scroll made while it runs, and then snaps to its own frame as if nobody had
+  // touched anything. A scroll stands in for a drag here because the controls
+  // report both the same way — the `start` event this mount listens for.
+  const map = mountFake(false, 1280, 720);
+  const aspect = 1280 / 720;
+
+  map.renderer.frame(0);
+  map.renderer.frame(200);
+  const camera = map.renderer.camera;
+  assert.ok(camera);
+  const midEase = camera.position.clone();
+
+  scroll(map, -240);
+  map.renderer.frame(216);
+  const taken = camera.position.clone();
+  assert.ok(
+    taken.distanceTo(vector3(CONUS_VIEW.target)) < midEase.distanceTo(vector3(CONUS_VIEW.target)),
+    "the zoom the visitor asked for moved the camera in",
+  );
+
+  // The rest of the ease's own duration, and well past it.
+  for (let now = 232; now <= 2_000; now += 16) {
+    map.renderer.frame(now);
+  }
+
+  assert.ok(
+    camera.position.distanceTo(taken) < 1e-6,
+    `the ease left the view alone: ${camera.position.toArray()} vs ${taken.toArray()}`,
+  );
+  assert.ok(
+    camera.position.distanceTo(vector3(openingPosition(aspect))) > 1,
+    "the camera was not flown on to the frame the ease was heading for",
+  );
 });
 
 test("a scroll is drawn: the gate is a still canvas, not a frozen one", () => {

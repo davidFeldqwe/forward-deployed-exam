@@ -109,9 +109,10 @@ export function mountSkyline(
     pending = true;
   });
 
-  // A pane that changes shape — a phone turned on its side — is re-framed, but
-  // only until the visitor takes the controls: after that the view is theirs,
-  // and a resize must not throw it away.
+  // A drag, a scroll or a touch — all of which the controls announce as a start
+  // — makes the view the visitor's. From then on nothing here writes the camera
+  // for them: the opening ease lets go where it stands, and a resize re-frames
+  // the pane without moving the camera the visitor put there.
   let untouched = true;
   controls.addEventListener("start", () => {
     untouched = false;
@@ -137,9 +138,13 @@ export function mountSkyline(
 
   renderer.setAnimationLoop((now) => {
     // A reduced-motion visitor gets a zero-length ease, so this never runs and
-    // the first frame is already the tilted view.
+    // the first frame is already the tilted view. A visitor who reaches for the
+    // map while it is still running is not flown on regardless: the ease drops
+    // its hold on the camera the moment the view becomes theirs, rather than
+    // overwriting their drag on the next frame and snapping to its own frame at
+    // the end as though nobody had touched anything.
     const elapsed = now - startedAt;
-    if (elapsed < intro.durationMs) {
+    if (untouched && elapsed < intro.durationMs) {
       camera.position.lerpVectors(from, to, easeOut(elapsed / intro.durationMs));
     }
     // `update` carries the ease's step, a drag, and the damping still running
