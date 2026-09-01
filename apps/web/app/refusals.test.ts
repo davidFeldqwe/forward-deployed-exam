@@ -45,18 +45,19 @@ test("the unknown-place refusal lists the accepted phrases and geocodes nothing"
 });
 
 test("a code outside the screened universe is refused as outside it, not as unknown", () => {
-  const refusal = unknownIataRefusal(["ITH"]);
+  const refusal = unknownIataRefusal(["IAN"]);
 
-  assert.match(refusal ?? "", /ITH/);
-  assert.match(refusal ?? "", /largest US airports/);
+  assert.match(refusal ?? "", /IAN/);
+  assert.match(refusal ?? "", /primary commercial/);
+  assert.doesNotMatch(refusal ?? "", /~100 largest/);
   assert.equal(unknownIataRefusal([]), null);
 });
 
 test("the answer objects carry the refusal, so it is drawn even if the prose omits it", () => {
-  const result = runAgentTool("queryAirports", { state: "California", iata: ["LAX", "ITH"] });
+  const result = runAgentTool("queryAirports", { state: "California", iata: ["LAX", "IAN"] });
   const call: ToolCall = {
     tool: "queryAirports",
-    args: { state: "California", iata: ["LAX", "ITH"] },
+    args: { state: "California", iata: ["LAX", "IAN"] },
     result: JSON.parse(JSON.stringify(result)),
     durationMs: 4,
   };
@@ -64,7 +65,7 @@ test("the answer objects carry the refusal, so it is drawn even if the prose omi
 
   assert.deepEqual(view?.unknown.place, [{ field: "state", value: "California" }]);
   assert.equal(view?.unknown.placeRefusal, unknownPlaceRefusal(view.unknown.place));
-  assert.equal(view?.unknown.iataRefusal, unknownIataRefusal(["ITH"]));
+  assert.equal(view?.unknown.iataRefusal, unknownIataRefusal(["IAN"]));
 
   // A ranking that resolved everything refuses nothing.
   const resolved = runAgentTool("queryAirports", { region: "New England" });

@@ -64,7 +64,7 @@ Two consequences the answer objects state rather than hide:
   medium-hub rank and Los Angeles's 89th is a large-hub rank; they are not
   comparable, and neither are the composites built from them.
 - A place question **filters** the national ranking; it never re-percentiles.
-  Asking about New England ranks four airports against the whole country, not
+  Asking about New England ranks the primaries there against the whole country, not
   against each other, so the answer does not invent a regional leader.
 
 Missing is not zero. A component with no input keeps `raw: null` and

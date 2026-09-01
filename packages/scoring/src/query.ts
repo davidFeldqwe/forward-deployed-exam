@@ -72,8 +72,9 @@ export type QueryResult = {
   /**
    * Requested codes with no airport in the scored universe, in the order asked.
    * "LAX vs ITH" returns one row, and without this the caller cannot tell that
-   * from a compare that returned both. These are outside the top-100 screen, not
-   * merely filtered out: a code the place filters excluded is not listed here.
+   * from a compare that returned both. These are outside the primary-commercial
+   * screen, not merely filtered out: a code the place filters excluded is not
+   * listed here.
    */
   unknownIata: string[];
   /**
