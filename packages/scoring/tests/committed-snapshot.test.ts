@@ -5,6 +5,7 @@ import { loadSnapshot } from "@repo/snapshot";
 
 import {
   COMPONENTS,
+  DEFAULT_LIMIT,
   MAX_LIMIT,
   PLACE_FIELDS,
   WEIGHTS,
@@ -22,7 +23,9 @@ const row = rowLookup(scored);
 
 test("every airport in the committed snapshot is scored", () => {
   assert.equal(scored.length, snapshot.airports.length);
-  assert.equal(scored.length, 100);
+  // #73: the universe is the FAA primary line, so its size moves with the
+  // release. What holds is that it is a national screen and not a top-N sample.
+  assert.ok(scored.length >= 300, `primary-scale universe, got ${scored.length}`);
   for (const airport of scored) {
     for (const component of COMPONENTS) {
       const { percentile, coverage } = airport.scoreVector[component];
@@ -57,7 +60,7 @@ test("each composite is the weighted score vector on that row", () => {
 
 test("percentiles are monotone in the raw value inside a peer group", () => {
   const peerGroups = [...new Set(scored.map((airport) => airport.peerGroup))];
-  assert.deepEqual(peerGroups.toSorted(), ["large", "medium", "small"]);
+  assert.deepEqual(peerGroups.toSorted(), ["large", "medium", "nonhub", "small"]);
 
   for (const component of COMPONENTS) {
     for (const peerGroup of peerGroups) {
@@ -99,17 +102,27 @@ test("ORD and MDW are two Chicago rows, never one city market", () => {
   assert.equal(chicago.rows[1]?.composite, 29);
 });
 
+// PRD story 45 / #73: a New England question keeps the `queryAirports` limits.
+// Nineteen New England primaries match; ten rows are drawn, which is why
+// expanding the universe does not dump hundreds of rows into a thread answer.
 test("a New England ranking is the national composite, filtered", () => {
   const newEngland = queryAirports(scored, { region: "New England" });
-  assert.equal(newEngland.matched, 4);
+  assert.equal(newEngland.matched, 19);
+  assert.equal(newEngland.rows.length, DEFAULT_LIMIT);
   assert.deepEqual(
     newEngland.rows.map(
       (candidate) => `${candidate.iata} ${candidate.composite} ${candidate.candidateLamp}`,
     ),
     [
-      "PVD 87 Strong candidate",
+      "PVD 89 Strong candidate",
+      "BGR 74 Strong candidate",
+      "PSM 73 Strong candidate",
+      "ACK 66 Mixed vector",
+      "ORH 64 Mixed vector",
+      "PWM 62 Mixed vector",
+      "HYA 61 Mixed vector",
       "BDL 58 Mixed vector",
-      "PWM 51 Mixed vector",
+      "MVY 58 Mixed vector",
       "BOS 50 Mixed vector",
     ],
   );
@@ -120,8 +133,8 @@ test("a New England ranking is the national composite, filtered", () => {
 
 test("the national rank is ten rows by default and twenty-five at the cap", () => {
   const top = queryAirports(scored);
-  assert.equal(top.matched, 100);
-  assert.equal(top.rows.length, 10);
+  assert.equal(top.matched, scored.length);
+  assert.equal(top.rows.length, DEFAULT_LIMIT);
   assert.equal(top.rows[0]?.iata, "RSW");
   assert.equal(top.rows[0]?.composite, 94);
   assert.equal(queryAirports(scored, { limit: 100 }).rows.length, MAX_LIMIT);
@@ -144,12 +157,29 @@ test("a territory has no division, so a region ranking never returns it", () => 
   }
 });
 
-test("the committed snapshot is fully covered, so partial rows need a fixture", () => {
+// #73: the primary universe reaches airports BTS reporting carriers do not
+// serve, so a withheld composite is now committed-file behaviour rather than a
+// fixture-only case. This is the ring field `/map` draws.
+test("a row the sources do not cover withholds its composite instead of scoring zero", () => {
   const withheld = scored.filter((airport) => airport.composite === null);
+  assert.ok(withheld.length > 0, "the committed file reaches airports BTS does not");
+  assert.ok(
+    withheld.length < scored.length / 2,
+    `${withheld.length} of ${scored.length} withheld: most of the universe is still scored`,
+  );
+  for (const airport of withheld) {
+    assert.equal(airport.candidateLamp, "Partial inputs", airport.iata);
+    assert.notEqual(airport.candidateLamp, "Weak candidate", airport.iata);
+    assert.ok(
+      COMPONENTS.some((component) => airport.scoreVector[component].coverage === "missing"),
+      `${airport.iata} withholds because an input is missing, not for nothing`,
+    );
+  }
+  // Every one of them is a small or nonhub primary: the large and medium hubs
+  // are all BTS reporting-carrier airports, so none of them loses a composite.
   assert.deepEqual(
-    withheld.map((airport) => airport.iata),
-    [],
-    "no airport in the committed file is missing an input today",
+    [...new Set(withheld.map((airport) => airport.peerGroup))].toSorted(),
+    ["nonhub", "small"],
   );
 });
 
@@ -174,18 +204,19 @@ test("the national rank mixes peer groups, and every row says so", () => {
   }
 });
 
-test("a compare against an airport outside the top 100 names the code", () => {
-  // ITH (Ithaca) is a real airport that the FAA top-100 universe does not reach,
-  // so a compare must say the code is out of scope rather than answer with one
-  // row and let the reader assume both were weighed.
-  const compare = queryAirports(scored, { iata: ["LAX", "ITH"] });
+test("a compare against an airport outside the primary universe names the code", () => {
+  // IAN (Kiana, Alaska) is a real airport with scheduled service that the FAA
+  // files as nonprimary commercial service, under the primary line this universe
+  // cuts on. A compare must say the code is out of scope rather than answer with
+  // one row and let the reader assume both were weighed.
+  const compare = queryAirports(scored, { iata: ["LAX", "IAN"] });
   assert.deepEqual(compare.rows.map((candidate) => candidate.iata), ["LAX"]);
   assert.equal(compare.matched, 1);
-  assert.deepEqual(compare.unknownIata, ["ITH"]);
+  assert.deepEqual(compare.unknownIata, ["IAN"]);
   assert.equal(
-    scored.some((candidate) => candidate.iata === "ITH"),
+    scored.some((candidate) => candidate.iata === "IAN"),
     false,
-    "ITH really is outside the committed snapshot",
+    "IAN really is outside the committed snapshot",
   );
 });
 
@@ -193,8 +224,8 @@ test("a compare against an airport outside the top 100 names the code", () => {
 // vocabulary has to be the committed universe's own, not a hand-kept list.
 test("the accepted place phrases are the committed universe's own", () => {
   const vocabulary = placeVocabulary(scored);
-  assert.deepEqual(vocabulary.peerGroup, ["large", "medium", "small"]);
-  // Nine Census divisions, minus any the top 100 does not reach; SJU's blank is
+  assert.deepEqual(vocabulary.peerGroup, ["large", "medium", "nonhub", "small"]);
+  // Nine Census divisions, minus any the universe does not reach; SJU's blank is
   // not offered as a phrase, because a region ranking never returns it.
   assert.ok(vocabulary.region.length <= 9, `${vocabulary.region.length} divisions`);
   assert.ok(vocabulary.region.includes("New England"));
@@ -216,9 +247,9 @@ test("the accepted place phrases are the committed universe's own", () => {
 test("a ranked row carries the coordinates the map is drawn from", () => {
   const byIata = new Map(snapshot.airports.map((airport) => [airport.iata, airport]));
   const newEngland = queryAirports(scored, { region: "New England" });
-  // The map gate #24 describes needs two or more located rows, and each of these
-  // four New England airports carries a pair.
-  assert.equal(newEngland.rows.length, 4);
+  // The map gate #24 describes needs two or more located rows, and every New
+  // England row drawn carries a pair.
+  assert.equal(newEngland.rows.length, DEFAULT_LIMIT);
   for (const candidate of newEngland.rows) {
     const airport = byIata.get(candidate.iata);
     assert.ok(airport);
@@ -249,7 +280,7 @@ test("an unresolved place phrase is named against the committed universe", () =>
   const spelled = queryAirports(scored, { state: "California" });
   assert.equal(spelled.matched, 0);
   assert.deepEqual(spelled.unknownPlace, [{ field: "state", value: "California" }]);
-  assert.equal(queryAirports(scored, { state: "CA" }).matched, 12);
+  assert.equal(queryAirports(scored, { state: "CA" }).matched, 24);
 
   // Both values are real; only the combination is empty, so nothing is unknown.
   const combined = queryAirports(scored, { region: "New England", state: "CA" });
