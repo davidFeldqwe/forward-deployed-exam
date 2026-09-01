@@ -128,11 +128,14 @@ test("a stored ranking turn is one list: tool, resolved set, prose, table, cavea
 });
 
 test("carried context sits before the resolved airport set and the table", () => {
-  const list = tags(threadAnswer(followUpThread, 3));
-
-  assert.deepEqual(list, ["tool", "carried", "resolved", "prose", "ranking", "caveats"]);
-  assert.ok(list.indexOf("carried") < list.indexOf("resolved"));
-  assert.ok(list.indexOf("carried") < list.indexOf("ranking"));
+  assert.deepEqual(tags(threadAnswer(followUpThread, 3)), [
+    "tool",
+    "carried",
+    "resolved",
+    "prose",
+    "ranking",
+    "caveats",
+  ]);
 });
 
 // Two calls in one turn are grouped by tag, not interleaved per call: every
@@ -269,14 +272,17 @@ test("the pending Thread answer is one pending row and nothing else", () => {
   // composite, no candidate lamp, no score vector, no rows.
   assert.deepEqual(Object.keys(row).sort(), ["airportLabel", "label", "note", "rowLabel", "tag"]);
   assert.equal(row.rowLabel, pendingAnswer.rowLabel);
+  // Every word the row carries, as one haystack the screen's marks are looked
+  // for in.
+  const copy = JSON.stringify(row).toLowerCase();
   // Not a withheld composite either: the screen has not run.
-  assert.doesNotMatch(JSON.stringify(row), new RegExp(WITHHELD_COMPOSITE));
+  assert.ok(!copy.includes(WITHHELD_COMPOSITE), WITHHELD_COMPOSITE);
   // And not a candidate lamp: the one pill this row draws sits in the lamp
   // column, so a lamp word in its copy would read as a coverage state the
   // screen decided — "Partial inputs" most of all, which says a row was scored
   // with a component missing. Nothing has been scored.
   for (const lamp of CANDIDATE_LAMPS) {
-    assert.doesNotMatch(JSON.stringify(row), new RegExp(lamp, "i"), lamp);
+    assert.ok(!copy.includes(lamp.toLowerCase()), lamp);
   }
 });
 

@@ -9,6 +9,9 @@ import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
 
 const web = new URL("../", import.meta.url);
 const THE_PENDING_TURN = "components/answers/PendingAnswer.tsx";
+const THE_PENDING_ROW = "components/answers/PendingRow.tsx";
+const THE_TRANSCRIPT = "components/Transcript.tsx";
+const THE_COMPOSER = "components/Chat.tsx";
 
 function source(file: string): string {
   return readFileSync(new URL(file, web), "utf8");
@@ -29,7 +32,7 @@ test("the pending state carries no number, so none can be read as a score", () =
 });
 
 test("the pending row draws no composite, no lamp pill and no hue", () => {
-  const row = source("components/answers/PendingRow.tsx");
+  const row = source(THE_PENDING_ROW);
 
   // A lamp is a screen result; a pending row has none, so it neither imports the
   // pill map nor writes a hue class of its own.
@@ -43,13 +46,14 @@ test("the pending row draws no composite, no lamp pill and no hue", () => {
   // and this row is drawn before it ran — "Partial inputs" is a scored row with
   // a component missing, which is not the same absence as a row with no screen
   // behind it at all.
+  const words = row.toLowerCase();
   for (const lamp of CANDIDATE_LAMPS) {
-    assert.doesNotMatch(row, new RegExp(lamp, "i"), lamp);
+    assert.ok(!words.includes(lamp.toLowerCase()), lamp);
   }
 });
 
 test("the composer's form is what the pending answer is drawn inside", () => {
-  const chat = source("components/Chat.tsx");
+  const chat = source(THE_COMPOSER);
   const form = chat.indexOf("<form action={askQuestion}");
   const pending = chat.indexOf("<PendingAnswer");
   const composer = chat.indexOf("<InputGroupInput");
@@ -79,7 +83,7 @@ test("the question in flight is a user turn above the pending answer, not inside
   // Both sides of the same chrome: a question in flight is set like the same
   // question once it has landed in the transcript, so both files draw the turn
   // out of `Turn.tsx` rather than one of them writing its own.
-  for (const file of [THE_PENDING_TURN, "components/Transcript.tsx"]) {
+  for (const file of [THE_PENDING_TURN, THE_TRANSCRIPT]) {
     const chrome = source(file).match(/import \{([^}]*)\} from "@\/components\/Turn"/)?.[1];
     assert.deepEqual(
       chrome
