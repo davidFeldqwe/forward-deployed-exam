@@ -2,7 +2,26 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { loginFieldsToRender } from "./login-fields.ts";
+import {
+  type LoginEmailField,
+  type LoginFieldView,
+  type LoginPasswordField,
+  loginFieldsToRender,
+} from "./login-fields.ts";
+
+function emailField(fields: LoginFieldView[]): LoginEmailField {
+  const field = fields.find((item): item is LoginEmailField => item.name === "email");
+  assert.ok(field);
+  assert.equal("defaultValue" in field, false);
+  return field;
+}
+
+function passwordField(fields: LoginFieldView[]): LoginPasswordField {
+  const field = fields.find((item): item is LoginPasswordField => item.name === "password");
+  assert.ok(field);
+  assert.equal("value" in field, false);
+  return field;
+}
 
 test("a refused sign-in restores the typed email as a controlled value, not a new defaultValue", () => {
   const fields = loginFieldsToRender(
@@ -13,19 +32,12 @@ test("a refused sign-in restores the typed email as a controlled value, not a ne
     },
     "analyst@example.com",
   );
-  const [email, password] = fields;
+  const email = emailField(fields);
+  const password = passwordField(fields);
 
-  assert.equal(email?.name, "email");
-  assert.equal(email && "value" in email ? email.value : undefined, "analyst@example.com");
-  assert.equal(email && "defaultValue" in email, false);
-  assert.equal(email?.error, "Email or password is incorrect.");
-
-  assert.equal(password?.name, "password");
-  assert.equal(
-    password && "defaultValue" in password ? password.defaultValue : undefined,
-    "",
-  );
-  assert.equal(password && "value" in password, false);
+  assert.equal(email.value, "analyst@example.com");
+  assert.equal(email.error, "Email or password is incorrect.");
+  assert.equal(password.defaultValue, "");
 });
 
 test("a refused create-account keeps the email controlled and shows the matching field error", () => {
@@ -40,24 +52,23 @@ test("a refused create-account keeps the email controlled and shows the matching
     },
     "not-an-email",
   );
-  const [email, password] = fields;
+  const email = emailField(fields);
+  const password = passwordField(fields);
 
-  assert.equal(email && "value" in email ? email.value : undefined, "not-an-email");
-  assert.equal(email && "defaultValue" in email, false);
-  assert.match(String(email?.error), /email/i);
-  assert.equal(password && "defaultValue" in password ? password.defaultValue : undefined, "");
-  assert.equal(password && "value" in password, false);
-  assert.match(String(password?.error), /8/);
-  assert.equal(password?.autoComplete, "new-password");
+  assert.equal(email.value, "not-an-email");
+  assert.match(String(email.error), /email/i);
+  assert.equal(password.defaultValue, "");
+  assert.match(String(password.error), /8/);
+  assert.equal(password.autoComplete, "new-password");
 });
 
 test("switching to create account does not invent a password or wipe a typed email", () => {
   const fields = loginFieldsToRender("signUp", { email: "", errors: {} }, "still@here.com");
-  const [email, password] = fields;
+  const email = emailField(fields);
+  const password = passwordField(fields);
 
-  assert.equal(email && "value" in email ? email.value : undefined, "still@here.com");
-  assert.equal(password && "defaultValue" in password ? password.defaultValue : undefined, "");
-  assert.equal(password && "value" in password, false);
+  assert.equal(email.value, "still@here.com");
+  assert.equal(password.defaultValue, "");
 });
 
 test("Login binds email as a controlled value and password as an empty default", () => {

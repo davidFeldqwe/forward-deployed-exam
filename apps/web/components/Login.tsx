@@ -3,8 +3,8 @@
 import { useActionState, useState } from "react";
 
 import { type LoginState, submitLogin } from "@/app/auth-actions";
-import { type LoginMode, loginFieldsToRender } from "@/app/login-fields";
 import { loginCopy } from "@/app/login-copy";
+import { type LoginMode, loginFieldsToRender } from "@/app/login-fields";
 import { siteHeaderCopy } from "@/app/site-header";
 import { Wordmark } from "@/components/Wordmark";
 import { Button } from "@/components/ui/button";
@@ -69,11 +69,11 @@ export function Login({
 
                 {loginFieldsToRender(mode, state, email).map((field) => {
                   const errorId = `${field.name}-error`;
-                  const described = {
+                  const inputProps = {
                     id: field.name,
                     name: field.name,
                     type: field.type,
-                    required: true as const,
+                    required: true,
                     autoComplete: field.autoComplete,
                     "aria-invalid": field.error ? true : undefined,
                     "aria-describedby": field.error ? errorId : undefined,
@@ -88,12 +88,12 @@ export function Login({
                       </label>
                       {"value" in field ? (
                         <Input
-                          {...described}
+                          {...inputProps}
                           value={field.value}
                           onChange={(event) => setEmail(event.target.value)}
                         />
                       ) : (
-                        <Input {...described} defaultValue={field.defaultValue} />
+                        <Input {...inputProps} defaultValue={field.defaultValue} />
                       )}
                       {field.error ? (
                         <p id={errorId} className="m-0 text-xs leading-snug text-body" role="alert">

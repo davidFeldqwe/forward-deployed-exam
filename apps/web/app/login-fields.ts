@@ -33,19 +33,21 @@ export function loginFieldsToRender(
   state: LoginState,
   email: string,
 ): LoginFieldView[] {
-  return loginCopy.fields.map((field) => {
-    if (field.name === "email") {
-      return {
-        ...field,
-        value: email,
-        error: state.errors.email,
-      };
+  return loginCopy.fields.map((field): LoginFieldView => {
+    switch (field.name) {
+      case "email":
+        return {
+          ...field,
+          value: email,
+          error: state.errors.email,
+        };
+      case "password":
+        return {
+          ...field,
+          autoComplete: mode === "signUp" ? "new-password" : field.autoComplete,
+          defaultValue: "",
+          error: state.errors.password,
+        };
     }
-    return {
-      ...field,
-      autoComplete: mode === "signUp" ? "new-password" : field.autoComplete,
-      defaultValue: "",
-      error: state.errors.password,
-    };
   });
 }
