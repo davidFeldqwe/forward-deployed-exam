@@ -7,6 +7,7 @@
  */
 import { randomBytes } from "node:crypto";
 
+import { SPEND_CAP_REFUSAL, reserveAgentCall } from "./agent-spend.ts";
 import { normalizeEmail } from "./auth-accounts.ts";
 import {
   type ThreadMessage,
@@ -210,17 +211,30 @@ export type AnswerTurn = (thread: Thread) => Promise<ThreadMessage>;
  * answer's own failures stay the caller's — `answerQuestion` returns a message
  * for every path it has, so a thrown error here is a bug rather than a model
  * that said no, and it still leaves the thread free for the next ask.
+ *
+ * The spend cap is this function, not the action that calls it: an SSE `POST`
+ * that answers through here is under the same lids, and a route that called
+ * the model first would be the bypass the cap is here to close. A capped ask
+ * still stores the question; the vendor is what it does not reach.
  */
 export async function askOnThread(
   ownerEmail: string,
   openThreadId: string | null,
   question: string,
   answer: AnswerTurn,
+  clientIp = "",
+  at = Date.now(),
 ): Promise<Thread | null> {
   const ask = async (): Promise<Thread | null> => {
     const thread = recordQuestion(ownerEmail, openThreadId, question);
     if (!thread) {
       return null;
+    }
+    const email = normalizeEmail(ownerEmail);
+    if (!reserveAgentCall({ email, clientIp, at })) {
+      return (
+        appendMessage(ownerEmail, thread.id, assistantMessage(SPEND_CAP_REFUSAL)) ?? thread
+      );
     }
     const answered = appendMessage(ownerEmail, thread.id, await answer(thread));
     if (answered) {

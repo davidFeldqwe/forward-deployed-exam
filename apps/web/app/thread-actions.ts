@@ -1,8 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { answerQuestion } from "@/app/agent";
+import { clientIpFromHeaders } from "@/app/agent-spend";
 import {
   CHAT_PATH,
   carriedPrompt,
@@ -27,7 +29,9 @@ import { askOnThread } from "@/app/thread-store";
  *
  * One ask at a time per Thread is the store's rule, not this action's: a second
  * tab posting the same form does not pass through the composer's held Send, and
- * the SSE route will not pass through this action at all.
+ * the SSE route will not pass through this action at all. The spend cap is on
+ * `askOnThread` with this request's client IP, so that route cannot skip it by
+ * posting the model itself.
  */
 export async function askQuestion(formData: FormData): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));
@@ -45,6 +49,7 @@ export async function askQuestion(formData: FormData): Promise<void> {
     textField(formData, "threadId") || null,
     question,
     (thread) => answerQuestion(thread.messages),
+    clientIpFromHeaders(await headers()),
   );
 
   redirect(chatDestination(thread?.id ?? null));
