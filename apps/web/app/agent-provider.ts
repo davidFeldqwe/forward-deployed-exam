@@ -37,9 +37,9 @@ export const NO_PROVIDER_ANSWER =
   "committed snapshot scored in this repo.";
 
 /**
- * OpenAI as the PRD's second vendor: used when Anthropic is absent, and again
- * when Anthropic was asked and failed. A deploy that only holds this key must
- * still answer; one that holds a dead Anthropic key must not stay silent.
+ * OpenAI is the default vendor. A deploy that holds this key must answer on it
+ * without waiting on Anthropic; a dead Anthropic key in the same env must not
+ * eat the serverless budget first.
  */
 export function chooseOpenAIProvider(
   env: Record<string, string | undefined>,
@@ -57,23 +57,29 @@ export function chooseOpenAIProvider(
   };
 }
 
+export function chooseAnthropicProvider(
+  env: Record<string, string | undefined>,
+): ProviderChoice | null {
+  const anthropicKey = trimmed(env[ANTHROPIC_KEY]);
+  if (!anthropicKey) {
+    return null;
+  }
+  return {
+    vendor: "anthropic",
+    model: trimmed(env.ANTHROPIC_MODEL) ?? DEFAULT_ANTHROPIC_MODEL,
+    fallbackModel: null,
+    apiKey: anthropicKey,
+  };
+}
+
 /**
- * The vendor to call, or null when the deployment holds no key. Anthropic wins
+ * The vendor to call, or null when the deployment holds no key. OpenAI wins
  * when both are set. A key that is present but blank is not a key: a deploy
  * config that defines the variable empty would otherwise pick a vendor that
  * answers every question with a 401.
  */
 export function chooseProvider(env: Record<string, string | undefined>): ProviderChoice | null {
-  const anthropicKey = trimmed(env[ANTHROPIC_KEY]);
-  if (anthropicKey) {
-    return {
-      vendor: "anthropic",
-      model: trimmed(env.ANTHROPIC_MODEL) ?? DEFAULT_ANTHROPIC_MODEL,
-      fallbackModel: null,
-      apiKey: anthropicKey,
-    };
-  }
-  return chooseOpenAIProvider(env);
+  return chooseOpenAIProvider(env) ?? chooseAnthropicProvider(env);
 }
 
 /**

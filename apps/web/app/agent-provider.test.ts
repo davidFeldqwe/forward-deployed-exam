@@ -13,10 +13,15 @@ import {
   providerAfterFailure,
 } from "./agent-provider.ts";
 
-test("Anthropic is asked first, so a deployment holding both keys uses it", () => {
+test("OpenAI is asked first, so a deployment holding both keys uses it", () => {
   assert.deepEqual(
     chooseProvider({ ANTHROPIC_API_KEY: "sk-ant", OPENAI_API_KEY: "sk-oai" }),
-    { vendor: "anthropic", model: DEFAULT_ANTHROPIC_MODEL, fallbackModel: null, apiKey: "sk-ant" },
+    {
+      vendor: "openai",
+      model: DEFAULT_OPENAI_MODEL,
+      fallbackModel: OPENAI_FALLBACK_MODEL,
+      apiKey: "sk-oai",
+    },
   );
 });
 
@@ -26,6 +31,15 @@ test("OpenAI answers when it is the only key, with the PRD's model and fallback"
     model: DEFAULT_OPENAI_MODEL,
     fallbackModel: OPENAI_FALLBACK_MODEL,
     apiKey: "sk-oai",
+  });
+});
+
+test("Anthropic answers only when there is no OpenAI key", () => {
+  assert.deepEqual(chooseProvider({ ANTHROPIC_API_KEY: "sk-ant" }), {
+    vendor: "anthropic",
+    model: DEFAULT_ANTHROPIC_MODEL,
+    fallbackModel: null,
+    apiKey: "sk-ant",
   });
 });
 
@@ -47,10 +61,7 @@ test("either model can be named, and a blank key is no key at all", () => {
 });
 
 test("a failed Anthropic call falls through to OpenAI when that key is present", () => {
-  const anthropic = chooseProvider({
-    ANTHROPIC_API_KEY: "sk-ant",
-    OPENAI_API_KEY: "sk-oai",
-  });
+  const anthropic = chooseProvider({ ANTHROPIC_API_KEY: "sk-ant" });
   assert.equal(anthropic?.vendor, "anthropic");
   assert.deepEqual(providerAfterFailure(anthropic!, { OPENAI_API_KEY: "sk-oai" }), {
     vendor: "openai",

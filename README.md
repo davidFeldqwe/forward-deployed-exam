@@ -52,8 +52,8 @@ transcript.
 
 | Variable | Used for |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | the agent's model. Tried first when both keys are set. |
-| `OPENAI_API_KEY` | the agent's model when the Anthropic key is absent. |
+| `OPENAI_API_KEY` | the agent's model. Tried first when both keys are set. |
+| `ANTHROPIC_API_KEY` | the agent's model when the OpenAI key is absent. |
 | `ANTHROPIC_MODEL` | override the default Anthropic model. |
 | `OPENAI_MODEL` | override the default OpenAI model (`gpt-4o`, falling back to `gpt-4o-mini` if the account cannot see it). |
 | `AUTOCOMPLETE_MODEL` | optional cheaper model for the composer ghost; same API key family as chat. |

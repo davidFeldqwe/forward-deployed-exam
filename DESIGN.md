@@ -137,7 +137,7 @@ Three things keep that boundary checkable rather than merely claimed:
   process restart, so the numbers in an old thread are the numbers the tool
   returned, not prose a model re-typed.
 
-Provider choice is `ANTHROPIC_API_KEY` first, then `OPENAI_API_KEY` (see
+Provider choice is `OPENAI_API_KEY` first, then `ANTHROPIC_API_KEY` (see
 `README.md`); tool steps are capped at eight. With neither key the app stores the
 question and says it has no model — the screen, its tests, and CI still run.
 
