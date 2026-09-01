@@ -82,7 +82,7 @@ function titleFromMessages(messages: readonly ThreadMessage[]): string {
 }
 
 function hasUserQuestion(thread: ConvexThread): boolean {
-  return snapshotOf(thread).messages.some((message) => message.role === "user");
+  return thread.messages.some((message) => parseThreadMessage(message)?.role === "user");
 }
 
 /**
@@ -107,6 +107,23 @@ function snapshotOf(thread: ConvexThread): Thread {
   };
 }
 
+async function insertOwnedThread(
+  ownerEmail: string,
+  messages: ThreadMessage[],
+): Promise<Thread> {
+  const now = Date.now();
+  return snapshotOf(
+    await putThread({
+      id: newThreadId(),
+      ownerEmail: normalizeEmail(ownerEmail),
+      title: titleFromMessages(messages),
+      createdAt: now,
+      updatedAt: now,
+      messages,
+    }),
+  );
+}
+
 /**
  * A new conversation, titled with the question that opened it. A question with
  * nothing in it is refused, the same way `appendMessage` refuses a message that
@@ -117,22 +134,12 @@ export async function startThread(ownerEmail: string, question: string): Promise
   if (!opening) {
     return null;
   }
-  const now = Date.now();
-  const thread: ConvexThread = {
-    id: newThreadId(),
-    ownerEmail: normalizeEmail(ownerEmail),
-    title: titleFromMessages([opening]),
-    createdAt: now,
-    updatedAt: now,
-    messages: [opening],
-  };
-  const stored = await putThread(thread);
-  return stored ? snapshotOf(stored) : null;
+  return insertOwnedThread(ownerEmail, [opening]);
 }
 
 /**
- * New thread: a real recents row before the first question. The standing name is
- * chat copy, not `threadTitle("")` and not a chip the analyst never sent.
+ * New thread: a real recents row before the first question. A second click
+ * reuses the empty Thread instead of stacking another row.
  */
 export async function openEmptyThread(ownerEmail: string): Promise<Thread> {
   const owner = normalizeEmail(ownerEmail);
@@ -140,16 +147,7 @@ export async function openEmptyThread(ownerEmail: string): Promise<Thread> {
   if (existing) {
     return snapshotOf(await putThread({ ...existing, updatedAt: Date.now() }));
   }
-  const now = Date.now();
-  const thread: ConvexThread = {
-    id: newThreadId(),
-    ownerEmail: owner,
-    title: titleFromMessages([]),
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-  };
-  return snapshotOf(await putThread(thread));
+  return insertOwnedThread(owner, []);
 }
 
 /**

@@ -27,7 +27,7 @@ function currentDestinations(openThreadId: string | null): string[] {
     .map((destination) => destination.href);
 }
 
-test("the rail lists the analyst's threads by first question, newest first", () => {
+test("the rail lists the analyst's threads in recents order", () => {
   const { rows } = threadRail(RECENTS, null);
 
   assert.deepEqual(
@@ -57,7 +57,9 @@ test("an empty Thread in recents is the current row when that Thread is open", (
   assert.equal(rail.rows[0]?.current, true);
   assert.equal(rail.rows[0]?.title, chatCopy.newThreadLabel);
   assert.deepEqual(
-    [rail.newThread, ...rail.rows].filter((destination) => destination.current).map((d) => d.href),
+    [rail.newThread, ...rail.rows]
+      .filter((destination) => destination.current)
+      .map((destination) => destination.href),
     [chatDestination(empty.id)],
   );
 });

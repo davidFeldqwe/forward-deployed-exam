@@ -23,7 +23,7 @@ export type RailDestination = {
   current: boolean;
 };
 
-/** One recents row: the thread's first question, and where it opens. */
+/** One recents row: the thread's title, and where it opens. */
 export type RailRow = RailDestination & {
   id: string;
   title: string;

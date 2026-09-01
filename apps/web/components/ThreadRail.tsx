@@ -58,9 +58,9 @@ const currentRowClass = "bg-sidebar-accent text-sidebar-accent-foreground";
 
 /**
  * Recents as a left column (issue #55 / #32; PRD story 17): the analyst's
- * threads by first question, and New thread above them. A header control
- * collapses the column from `md` up; on a narrow viewport the same rail is a
- * drawer that control opens.
+ * threads, and New thread above them. A header control collapses the column
+ * from `md` up; on a narrow viewport the same rail is a drawer that control
+ * opens.
  */
 export function ThreadRail({
   threads,
@@ -127,10 +127,9 @@ export function ThreadRail({
               data-thread-row
               aria-current={newThread.current ? "page" : undefined}
               onClick={onClose}
-              className={cn(
-                rowClass,
+              className={railRowClass(
+                newThread.current,
                 "w-full cursor-pointer border-0 bg-transparent text-start",
-                newThread.current && currentRowClass,
               )}
             >
               <PlusIcon aria-hidden="true" className="size-3.5 shrink-0" />
@@ -248,10 +247,13 @@ function RailToggle({
   );
 }
 
+function railRowClass(current: boolean, extras?: string): string {
+  return cn(rowClass, extras, current && currentRowClass);
+}
+
 /**
- * One rail destination, drawn the same whether it is New thread or a recents
- * row: where it goes, whether the analyst is already there, and the drawer
- * closing behind the pick on a narrow viewport.
+ * One recents destination: where it opens, whether it is the open Thread, and
+ * the drawer closing behind the pick on a narrow viewport.
  */
 function RailLink({
   destination,
@@ -268,7 +270,7 @@ function RailLink({
       data-thread-row
       aria-current={destination.current ? "page" : undefined}
       onClick={onClose}
-      className={cn(rowClass, destination.current && currentRowClass)}
+      className={railRowClass(destination.current)}
     >
       {children}
     </Link>
