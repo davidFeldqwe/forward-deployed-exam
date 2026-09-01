@@ -145,9 +145,11 @@ composite fails — so CI proves the scorer without Anthropic.
 | `packages/snapshot` | the committed snapshot, its Zod schema, and the optional ingest |
 | `packages/scoring` | the screen: percentiles, weights, composite, candidate lamp, `queryAirports` |
 | `apps/web` | Next.js App Router — Landing, login, chat, the two agent tools, the one LLM module |
+| `convex` | Auth and Threads only; airports and scores stay files |
 | `prototype`, `research` | the locked answer shape and the data-source notes; not runtime code |
 
-Each package under `packages/` has its own README with the details of that seam.
+`packages/scoring` and `packages/snapshot` each have a README for that seam.
+Shared lint and TypeScript configs under `packages/` do not.
 
 ## History
 
