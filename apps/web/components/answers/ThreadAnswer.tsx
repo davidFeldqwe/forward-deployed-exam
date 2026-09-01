@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type { ProsePart, ThreadAnswerPart } from "@/app/thread-answer";
 import { CarriedContext } from "@/components/answers/CarriedContext";
 import { Caveats } from "@/components/answers/Caveats";
+import { CompositeChart } from "@/components/answers/CompositeChart";
 import { PendingRow } from "@/components/answers/PendingRow";
 import { Ranking } from "@/components/answers/Ranking";
 import { ReadAloud } from "@/components/answers/ReadAloud";
@@ -36,6 +37,8 @@ function Part({ part }: { part: ThreadAnswerPart }): ReactElement {
       return <Ranking rows={part.rows} lookup={part.lookup} sortLabel={part.sortLabel} />;
     case "map":
       return <ResolvedMap map={part.map} />;
+    case "chart":
+      return <CompositeChart chart={part.chart} />;
     case "pending":
       return <PendingRow row={part} />;
     case "caveats":

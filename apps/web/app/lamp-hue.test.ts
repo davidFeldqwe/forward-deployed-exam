@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
 
-import { LAMP_LEGEND_NOTE, lampMarker, lampPill, lampVariable } from "./lamp-hue.ts";
+import { LAMP_LEGEND_NOTE, lampBar, lampMarker, lampPill, lampVariable } from "./lamp-hue.ts";
 
 const HUE_CLASS = /(?:text|bg|border)-lamp-/;
 
@@ -40,6 +40,17 @@ test("a map marker lights the same hue its row's lamp does, and missing is not r
   for (const lamp of ["Partial inputs", "No data"] as const) {
     assert.doesNotMatch(lampMarker(lamp), /lamp-/);
     assert.match(lampMarker(lamp), /muted-foreground/);
+  }
+});
+
+test("a composite bar lights the same hue its row's lamp does, and missing has no fill", () => {
+  assert.match(lampBar("Strong candidate"), /lamp-strong/);
+  assert.match(lampBar("Mixed vector"), /lamp-mixed/);
+  assert.match(lampBar("Weak candidate"), /lamp-weak/);
+
+  for (const lamp of ["Partial inputs", "No data"] as const) {
+    assert.doesNotMatch(lampBar(lamp), /lamp-/);
+    assert.match(lampBar(lamp), /fill-transparent/);
   }
 });
 

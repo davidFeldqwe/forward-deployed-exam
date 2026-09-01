@@ -7,6 +7,7 @@ import {
 } from "@/app/ranking-view";
 import { HeadCell } from "@/components/answers/HeadCell";
 import { LampLegend } from "@/components/answers/LampLegend";
+import { RankingExport } from "@/components/answers/RankingExport";
 import {
   RANKING_AIRPORT,
   RANKING_RANK,
@@ -57,6 +58,12 @@ export function Ranking({
 function RankingTable({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel: string }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-row-head px-3.5 py-2">
+        <span className="text-[10.5px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+          Ranking
+        </span>
+        <RankingExport rows={rows} />
+      </div>
       <div className={`${RANKING_STRIP} border-b bg-row-head py-2.5`}>
         <HeadCell className={RANKING_RANK}>#</HeadCell>
         <HeadCell className={RANKING_AIRPORT}>Airport</HeadCell>

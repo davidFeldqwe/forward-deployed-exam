@@ -124,6 +124,7 @@ test("a stored ranking turn is one list: tool, resolved set, prose, table, cavea
     "prose",
     "ranking",
     "map",
+    "chart",
     "caveats",
   ]);
 });
@@ -135,6 +136,7 @@ test("carried context sits before the resolved airport set and the table", () =>
     "resolved",
     "prose",
     "ranking",
+    "chart",
     "caveats",
   ]);
 });
@@ -146,9 +148,11 @@ test("a place-named ranking draws its map after the table, a follow-up does not"
     "prose",
     "ranking",
     "map",
+    "chart",
     "caveats",
   ]);
   assert.equal(tags(threadAnswer(followUpThread, 3)).includes("map"), false);
+  assert.equal(tags(threadAnswer(followUpThread, 3)).includes("chart"), true);
 });
 
 // Two calls in one turn are grouped by tag, not interleaved per call: every
@@ -171,6 +175,8 @@ test("two queryAirports calls group all sets, then prose, then all tables, then 
     "ranking",
     "map",
     "map",
+    "chart",
+    "chart",
     "caveats",
   ]);
 
@@ -219,6 +225,32 @@ test("within a group the blocks read in call order, each carrying its own call",
     partsOf(parts, "ranking").map((part) => part.rows.map((row) => row.iata)),
     [newEngland, pacific].map((call) => (rankingRows(call) ?? []).map((row) => row.iata)),
   );
+
+  // Charts of those same ranked sets, in that order, after the maps.
+  assert.deepEqual(
+    partsOf(parts, "chart").map((part) => part.chart.bars.map((bar) => bar.iata)),
+    [newEngland, pacific].map((call) => (rankingRows(call) ?? []).map((row) => row.iata)),
+  );
+});
+
+test("a lookup has no composite chart, a ranking does even without a map", () => {
+  const delay = query({ iata: "BOS", metric: "delay" });
+  const lookupTurn = [
+    userMessage("What is the delay at BOS?"),
+    assistantMessage("Fourteen minutes.", [delay]),
+  ];
+  assert.equal(tags(threadAnswer(lookupTurn, 1)).includes("chart"), false);
+  assert.equal(tags(threadAnswer(lookupTurn, 1)).includes("ranking"), true);
+
+  const compare = [
+    userMessage("Compare congestion at LAX and SNA."),
+    assistantMessage("Different peer groups.", [query({ iata: ["LAX", "SNA"] })]),
+  ];
+  assert.deepEqual(
+    tags(threadAnswer(compare, 1)).filter((tag) => tag === "chart"),
+    ["chart"],
+  );
+  assert.equal(tags(threadAnswer(compare, 1)).includes("map"), false);
 });
 
 test("a methodology-only turn is tool and prose, and nothing it has no rows for", () => {
@@ -252,6 +284,7 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
     "resolved",
     "ranking",
     "map",
+    "chart",
     "caveats",
   ]);
 });
@@ -388,6 +421,7 @@ const TAG_BLOCKS = {
   resolved: "ResolvedSet",
   ranking: "Ranking",
   map: "ResolvedMap",
+  chart: "CompositeChart",
   pending: "PendingRow",
   caveats: "Caveats",
 } as const satisfies Record<Exclude<ThreadAnswerTag, "prose">, string>;

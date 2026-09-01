@@ -111,7 +111,7 @@ The model runs the conversation. Code runs the screen.
 | --- | --- |
 | read a question and decide which tool to call | every number, percentile, composite, lamp, and sort order |
 | map a place phrase ("Pacific Northwest") to states or codes it passes as tool arguments | which airports a filter matches, and the resolved airport set it returns |
-| refuse an off-thesis or unresolvable question, and write the prose around an answer | the ranking table, score vector, and resolved-set line, all rendered from the tool payload |
+| refuse an off-thesis or unresolvable question, and write the prose around an answer | the ranking table, score vector, composite chart, Copy/CSV, and resolved-set line, all rendered from the tool payload |
 
 The agent gets exactly two tools, and no third is coming:
 
