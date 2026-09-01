@@ -1,5 +1,3 @@
-"use client";
-
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { GitBranchIcon, MapIcon, MessageSquareIcon, UserIcon } from "lucide-react";

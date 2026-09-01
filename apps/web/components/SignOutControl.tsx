@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 /**
  * The header's signed-in profile control (issue #93). A press opens a
  * confirmation; only that confirm POSTs `signOut`. Cancel is Dialog.Close, so
- * it cannot end the session. Chat and Map share this one control.
+ * it cannot end the session. Own client module: Dialog state stays here so the
+ * rest of the bar does not have to be a client tree.
  */
 export function SignOutControl({ label }: { label: string }) {
   return (
