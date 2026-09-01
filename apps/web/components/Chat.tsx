@@ -146,7 +146,7 @@ function SendButton({ ready }: { ready: boolean }) {
       disabled={!ready || pending}
       aria-label={pending ? chatCopy.sendingLabel : chatCopy.sendLabel}
     >
-      <ArrowUpIcon />
+      <ArrowUpIcon aria-hidden="true" />
     </InputGroupButton>
   );
 }

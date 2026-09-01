@@ -55,7 +55,7 @@ test("composer is a single send field that says when a question is in flight", (
 });
 
 test("submit is an upward arrow whose accessible name is send, not the word Send", () => {
-  assert.match(chatChrome, /ArrowUpIcon/);
+  assert.match(chatChrome, /ArrowUpIcon aria-hidden="true"/);
   assert.match(chatChrome, /aria-label=\{pending \? chatCopy\.sendingLabel : chatCopy\.sendLabel\}/);
   assert.doesNotMatch(
     chatChrome,
@@ -64,8 +64,6 @@ test("submit is an upward arrow whose accessible name is send, not the word Send
 });
 
 test("empty draft cannot activate send; a ready draft stays enabled unless in flight", () => {
-  // `ready` is the trimmed draft, including a server-rendered carried prompt, so
-  // a valid draft is enabled in the initial HTML and an empty one is not.
   assert.match(chatChrome, /disabled=\{!ready \|\| pending\}/);
   // Enter posts through `requestSubmit`, which would skip a disabled button unless
   // the composer checks that control first.
