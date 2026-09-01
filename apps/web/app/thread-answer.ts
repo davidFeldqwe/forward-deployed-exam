@@ -29,7 +29,14 @@ import {
 } from "./ranking-view.ts";
 import { spokenProse } from "./read-aloud.ts";
 import { resolvedMap, type ResolvedMapView } from "./resolved-map.ts";
-import { previousQuestion, type ThreadMessage, type ToolCall } from "./thread-messages.ts";
+import {
+  assistantMessage,
+  parseToolCall,
+  previousQuestion,
+  userMessage,
+  type ThreadMessage,
+  type ToolCall,
+} from "./thread-messages.ts";
 
 /** The resolved airport set a `queryAirports` call named, with its refusals. */
 export type InspectSet = { resolved: ResolvedSet; unknown: RankingUnknowns };
@@ -112,6 +119,33 @@ export const SHOW_MORE_LABEL = "Show more";
 export const PENDING_THREAD_ANSWER: readonly [PendingRowPart] = [
   { tag: "pending", ...pendingAnswer },
 ];
+
+/**
+ * The in-flight Thread answer: pending until a complete `queryAirports`
+ * payload, then the same list a stored turn would draw from those calls.
+ * Prose grows from deltas; a sentence never becomes a ranking. Incomplete
+ * tool JSON is dropped (`parseToolCall`), so a half-composite cannot arrive.
+ * Read-aloud waits until the turn lands — this list is still being written.
+ */
+export function inFlightThreadAnswer(
+  messages: readonly ThreadMessage[],
+  question: string,
+  text: string,
+  toolCalls: readonly ToolCall[],
+): ThreadAnswerPart[] {
+  const calls = toolCalls.flatMap((call) => {
+    const parsed = parseToolCall(call);
+    return parsed ? [parsed] : [];
+  });
+  const thread = [...messages, userMessage(question), assistantMessage(text, calls)];
+  const parts = threadAnswer(thread, thread.length - 1).map((part) =>
+    part.tag === "prose" ? { ...part, spoken: null } : part,
+  );
+  if (calls.some((call) => rankingView(call) !== null)) {
+    return parts;
+  }
+  return [...parts, PENDING_THREAD_ANSWER[0]];
+}
 
 /**
  * The Thread answer for the turn at `index`, or an empty list where that turn is

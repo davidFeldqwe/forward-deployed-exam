@@ -88,7 +88,7 @@ test("agent turns stay left, un-pilled, and outside the user chrome", () => {
 
 test("empty chat still draws chips until the first question is sent", () => {
   const chat = source("components/Chat.tsx");
-  assert.match(chat, /messages\.length === 0 \? \(/);
+  assert.match(chat, /messages\.length === 0 && asked\.length === 0 \? \(/);
   assert.match(chat, /<PromptChips /);
   assert.match(chat, /<Transcript messages=\{messages\} \/>/);
   assert.doesNotMatch(chat, /UserTurn/);

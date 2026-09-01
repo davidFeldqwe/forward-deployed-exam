@@ -97,10 +97,12 @@ test("the question in flight is a user turn above the pending answer, not inside
       file,
     );
   }
-  // And the question reaches no block: all the tag switch is handed is the
-  // constant list.
-  assert.deepEqual(
-    [...pending.matchAll(/<ThreadAnswer([^/>]*)\/>/g)].map(([, props]) => props.trim()),
-    ["parts={PENDING_THREAD_ANSWER}"],
-  );
+  // And the question reaches no block: the tag switch is handed the in-flight
+  // composer, which does not take the question as a part.
+  assert.match(pending, /parts=\{inFlightThreadAnswer\(/);
+  assert.doesNotMatch(pending, /PENDING_THREAD_ANSWER/);
+  // Enter motion is on the assistant parts, not on the user pill (keyboard Send
+  // is high-frequency; Turn.tsx pins that chrome as still).
+  assert.doesNotMatch(pending.slice(0, answering), /stream-enter/);
+  assert.match(pending.slice(answering), /stream-enter/);
 });

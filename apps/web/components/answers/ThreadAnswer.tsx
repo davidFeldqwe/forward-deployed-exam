@@ -18,7 +18,25 @@ import { Prose } from "@/components/Turn";
  * tests assert.
  */
 export function ThreadAnswer({ parts }: { parts: readonly ThreadAnswerPart[] }) {
-  return parts.map((part, index) => <Part key={index} part={part} />);
+  return parts.map((part, index) => <Part key={partKey(parts, index)} part={part} />);
+}
+
+/**
+ * Keys that stay put when an earlier tag is inserted (prose after a ranking).
+ * Index keys remount the table when the first delta arrives.
+ */
+function partKey(parts: readonly ThreadAnswerPart[], index: number): string {
+  const part = parts[index];
+  if (!part) {
+    return String(index);
+  }
+  let among = 0;
+  for (let at = 0; at < index; at += 1) {
+    if (parts[at]?.tag === part.tag) {
+      among += 1;
+    }
+  }
+  return `${part.tag}-${among}`;
 }
 
 /** One tag, drawn. The return type is what makes a tag with no case an error. */

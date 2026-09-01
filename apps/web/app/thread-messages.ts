@@ -171,7 +171,8 @@ function parseToolCalls(value: unknown): ToolCall[] | null {
   return calls;
 }
 
-function parseToolCall(value: unknown): ToolCall | null {
+/** One inspectable call, or null when it would not survive the store. */
+export function parseToolCall(value: unknown): ToolCall | null {
   if (
     !isRecord(value) ||
     !isAgentTool(value.tool) ||

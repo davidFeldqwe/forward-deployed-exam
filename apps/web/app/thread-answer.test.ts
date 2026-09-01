@@ -8,6 +8,7 @@ import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { pendingAnswer } from "./pending-answer.ts";
 import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
 import {
+  inFlightThreadAnswer,
   PENDING_THREAD_ANSWER,
   PROSE_HEADING,
   SHOW_MORE_LABEL,
@@ -343,6 +344,45 @@ test("the pending Thread answer is one pending row and nothing else", () => {
   }
 });
 
+test("an in-flight ask stays a pending row until queryAirports returns a full payload", () => {
+  assert.deepEqual(tags(inFlightThreadAnswer([], "New England candidates?", "", [])), ["pending"]);
+
+  const withProse = inFlightThreadAnswer([], "New England candidates?", "PVD leads the set.", []);
+  assert.deepEqual(tags(withProse), ["prose", "pending"]);
+  const [prose] = partsOf(withProse, "prose");
+  assert.equal(prose?.text, "PVD leads the set.");
+  assert.equal(prose?.spoken, null);
+
+  const withMethod = inFlightThreadAnswer([], "How is this scored?", "", [methodology]);
+  assert.deepEqual(tags(withMethod), ["inspect", "pending"]);
+  assert.ok(!tags(withMethod).includes("ranking"));
+});
+
+test("a complete queryAirports payload is the in-flight ranking, not a streamed sentence", () => {
+  const ranked = inFlightThreadAnswer(
+    [],
+    "New England candidates?",
+    "PVD leads at a number the table already has.",
+    [newEngland],
+  );
+  assert.deepEqual(tags(ranked), ["prose", "inspect", "ranking", "map", "chart", "caveats"]);
+  assert.ok(!tags(ranked).includes("pending"));
+  const [ranking] = partsOf(ranked, "ranking");
+  assert.ok(ranking && ranking.rows.length > 0);
+  assert.ok(ranking.rows[0]?.lamp);
+
+  const half = {
+    tool: "queryAirports" as const,
+    args: { region: "New England" },
+    result: { rows: [{ iata: "BOS", composite: 50 }] },
+    durationMs: 1,
+  };
+  assert.deepEqual(
+    tags(inFlightThreadAnswer([], "New England candidates?", "BOS at 50.", [half])),
+    ["prose", "pending"],
+  );
+});
+
 // `THREAD_ANSWER_TAGS` is the locked order itself, not a bag of names: every
 // answer this module composes reads down it. The example tests above each pin
 // one turn's sequence; this pins the rule they are examples of, including for
@@ -355,6 +395,9 @@ test("every Thread answer reads down the locked tag order", () => {
     answerTurn(assistantMessage("Nothing matched.", [matchedNothing("New England")])),
     answerTurn(assistantMessage("Ask about an airport.")),
     [...PENDING_THREAD_ANSWER],
+    inFlightThreadAnswer([], "New England candidates?", "", []),
+    inFlightThreadAnswer([], "New England candidates?", "PVD leads.", [methodology]),
+    inFlightThreadAnswer([], "New England candidates?", "PVD leads.", [newEngland]),
   ];
 
   for (const parts of turns) {
@@ -461,11 +504,11 @@ test("only the tag switch draws a Thread answer's blocks", () => {
 });
 
 /**
- * The two shapes `app/thread-answer.ts` hands out a list as: the answer composed
- * for a stored turn, and the constant one for a question in flight. Both are
- * imported at the top of this file, so a rename comes through here.
+ * The two composers `app/thread-answer.ts` hands a list out as: the answer
+ * composed for a stored turn, and the in-flight one. Both are imported at the
+ * top of this file, so a rename comes through here.
  */
-const COMPOSERS: readonly string[] = ["threadAnswer", "PENDING_THREAD_ANSWER"];
+const COMPOSERS: readonly string[] = ["threadAnswer", "inFlightThreadAnswer"];
 
 // The other half of "order tests hit the list, not JSX". The test above says no
 // block may be drawn outside the tag switch; this says no *list* may be written
@@ -507,12 +550,13 @@ test("every Thread answer drawn is a list the module composed", () => {
 // the messages, so nothing that draws a stored turn may ask whether a question
 // is on its way: the composer's form is what decides that, and the one turn
 // drawn out of that decision is the pending answer inside it.
-test("only the composer and the turn it draws in flight read the form status", () => {
+test("only the composer reads the form status", () => {
   assert.deepEqual(
     DRAWING.filter((file) => source(file).includes("useFormStatus")).sort(),
-    [THE_COMPOSER, THE_PENDING_TURN].sort(),
+    [THE_COMPOSER],
   );
   assert.doesNotMatch(source("app/thread-answer.ts"), /useFormStatus|react-dom/);
+  assert.doesNotMatch(source(THE_PENDING_TURN), /useFormStatus/);
 });
 
 test("inspect is one Show more details that holds tool rows and resolved sets", () => {

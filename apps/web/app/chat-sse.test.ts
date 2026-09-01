@@ -289,6 +289,8 @@ test("composer and pending follow the SSE ask until the stream ends", () => {
   assert.doesNotMatch(chat, /askQuestion|thread-actions/);
   assert.match(source("./chat-ask.ts"), /fetch\(CHAT_SSE_PATH/);
   assert.match(source("./chat-ask.ts"), /threadIdFromSse/);
+  assert.match(source("./chat-ask.ts"), /parseChatStreamEvent/);
+  assert.match(source("./chat-ask.ts"), /onEvent/);
   assert.doesNotMatch(chat, /EventSource|text\/event-stream/);
 });
 

@@ -6,16 +6,25 @@ import {
   chatPathWithPrompt,
   loginRedirect,
 } from "@/app/auth-gate";
+import { parseChatStreamEvent, type ChatStreamEvent } from "@/app/chat-stream";
 import { textField } from "@/app/form-fields";
 
 /** Open or refresh the Thread that the SSE stream just finished writing. */
 export type LandThread = (nextThreadId: string | null) => void;
 
+/** One parsed SSE event while the ask is in flight. */
+export type OnChatStreamEvent = (event: ChatStreamEvent) => void;
+
 /**
  * Composer submit: POST the same form to the chat SSE route and wait until the
- * stream ends. The pending row and held Send follow that in-flight wait.
+ * stream ends. `text` and complete `tool` events are forwarded as they arrive
+ * so the pending turn can grow; ranking numbers are not events.
  */
-export async function askOnChatSse(formData: FormData, landThread: LandThread): Promise<void> {
+export async function askOnChatSse(
+  formData: FormData,
+  landThread: LandThread,
+  onEvent: OnChatStreamEvent,
+): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));
   if (!question) {
     return;
@@ -43,7 +52,11 @@ export async function askOnChatSse(formData: FormData, landThread: LandThread): 
     return;
   }
 
-  const threadId = await threadIdFromSse(response.body, textField(formData, "threadId") || null);
+  const threadId = await threadIdFromSse(
+    response.body,
+    textField(formData, "threadId") || null,
+    onEvent,
+  );
   landThread(threadId);
 }
 
@@ -54,6 +67,7 @@ function isLoginRedirect(response: Response): boolean {
 async function threadIdFromSse(
   body: ReadableStream<Uint8Array>,
   fallback: string | null,
+  onEvent: OnChatStreamEvent,
 ): Promise<string | null> {
   const decoder = new TextDecoder();
   const reader = body.getReader();
@@ -69,22 +83,28 @@ async function threadIdFromSse(
     const blocks = buffer.split("\n\n");
     buffer = blocks.pop() ?? "";
     for (const block of blocks) {
-      threadId = threadIdInSseBlock(block) ?? threadId;
+      const event = eventInSseBlock(block);
+      if (!event) {
+        continue;
+      }
+      onEvent(event);
+      if (event.type === "question" || event.type === "done") {
+        threadId = event.threadId;
+      }
     }
   }
 
   return threadId;
 }
 
-function threadIdInSseBlock(block: string): string | null {
+function eventInSseBlock(block: string): ChatStreamEvent | null {
   const dataLine = block.split("\n").find((line) => line.startsWith("data: "));
   if (!dataLine) {
     return null;
   }
-  const event: unknown = JSON.parse(dataLine.slice("data: ".length));
-  if (typeof event !== "object" || event === null || !("threadId" in event)) {
+  try {
+    return parseChatStreamEvent(JSON.parse(dataLine.slice("data: ".length)));
+  } catch {
     return null;
   }
-  const threadId = event.threadId;
-  return typeof threadId === "string" && threadId.length > 0 ? threadId : null;
 }

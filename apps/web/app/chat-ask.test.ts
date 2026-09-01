@@ -23,3 +23,10 @@ test("a landed ask does not assign the document to the Thread URL", () => {
   assert.match(chat, /router\.refresh/);
   assert.match(chat, /router\.push/);
 });
+
+test("the composer forwards SSE text and complete tool events while the stream is open", () => {
+  assert.match(ask, /onEvent/);
+  assert.match(ask, /parseChatStreamEvent/);
+  assert.match(chat, /applyChatStreamEvent/);
+  assert.match(chat, /<PendingAnswer question=\{asked\} messages=\{messages\} stream=\{stream\}/);
+});

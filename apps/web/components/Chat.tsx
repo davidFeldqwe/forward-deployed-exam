@@ -10,6 +10,7 @@ import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { askOnChatSse } from "@/app/chat-ask";
 import { afterSuccessfulAsk } from "@/app/chat-land";
 import { chatCopy } from "@/app/chat-copy";
+import { applyChatStreamEvent, EMPTY_CHAT_STREAM } from "@/app/chat-stream";
 import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { Composer } from "@/components/Composer";
@@ -63,6 +64,7 @@ export function Chat({
   // Send copies the trimmed draft here and empties the field. The pending turn
   // and the hidden `prompt` read this copy so a second click cannot post twice.
   const [asked, setAsked] = useState("");
+  const [stream, setStream] = useState(EMPTY_CHAT_STREAM);
   // Opening a different thread (or the same route coming back with the landed
   // question) must not leave either the draft or that in-flight copy behind.
   const [clearedFor, setClearedFor] = useState(transcriptKey);
@@ -70,6 +72,7 @@ export function Chat({
     setClearedFor(transcriptKey);
     setDraft("");
     setAsked("");
+    setStream(EMPTY_CHAT_STREAM);
   }
   const ready = draft.trim().length > 0;
   const formValue = ready ? draft : asked;
@@ -81,17 +84,19 @@ export function Chat({
     }
     setAsked(question);
     setDraft("");
+    setStream(EMPTY_CHAT_STREAM);
   }
 
   // A thread that survived a refresh opens where the conversation is: at the
-  // newest message, not scrolled back up to the first question.
+  // newest message, not scrolled back up to the first question. Growing stream
+  // content keeps the pane pinned to the newest turn the same way.
   const transcriptPane = useRef<HTMLElement>(null);
   useEffect(() => {
     const pane = transcriptPane.current;
     if (pane) {
       pane.scrollTop = pane.scrollHeight;
     }
-  }, [transcriptKey]);
+  }, [transcriptKey, asked, stream.text, stream.toolCalls.length]);
 
   return (
     // Exactly the viewport, so a long transcript scrolls inside `main` instead
@@ -125,7 +130,11 @@ export function Chat({
         {/* Transcript and composer are one form so Send can wait on the SSE
             POST until the stream ends; the pending row sits in that wait. */}
         <form
-          action={(formData) => askOnChatSse(formData, landThread)}
+          action={(formData) =>
+            askOnChatSse(formData, landThread, (event) => {
+              setStream((was) => applyChatStreamEvent(was, event));
+            })
+          }
           onSubmit={acceptQuestion}
           className="flex min-h-0 flex-1 flex-col"
           inert={railOpen}
@@ -139,14 +148,15 @@ export function Chat({
             aria-label="Transcript"
           >
             <div className="w-full max-w-[820px] px-6 pt-7 pb-6">
-              {messages.length === 0 ? (
+              {messages.length === 0 && asked.length === 0 ? (
                 <PromptChips questions={chatCopy.chips} onSelect={setDraft} />
               ) : (
                 <Transcript messages={messages} />
               )}
-              {/* A question in flight: the pending row shows no scores, so a
-                  half-composite is never on screen. */}
-              <PendingAnswer question={asked} />
+              {/* A question in flight: the pending row shows no scores until a
+                  complete queryAirports payload, so a half-composite is never
+                  on screen. Kept until the landed transcript replaces it. */}
+              <PendingAnswer question={asked} messages={messages} stream={stream} />
             </div>
           </main>
 
