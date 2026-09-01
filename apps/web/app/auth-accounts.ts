@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 import { readSessionToken, type Session } from "./auth-token.ts";
-import { convexAccountMap, putAccount } from "./convex-store.ts";
+import { getAccount, putAccount } from "./convex-store.ts";
 
 /** Open signup: long enough to be a password, no composition theatre. */
 export const MIN_PASSWORD_LENGTH = 8;
@@ -66,27 +66,27 @@ export function verifyPassword(password: string, stored: string): boolean {
   return timingSafeEqual(expected, actual);
 }
 
-export function createAccount(email: string, password: string): AccountResult {
+export async function createAccount(email: string, password: string): Promise<AccountResult> {
   const errors = validateCredentials(email, password);
   if (errors.email || errors.password) {
     return { ok: false, errors };
   }
 
   const normalized = normalizeEmail(email);
-  if (Object.hasOwn(convexAccountMap(), normalized)) {
+  if (await getAccount(normalized)) {
     return {
       ok: false,
       errors: { email: "That email already has an account. Sign in instead." },
     };
   }
 
-  putAccount({ email: normalized, passwordHash: hashPassword(password) });
+  await putAccount({ email: normalized, passwordHash: hashPassword(password) });
   return { ok: true, email: normalized };
 }
 
 /** Whether this email is an account the cookie can still map to. */
-export function accountExists(email: string): boolean {
-  return Object.hasOwn(convexAccountMap(), normalizeEmail(email));
+export async function accountExists(email: string): Promise<boolean> {
+  return (await getAccount(normalizeEmail(email))) !== null;
 }
 
 /**
@@ -95,13 +95,13 @@ export function accountExists(email: string): boolean {
  * nobody; Convex keeps the account, and this check refuses a cookie for one
  * that is gone.
  */
-export function sessionIfAccountLive(
+export async function sessionIfAccountLive(
   token: string,
   secret: string,
   now: number = Date.now(),
-): Session | null {
+): Promise<Session | null> {
   const session = readSessionToken(token, secret, now);
-  return session && accountExists(session.email) ? session : null;
+  return session && (await accountExists(session.email)) ? session : null;
 }
 
 /**
@@ -111,9 +111,9 @@ export function sessionIfAccountLive(
  */
 const NO_ACCOUNT_HASH = hashPassword(randomBytes(32).toString("hex"));
 
-export function authenticate(email: string, password: string): AccountResult {
+export async function authenticate(email: string, password: string): Promise<AccountResult> {
   const normalized = normalizeEmail(email);
-  const stored = convexAccountMap()[normalized]?.passwordHash;
+  const stored = (await getAccount(normalized))?.passwordHash;
   const matches = verifyPassword(password, stored ?? NO_ACCOUNT_HASH);
   // One message for both cases, so sign-in does not enumerate accounts.
   if (!stored || !matches) {
