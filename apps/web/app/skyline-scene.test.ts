@@ -249,6 +249,8 @@ type FakeRenderer = {
   /** The camera the last frame was drawn through: the mount's own. */
   camera: THREE.PerspectiveCamera | null;
   size: { width: number; height: number };
+  /** What one CSS pixel is worth in the drawing buffer the last fit asked for. */
+  pixelRatio: number;
   loopStopped: boolean;
   disposed: boolean;
 };
@@ -307,6 +309,7 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
     draws: 0,
     camera: null,
     size: { width: 0, height: 0 },
+    pixelRatio: 0,
     loopStopped: false,
     disposed: false,
     // The loop is handed the clock the mount reads its own start from, so a
@@ -317,6 +320,9 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
     domElement: canvas,
     setSize: (w: number, h: number) => {
       renderer.size = { width: w, height: h };
+    },
+    setPixelRatio: (ratio: number) => {
+      renderer.pixelRatio = ratio;
     },
     setAnimationLoop: (fn: ((now: number) => void) | null) => {
       loop = fn;
@@ -339,6 +345,7 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
   let observed: (() => void) | null = null;
   const state = { observerDisconnected: false };
   const globals = globalThis as unknown as Record<string, unknown>;
+  globals.devicePixelRatio = 1;
   globals.getComputedStyle = () => ({ getPropertyValue: () => "#4cb782" });
   globals.ResizeObserver = class {
     constructor(callback: () => void) {
@@ -516,4 +523,29 @@ test("teardown stops the loop, drops the canvas and hands the context back", () 
   assert.equal(map.renderer.disposed, true, "the context is handed back");
   // The controls let the page's own listeners go with them.
   assert.equal(map.canvas.listeners.size, 0, "no listener outlives the canvas");
+});
+
+test("a zoomed browser is drawn at the pixels it now has, not the ones it opened with", () => {
+  // A browser zoom changes what a CSS pixel is worth and resizes the pane in the
+  // same breath. A ratio read once, when the context was asked for, leaves the
+  // drawing buffer short of the screen it is on: the country's outline and every
+  // column edge drawn soft for the rest of the visit.
+  const display = globalThis as unknown as Record<string, unknown>;
+  const map = mountFake(true, 1280, 720);
+  assert.equal(map.renderer.pixelRatio, 1, "the canvas opens at the display's own ratio");
+
+  // 150%: fewer CSS pixels in the pane, and each one worth more than it was.
+  display.devicePixelRatio = 1.5;
+  map.resize(853, 480);
+  assert.equal(map.renderer.pixelRatio, 1.5, "the zoom's pixels are the ones drawn");
+  assert.deepEqual(map.renderer.size, { width: 853, height: 480 });
+
+  // A phone that reports three device pixels per CSS pixel is capped: past two
+  // the extra pixels cost a battery more than anyone can see.
+  display.devicePixelRatio = 3;
+  map.resize(390, 780);
+  assert.equal(map.renderer.pixelRatio, 2);
+
+  map.teardown();
+  display.devicePixelRatio = 1;
 });

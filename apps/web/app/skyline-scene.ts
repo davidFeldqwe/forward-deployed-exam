@@ -175,13 +175,12 @@ function vector(point: ScenePoint): THREE.Vector3 {
 /**
  * A renderer, or null. A browser with WebGL turned off throws from the context
  * request rather than returning a renderer that draws nothing, so the empty
- * state is chosen here rather than guessed at from a feature list.
+ * state is chosen here rather than guessed at from a feature list. How many
+ * pixels it draws is `fitToHost`'s: the ratio can change while the page is open.
  */
 function createRenderer(): THREE.WebGLRenderer | null {
   try {
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    return renderer;
+    return new THREE.WebGLRenderer({ antialias: true, alpha: true });
   } catch {
     return null;
   }
@@ -364,6 +363,22 @@ function hostAspect(host: HTMLElement): number {
 }
 
 /**
+ * Past two device pixels per CSS pixel the extra ones cost a phone's battery
+ * more than they show anyone, so a 3x display is drawn at 2x.
+ */
+const MAX_PIXEL_RATIO = 2;
+
+/**
+ * What one CSS pixel is worth on this display right now. Read on every fit
+ * rather than once at the context request: a browser zoom changes the ratio and
+ * resizes the pane in the same breath, and a buffer left at the ratio the page
+ * opened with draws the outline soft for the rest of the visit.
+ */
+function pixelRatio(): number {
+  return Math.min(globalThis.devicePixelRatio ?? 1, MAX_PIXEL_RATIO);
+}
+
+/**
  * Keeps the drawing buffer the size of the element it is drawn into, and tells
  * the caller the shape it now has: how far back the country has to be seen from
  * is the aspect ratio's own business.
@@ -378,6 +393,8 @@ function fitToHost(
     // One measurement for both, so the drawing buffer and the frustum cannot be
     // told two different shapes by a layout that moved between the reads.
     const { width, height } = hostSize(host);
+    // The ratio first: `setSize` multiplies by whatever the renderer is holding.
+    renderer.setPixelRatio(pixelRatio());
     // `setSize` writes the CSS size as well as the drawing buffer, so a device
     // pixel ratio above 1 sharpens the canvas rather than doubling its box.
     renderer.setSize(width, height);
