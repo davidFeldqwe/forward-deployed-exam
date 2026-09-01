@@ -4,12 +4,11 @@ import type { ProsePart, ThreadAnswerPart } from "@/app/thread-answer";
 import { CarriedContext } from "@/components/answers/CarriedContext";
 import { Caveats } from "@/components/answers/Caveats";
 import { CompositeChart } from "@/components/answers/CompositeChart";
+import { Inspect } from "@/components/answers/Inspect";
 import { PendingRow } from "@/components/answers/PendingRow";
 import { Ranking } from "@/components/answers/Ranking";
 import { ReadAloud } from "@/components/answers/ReadAloud";
 import { ResolvedMap } from "@/components/answers/ResolvedMap";
-import { ResolvedSet } from "@/components/answers/ResolvedSet";
-import { ToolRow } from "@/components/answers/ToolRow";
 import { Prose } from "@/components/Turn";
 
 /**
@@ -25,14 +24,12 @@ export function ThreadAnswer({ parts }: { parts: readonly ThreadAnswerPart[] }) 
 /** One tag, drawn. The return type is what makes a tag with no case an error. */
 function Part({ part }: { part: ThreadAnswerPart }): ReactElement {
   switch (part.tag) {
-    case "tool":
-      return <ToolRow call={part.call} />;
-    case "carried":
-      return <CarriedContext carried={part.carried} />;
-    case "resolved":
-      return <ResolvedSet resolved={part.resolved} unknown={part.unknown} />;
     case "prose":
       return <ProseBlock part={part} />;
+    case "inspect":
+      return <Inspect inspect={part} />;
+    case "carried":
+      return <CarriedContext carried={part.carried} />;
     case "ranking":
       return <Ranking rows={part.rows} lookup={part.lookup} sortLabel={part.sortLabel} />;
     case "map":

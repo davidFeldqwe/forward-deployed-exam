@@ -10,6 +10,7 @@ import { WITHHELD_COMPOSITE } from "./ranking-view.ts";
 import {
   PENDING_THREAD_ANSWER,
   PROSE_HEADING,
+  SHOW_MORE_LABEL,
   THREAD_ANSWER_TAGS,
   threadAnswer,
   type ThreadAnswerPart,
@@ -25,6 +26,7 @@ import {
 
 const web = new URL("../", import.meta.url);
 const THE_TAG_SWITCH = "components/answers/ThreadAnswer.tsx";
+const THE_INSPECT = "components/answers/Inspect.tsx";
 const THE_TRANSCRIPT = "components/Transcript.tsx";
 const THE_PENDING_TURN = "components/answers/PendingAnswer.tsx";
 const THE_COMPOSER = "components/Chat.tsx";
@@ -110,18 +112,18 @@ const followUpThread: ThreadMessage[] = [
   assistantMessage("Bradley's delay percentile is the reason.", [query({ iata: "BDL" })]),
 ];
 
-// The locked grouped order (issue #35), asserted on the list the transcript
-// draws rather than on the order components happen to be written in.
-test("a stored ranking turn is one list: tool, resolved set, prose, table, caveats", () => {
+// The locked grouped order (issue #35, prose-first from #94), asserted on the
+// list the transcript draws rather than on the order components happen to be
+// written in.
+test("a stored ranking turn is one list: prose, inspect, table, caveats", () => {
   const messages = [
     userMessage("Which airports in New England are renovation-investment candidates?"),
     assistantMessage("PVD leads the set.", [newEngland]),
   ];
 
   assert.deepEqual(tags(threadAnswer(messages, 1)), [
-    "tool",
-    "resolved",
     "prose",
+    "inspect",
     "ranking",
     "map",
     "chart",
@@ -129,12 +131,11 @@ test("a stored ranking turn is one list: tool, resolved set, prose, table, cavea
   ]);
 });
 
-test("carried context sits before the resolved airport set and the table", () => {
+test("carried context sits after inspect and before the table", () => {
   assert.deepEqual(tags(threadAnswer(followUpThread, 3)), [
-    "tool",
-    "carried",
-    "resolved",
     "prose",
+    "inspect",
+    "carried",
     "ranking",
     "chart",
     "caveats",
@@ -143,9 +144,8 @@ test("carried context sits before the resolved airport set and the table", () =>
 
 test("a place-named ranking draws its map after the table, a follow-up does not", () => {
   assert.deepEqual(tags(threadAnswer(followUpThread, 1)), [
-    "tool",
-    "resolved",
     "prose",
+    "inspect",
     "ranking",
     "map",
     "chart",
@@ -157,7 +157,7 @@ test("a place-named ranking draws its map after the table, a follow-up does not"
 
 // Two calls in one turn are grouped by tag, not interleaved per call: every
 // resolved set, then the one prose, then every table, then one caveats block.
-test("two queryAirports calls group all sets, then prose, then all tables, then one caveats", () => {
+test("two queryAirports calls group inspect, then all tables, then one caveats", () => {
   const pacific = query({ region: "Pacific" });
   const messages = [
     userMessage("Compare New England and the Pacific division."),
@@ -166,11 +166,8 @@ test("two queryAirports calls group all sets, then prose, then all tables, then 
   const parts = threadAnswer(messages, 1);
 
   assert.deepEqual(tags(parts), [
-    "tool",
-    "tool",
-    "resolved",
-    "resolved",
     "prose",
+    "inspect",
     "ranking",
     "ranking",
     "map",
@@ -207,14 +204,14 @@ test("within a group the blocks read in call order, each carrying its own call",
 
   // The inspectable rows are the calls themselves, in the order the turn made
   // them: a row is what shows which query produced what.
-  assert.deepEqual(
-    partsOf(parts, "tool").map((part) => part.call),
-    calls,
-  );
+  const [inspect, ...alsoInspect] = partsOf(parts, "inspect");
+  assert.ok(inspect);
+  assert.deepEqual(alsoInspect, []);
+  assert.deepEqual(inspect.calls, calls);
 
   // One resolved set per query, named by the phrase its filters resolved.
   assert.deepEqual(
-    partsOf(parts, "resolved").map((part) => part.resolved.phrase),
+    inspect.sets.map((set) => set.resolved.phrase),
     ["New England", "Mountain", "Pacific"],
   );
 
@@ -253,13 +250,20 @@ test("a lookup has no composite chart, a ranking does even without a map", () =>
   assert.equal(tags(threadAnswer(compare, 1)).includes("map"), false);
 });
 
-test("a methodology-only turn is tool and prose, and nothing it has no rows for", () => {
+test("a methodology-only turn is prose then inspect, and nothing it has no rows for", () => {
   const messages = [
     userMessage("How is the composite weighted?"),
     assistantMessage("Congestion and unmet flight demand carry 35 each.", [methodology]),
   ];
 
-  assert.deepEqual(tags(threadAnswer(messages, 1)), ["tool", "prose"]);
+  const parts = threadAnswer(messages, 1);
+  assert.deepEqual(tags(parts), ["prose", "inspect"]);
+  const [inspect] = partsOf(parts, "inspect");
+  assert.deepEqual(
+    inspect?.calls.map((call) => call.tool),
+    ["describeMethodology"],
+  );
+  assert.deepEqual(inspect?.sets, []);
 });
 
 test("an empty tag is omitted: no rows is no table and no caveats", () => {
@@ -269,7 +273,7 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
   ];
 
   // The resolved set still speaks — it is what says nothing matched.
-  assert.deepEqual(tags(threadAnswer(messages, 1)), ["tool", "resolved", "prose"]);
+  assert.deepEqual(tags(threadAnswer(messages, 1)), ["prose", "inspect"]);
 
   // Prose with no tool call at all is one tag.
   const proseOnly = [userMessage("Hello."), assistantMessage("Ask about an airport.")];
@@ -280,8 +284,7 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
   // prose tag is omitted rather than drawn as a blank line above the table.
   const wordless = [userMessage("New England?"), assistantMessage(" ", [newEngland])];
   assert.deepEqual(tags(threadAnswer(wordless, 1)), [
-    "tool",
-    "resolved",
+    "inspect",
     "ranking",
     "map",
     "chart",
@@ -404,7 +407,14 @@ test("the tag switch draws the parts it is handed, all of them, in that order", 
 // walk that came back short would pass every one of them and mean nothing. It
 // is checked once, here: these are the files those claims are about.
 test("the walk finds every file the claims below are read off", () => {
-  for (const file of [THE_TAG_SWITCH, THE_TRANSCRIPT, THE_PENDING_TURN, THE_COMPOSER, A_ROUTE]) {
+  for (const file of [
+    THE_TAG_SWITCH,
+    THE_INSPECT,
+    THE_TRANSCRIPT,
+    THE_PENDING_TURN,
+    THE_COMPOSER,
+    A_ROUTE,
+  ]) {
     assert.ok(DRAWING.includes(file), `${file} is not among ${DRAWING.join(", ")}`);
   }
 });
@@ -416,15 +426,16 @@ test("the walk finds every file the claims below are read off", () => {
  * answer draws.
  */
 const TAG_BLOCKS = {
-  tool: "ToolRow",
+  inspect: "Inspect",
   carried: "CarriedContext",
-  resolved: "ResolvedSet",
   ranking: "Ranking",
   map: "ResolvedMap",
   chart: "CompositeChart",
   pending: "PendingRow",
   caveats: "Caveats",
 } as const satisfies Record<Exclude<ThreadAnswerTag, "prose">, string>;
+
+const INSPECT_BLOCKS = ["ToolRow", "ResolvedSet"] as const;
 
 // "Transcript only draws tags" (issue #35). The order is the list's, so no
 // second file may reach past it to a block: a `<Caveats>` written straight into
@@ -433,6 +444,11 @@ test("only the tag switch draws a Thread answer's blocks", () => {
   for (const [tag, block] of Object.entries(TAG_BLOCKS)) {
     const drawnBy = DRAWING.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
     assert.deepEqual(drawnBy, [THE_TAG_SWITCH], `${tag} is drawn by ${block}`);
+  }
+
+  for (const block of INSPECT_BLOCKS) {
+    const drawnBy = DRAWING.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
+    assert.deepEqual(drawnBy, [THE_INSPECT], `${block} is drawn inside inspect`);
   }
 
   // And the transcript reaches them the one way there is: the answer component
@@ -497,4 +513,26 @@ test("only the composer and the turn it draws in flight read the form status", (
     [THE_COMPOSER, THE_PENDING_TURN].sort(),
   );
   assert.doesNotMatch(source("app/thread-answer.ts"), /useFormStatus|react-dom/);
+});
+
+test("inspect is one Show more details that holds tool rows and resolved sets", () => {
+  const inspect = source(THE_INSPECT);
+  assert.match(inspect, /<details\b/);
+  assert.match(inspect, /<summary\b/);
+  assert.match(inspect, /\{SHOW_MORE_LABEL\}/);
+  assert.equal(SHOW_MORE_LABEL, "Show more");
+  assert.match(inspect, /<ToolRow\b/);
+  assert.match(inspect, /<ResolvedSet\b/);
+  assert.doesNotMatch(inspect, /<(Ranking|ResolvedMap|CompositeChart|Caveats)\b/);
+});
+
+test("a ranking's inspect carries the tool call and the resolved airport set", () => {
+  const parts = answerTurn(assistantMessage("PVD leads the set.", [newEngland]));
+  const [inspect] = partsOf(parts, "inspect");
+  assert.ok(inspect);
+  assert.deepEqual(inspect.calls, [newEngland]);
+  assert.deepEqual(
+    inspect.sets.map((set) => set.resolved.phrase),
+    ["New England"],
+  );
 });

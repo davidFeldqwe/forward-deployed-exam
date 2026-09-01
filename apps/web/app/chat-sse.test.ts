@@ -240,9 +240,12 @@ test("the stored ranking is the complete queryAirports payload, not a streamed s
   const stored = readThread(analyst, opened.id)!;
   const parts = threadAnswer(stored.messages, stored.messages.length - 1);
 
-  assert.ok(parts.some((part) => part.tag === "tool"));
+  assert.ok(parts.some((part) => part.tag === "inspect"));
   assert.ok(parts.some((part) => part.tag === "ranking"));
-  assert.ok(parts.some((part) => part.tag === "resolved"));
+  const inspect = parts.find((part) => part.tag === "inspect");
+  assert.ok(inspect && inspect.tag === "inspect");
+  assert.equal(inspect.calls[0]?.tool, "queryAirports");
+  assert.ok(inspect.sets.length > 0);
   assert.equal(
     events.every((event) => event.type === "question" || event.type === "tool" || event.type === "text" || event.type === "done"),
     true,
