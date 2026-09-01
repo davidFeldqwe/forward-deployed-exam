@@ -15,8 +15,12 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
   && apt-get update && apt-get install -y gh \
   && rm -rf /var/lib/apt/lists/*
 
-# Install pnpm globally to avoid runtime Corepack cache permission issues.
-RUN npm install -g pnpm@10.34.4
+# Install pnpm on a PATH sandcastle exec always has. `podman exec sh -c`
+# inherits a short PATH (/usr/bin:/bin) when the host forwards one; putting
+# the binary in /usr/bin avoids `pnpm: not found` on onSandboxReady.
+RUN npm install -g pnpm@10.34.4 \
+  && ln -sfn "$(command -v pnpm)" /usr/bin/pnpm \
+  && /usr/bin/pnpm --version
 
 # Rename the base image's "node" user (UID 1000) to "agent".
 # This keeps UID 1000 so that --userns=keep-id (Podman) and

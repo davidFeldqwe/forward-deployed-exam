@@ -1,21 +1,21 @@
 // Planner with Review — four-phase orchestration loop
 //
 // This template drives a multi-phase workflow:
-//   Phase 1 (Plan):             A Claude Code (claude-opus-5) agent analyzes
+//   Phase 1 (Plan):             A Cursor agent (cursor-grok-4.6-medium) analyzes
 //                               open issues, builds a dependency graph, and
 //                               outputs a <plan> JSON listing unblocked issues
 //                               with branch names.
 //   Phase 2 (Execute + Review): Up to MAX_CONCURRENT_ISSUES issues run in
 //                               parallel, each in its own sandbox created via
-//                               createSandbox(). The Claude Code implementer
-//                               (claude-opus-5) runs first (100 iterations).
-//                               If it produces
-//                               commits, a Claude Code reviewer
-//                               (claude-opus-5) runs in the same sandbox on
-//                               the same branch (1 iteration).
-//   Phase 3 (Merge):            A Claude Code agent (claude-opus-5)
-//                               merges the completed branches into the
-//                               current branch.
+//                               createSandbox(). The Cursor implementer
+//                               (cursor-grok-4.6-medium) runs first (100
+//                               iterations). If it produces
+//                               commits, a Cursor reviewer
+//                               (cursor-grok-4.6-medium) runs in the same
+//                               sandbox on the same branch (1 iteration).
+//   Phase 3 (Merge):            Host `git merge --no-edit` as soon as each
+//                               issue finishes, serialized so git is not raced.
+//                               A hung sibling must not block a finished branch.
 //
 // The outer loop repeats up to MAX_ITERATIONS times so that newly unblocked
 // issues are picked up after each round of merges.
@@ -87,12 +87,36 @@ function isOnHead(sha: string): boolean {
 }
 
 /**
- * Close issues on the host after a successful merge.
- * Do not rely on the merger agent for this — Cursor sometimes finishes the
- * merge and exits without running `gh issue close`, leaving the issue open so
- * the planner re-selects it on the next cycle.
+ * Merge `branch` into HEAD on the host. Abort on conflict so the next cycle can retry.
  */
+function mergeBranchOnHost(branch: string): boolean {
+  try {
+    execFileSync("git", ["merge", branch, "--no-edit"], { encoding: "utf8" });
+    console.log(`  ✓ merged ${branch}`);
+    return true;
+  } catch (reason: unknown) {
+    const stderr =
+      reason &&
+      typeof reason === "object" &&
+      "stderr" in reason &&
+      reason.stderr != null
+        ? String(reason.stderr)
+        : "";
+    const message = reason instanceof Error ? reason.message : String(reason);
+    console.error(`  ✗ merge ${branch} failed: ${stderr || message}`);
+    try {
+      execFileSync("git", ["merge", "--abort"], { stdio: "ignore" });
+    } catch {
+      // no in-progress merge
+    }
+    return false;
+  }
+}
+
 function closeIssuesAfterMerge(issues: PlannedIssue[]): void {
+  // Host-side close after merge. Do not rely on an agent for this — a merge
+  // that lands without `gh issue close` leaves the issue open so the planner
+  // re-selects it on the next cycle.
   for (const issue of issues) {
     try {
       execFileSync(
@@ -126,16 +150,16 @@ function closeIssuesAfterMerge(issues: PlannedIssue[]): void {
 
 // Maximum number of plan→execute→merge cycles before stopping.
 // Raise this if your backlog is large; lower it for a quick smoke-test run.
-const MAX_ITERATIONS = 10;
+const MAX_ITERATIONS = 100;
 
 // Number of unblocked issues to plan and execute concurrently each cycle.
-const MAX_CONCURRENT_ISSUES = 1;
+const MAX_CONCURRENT_ISSUES = 3;
 
 // Large issues can spend long stretches reading without emitting output;
 // default 600s idle timeout is too tight.
 const IMPLEMENTER_IDLE_TIMEOUT_SECONDS = 1800;
 
-const claude = () => sandcastle.claudeCode("claude-opus-5");
+const cursor = () => sandcastle.cursor("cursor-grok-4.6-medium");
 
 // Hooks run inside the sandbox before the agent starts each iteration.
 // Frozen-lockfile install ensures the sandbox always has fresh dependencies
@@ -145,7 +169,7 @@ const hooks = {
     onSandboxReady: [
       {
         command:
-          "CI=true HUSKY=0 pnpm install --frozen-lockfile --store-dir /tmp/pnpm-store-sandcastle",
+          "export PATH=\"/usr/local/bin:/usr/bin:$PATH\"; CI=true HUSKY=0 pnpm install --frozen-lockfile --store-dir /tmp/pnpm-store-sandcastle",
         timeoutMs: 600_000,
       },
     ],
@@ -185,9 +209,9 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   // Phase 1: Plan
   //
-  // The planning agent (opus, for deeper reasoning) reads the open issue list,
+  // The planning agent (cursor-grok-4.6-medium) reads the open issue list,
   // builds a dependency graph, and selects unblocked issues that can be worked.
-  // Only the first planned issue is taken each cycle (one at a time).
+  // Up to MAX_CONCURRENT_ISSUES planned issues are taken each cycle.
   //
   // It outputs a <plan> JSON block — Output.object parses and validates it.
   // -------------------------------------------------------------------------
@@ -198,7 +222,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     // One iteration is enough: the planner just needs to read and reason,
     // not write code. (Structured output requires maxIterations: 1.)
     maxIterations: 1,
-    agent: claude(),
+    agent: cursor(),
     promptFile: "./.sandcastle/plan-prompt.md",
     // Extract and validate the <plan> JSON into a typed object. Throws
     // StructuredOutputError if the tag is missing, the JSON is malformed, or
@@ -231,12 +255,37 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // Create a sandbox via createSandbox() so the implementer and reviewer share
   // the same sandbox instance per branch. The implementer runs first; if it
   // produces commits, the reviewer runs in the same sandbox. Each issue gets
-  // its own sandbox, so issues run in parallel with Promise.all.
+  // its own sandbox. Merge happens as soon as that issue finishes — waiting
+  // for Promise.all before merge left a finished branch stranded behind a
+  // hung sibling (e.g. #21 done, #19 stuck on pnpm). Host git merge is
+  // serialized so two finishers cannot race the index.
   // -------------------------------------------------------------------------
 
   // A completed issue carries the branch tip observed at the end of phase 2,
-  // which is the evidence phase 3 uses to prove the merge landed.
+  // which is the evidence used to prove the merge landed.
   type CompletedIssue = PlannedIssue & { tip: string | undefined };
+
+  const mergeAndCloseIfReady = (issue: CompletedIssue): void => {
+    console.log(`\nMerging ${issue.branch} on host:`);
+    mergeBranchOnHost(issue.branch);
+    if (issue.tip !== undefined && isOnHead(issue.tip)) {
+      console.log(`Closing #${issue.id}:`);
+      closeIssuesAfterMerge([issue]);
+    } else {
+      console.log(
+        `  · ${issue.id}: branch not merged into HEAD — leaving open for retry`,
+      );
+    }
+  };
+
+  let hostMerge = Promise.resolve();
+  const mergeWhenIdle = (issue: CompletedIssue): Promise<void> => {
+    hostMerge = hostMerge.then(
+      () => mergeAndCloseIfReady(issue),
+      () => mergeAndCloseIfReady(issue),
+    );
+    return hostMerge;
+  };
 
   const executeIssue = async (
     issue: PlannedIssue,
@@ -261,7 +310,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
           name: "implementer",
           maxIterations: 100,
           idleTimeoutSeconds: IMPLEMENTER_IDLE_TIMEOUT_SECONDS,
-          agent: claude(),
+          agent: cursor(),
           promptFile: "./.sandcastle/implement-prompt.md",
           promptArgs: {
             TASK_ID: issue.id,
@@ -277,7 +326,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
           await sandbox.run({
             name: "reviewer",
             maxIterations: 1,
-            agent: claude(),
+            agent: cursor(),
             promptFile: "./.sandcastle/review-prompt.md",
             promptArgs: {
               BRANCH: issue.branch,
@@ -296,7 +345,11 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
         );
         return undefined;
       } finally {
-        await sandbox.close();
+        try {
+          await sandbox.close();
+        } catch (reason) {
+          console.error(`  · ${issue.id}: sandbox.close failed: ${reason}`);
+        }
       }
     } catch (reason) {
       console.error(`  ✗ ${issue.id} (${issue.branch}) failed: ${reason}`);
@@ -304,78 +357,12 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     }
   };
 
-  const executed = await Promise.all(issues.map(executeIssue));
-  const completedIssues = executed.filter(
-    (issue): issue is CompletedIssue => issue !== undefined,
+  await Promise.all(
+    issues.map(async (issue) => {
+      const completed = await executeIssue(issue);
+      if (completed) await mergeWhenIdle(completed);
+    }),
   );
-
-  const completedBranches = completedIssues.map((i) => i.branch);
-
-  console.log(
-    `\nExecution complete. ${completedBranches.length} branch(es) with commits:`,
-  );
-  for (const branch of completedBranches) {
-    console.log(`  ${branch}`);
-  }
-
-  if (completedBranches.length === 0) {
-    // All agents ran but none made commits — nothing to merge this cycle.
-    console.log("No commits produced. Nothing to merge.");
-    continue;
-  }
-
-  // -------------------------------------------------------------------------
-  // Phase 3: Merge
-  //
-  // One agent merges all completed branches into the current branch,
-  // resolving any conflicts and running tests to confirm everything works.
-  //
-  // The {{BRANCHES}} and {{ISSUES}} prompt arguments are lists that the agent
-  // uses to know which branches to merge and which issues to close.
-  // -------------------------------------------------------------------------
-  try {
-    await sandcastle.run({
-      hooks,
-      sandbox: sandboxProvider,
-      name: "merger",
-      maxIterations: 1,
-      agent: claude(),
-      promptFile: "./.sandcastle/merge-prompt.md",
-      promptArgs: {
-        // A markdown list of branch names, one per line.
-        BRANCHES: completedBranches.map((b) => `- ${b}`).join("\n"),
-        // A markdown list of issue IDs and titles, one per line.
-        ISSUES: completedIssues.map((i) => `- ${i.id}: ${i.title}`).join("\n"),
-      },
-    });
-  } catch (reason) {
-    // A merger crash (idle timeout, OOM) must not kill the whole outer loop —
-    // it would strand every completed branch unmerged. Log and let the next
-    // iteration's planner + closeIssueIfAlreadyMerged sort out what's left.
-    console.error(`  ✗ merger failed: ${reason}`);
-  }
-
-  // Deterministic close on the host — do not trust the merger agent alone.
-  // Evidence is the branch tip captured at the end of phase 2: an issue only
-  // reaches here when its branch was ahead of HEAD, so that SHA provably was
-  // not on HEAD before the merger ran. If it is on HEAD now, the merge landed.
-  // The merger can throw or exit early without merging, and closing on faith
-  // would strand the branch with its issue closed (never re-picked to retry).
-  const actuallyMerged = completedIssues.filter(
-    (issue) => issue.tip !== undefined && isOnHead(issue.tip),
-  );
-  const notMerged = completedIssues.filter(
-    (issue) => !(issue.tip !== undefined && isOnHead(issue.tip)),
-  );
-  console.log("\nClosing merged issues:");
-  closeIssuesAfterMerge(actuallyMerged);
-  for (const issue of notMerged) {
-    console.log(
-      `  · ${issue.id}: branch not merged into HEAD — leaving open for retry`,
-    );
-  }
-
-  console.log("\nBranches merged.");
 }
 
 console.log("\nAll done.");
