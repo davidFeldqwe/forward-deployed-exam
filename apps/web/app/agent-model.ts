@@ -50,8 +50,8 @@ export type ModelAnswer = { text: string; toolCalls: ToolCall[] };
  */
 export type AgentLanguageModel = Exclude<LanguageModel, string>;
 
-/** The tool loop, given a model: the two shapes below run the same one. */
-type ModelLoop = (model: AgentLanguageModel, request: AgentRequest) => Promise<ModelAnswer>;
+/** A call that already has a model: the provider wrapper only constructs one. */
+type WithModel<T> = (model: AgentLanguageModel) => Promise<T>;
 
 /**
  * Runs the tool loop in one call and returns the prose beside every tool call it
@@ -59,7 +59,7 @@ type ModelLoop = (model: AgentLanguageModel, request: AgentRequest) => Promise<M
  * uses; `streamAgentModel` is the same answer over a stream.
  */
 export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
-  return answerWithProvider(generateModelAnswer, request);
+  return withProvider(chooseProvider, (model) => generateModelAnswer(model, request));
 }
 
 /**
@@ -69,30 +69,15 @@ export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
  * never from a half-read one.
  */
 export function streamAgentModel(request: AgentRequest): Promise<ModelAnswer> {
-  return answerWithProvider(streamModelAnswer, request);
+  return withProvider(chooseProvider, (model) => streamModelAnswer(model, request));
 }
 
 /**
  * One continuation for the composer ghost. No tools: a ranking number must not
  * be invented on the way into the draft. Failures are the route's to swallow.
  */
-export async function completePrompt(request: CompletionRequest): Promise<string> {
-  const choice = chooseAutocompleteProvider(process.env);
-  if (!choice) {
-    throw new NoProviderError();
-  }
-
-  try {
-    return await generateCompletion(languageModel(choice), request);
-  } catch (error) {
-    if (choice.fallbackModel === null || !isModelUnavailable(error)) {
-      throw error;
-    }
-    return await generateCompletion(
-      languageModel({ ...choice, model: choice.fallbackModel }),
-      request,
-    );
-  }
+export function completePrompt(request: CompletionRequest): Promise<string> {
+  return withProvider(chooseAutocompleteProvider, (model) => generateCompletion(model, request));
 }
 
 /** The same one-shot generate, so a test can script the model without a key. */
@@ -108,21 +93,28 @@ export async function generateCompletion(
   return text;
 }
 
-async function answerWithProvider(loop: ModelLoop, request: AgentRequest): Promise<ModelAnswer> {
-  const choice = chooseProvider(process.env);
+/**
+ * Construct a vendor model and run `work`. The PRD names one OpenAI fallback:
+ * a deployment whose account cannot see `gpt-4o` should retry on `gpt-4o-mini`.
+ * Autocomplete uses the same retry only when that provider choice still has a
+ * fallback — a named cheaper model does not get a second paid call.
+ */
+async function withProvider<T>(
+  choose: (env: Record<string, string | undefined>) => ProviderChoice | null,
+  work: WithModel<T>,
+): Promise<T> {
+  const choice = choose(process.env);
   if (!choice) {
     throw new NoProviderError();
   }
 
   try {
-    return await loop(languageModel(choice), request);
+    return await work(languageModel(choice));
   } catch (error) {
-    // The PRD names one OpenAI fallback: a deployment whose account cannot see
-    // `gpt-4o` should answer on `gpt-4o-mini` rather than not answer at all.
     if (choice.fallbackModel === null || !isModelUnavailable(error)) {
       throw error;
     }
-    return await loop(languageModel({ ...choice, model: choice.fallbackModel }), request);
+    return await work(languageModel({ ...choice, model: choice.fallbackModel }));
   }
 }
 

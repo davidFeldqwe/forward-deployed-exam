@@ -20,6 +20,7 @@ import {
   KEY_ESCAPE_COMMAND,
   KEY_TAB_COMMAND,
   PASTE_COMMAND,
+  type LexicalEditor,
 } from "lexical";
 
 import {
@@ -82,7 +83,8 @@ export function Composer({
       </div>
       <SyncDraftPlugin maxLength={maxLength} value={value} />
       <DraftChangePlugin maxLength={maxLength} onChange={onChange} />
-      <GhostCompletePlugin recentPrompts={recentPrompts} />
+      <GhostKeysPlugin />
+      <GhostFetchPlugin recentPrompts={recentPrompts} />
     </LexicalComposer>
   );
 }
@@ -139,75 +141,68 @@ function DraftChangePlugin({
   return null;
 }
 
-function GhostCompletePlugin({ recentPrompts }: { recentPrompts: readonly string[] }) {
+function $dismissAndContinue(): false {
+  $removeGhosts();
+  return false;
+}
+
+function $acceptGhost(event: KeyboardEvent | null): boolean {
+  const [ghost] = $nodesOfType(GhostNode);
+  if (!$isGhostNode(ghost)) {
+    return false;
+  }
+  event?.preventDefault();
+  const text = $createTextNode(ghost.continuation());
+  ghost.replace(text);
+  text.selectEnd();
+  return true;
+}
+
+function $insertGhost(suggestion: string): void {
+  $removeGhosts();
+  const selection = $getSelection();
+  if ($isRangeSelection(selection)) {
+    selection.insertNodes([$createGhostNode(suggestion)]);
+    return;
+  }
+  $getRoot().getLastChild()?.selectEnd();
+  const next = $getSelection();
+  if ($isRangeSelection(next)) {
+    next.insertNodes([$createGhostNode(suggestion)]);
+  }
+}
+
+function GhostKeysPlugin() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    const removeGhostsOnInsert = editor.registerCommand(
-      CONTROLLED_TEXT_INSERTION_COMMAND,
-      () => {
-        $removeGhosts();
-        return false;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-
-    const removeGhostsOnDelete = editor.registerCommand(
-      DELETE_CHARACTER_COMMAND,
-      () => {
-        $removeGhosts();
-        return false;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-
-    const removeGhostsOnPaste = editor.registerCommand(
-      PASTE_COMMAND,
-      () => {
-        $removeGhosts();
-        return false;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-
-    const acceptTab = editor.registerCommand(
-      KEY_TAB_COMMAND,
-      (event) => {
-        const [ghost] = $nodesOfType(GhostNode);
-        if (!$isGhostNode(ghost)) {
-          return false;
-        }
-        event?.preventDefault();
-        const text = $createTextNode(ghost.continuation());
-        ghost.replace(text);
-        text.selectEnd();
-        return true;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-
-    const dismissEscape = editor.registerCommand(
-      KEY_ESCAPE_COMMAND,
-      () => {
-        if ($nodesOfType(GhostNode).length === 0) {
-          return false;
-        }
-        $removeGhosts();
-        return true;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-
-    const submitEnter = editor.registerCommand(
-      KEY_ENTER_COMMAND,
-      (event) => {
-        event?.preventDefault();
-        $removeGhosts();
-        editor.getRootElement()?.closest("form")?.requestSubmit();
-        return true;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
+    const stop = [
+      editor.registerCommand(CONTROLLED_TEXT_INSERTION_COMMAND, $dismissAndContinue, COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(DELETE_CHARACTER_COMMAND, $dismissAndContinue, COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(PASTE_COMMAND, $dismissAndContinue, COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(KEY_TAB_COMMAND, $acceptGhost, COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(
+        KEY_ESCAPE_COMMAND,
+        () => {
+          if ($nodesOfType(GhostNode).length === 0) {
+            return false;
+          }
+          $removeGhosts();
+          return true;
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
+      editor.registerCommand(
+        KEY_ENTER_COMMAND,
+        (event) => {
+          event?.preventDefault();
+          $removeGhosts();
+          editor.getRootElement()?.closest("form")?.requestSubmit();
+          return true;
+        },
+        COMMAND_PRIORITY_HIGH,
+      ),
+    ];
 
     const form = editor.getRootElement()?.closest("form");
     const dismissOnSend = () => {
@@ -218,15 +213,26 @@ function GhostCompletePlugin({ recentPrompts }: { recentPrompts: readonly string
     form?.addEventListener("submit", dismissOnSend);
 
     return () => {
-      removeGhostsOnInsert();
-      removeGhostsOnDelete();
-      removeGhostsOnPaste();
-      acceptTab();
-      dismissEscape();
-      submitEnter();
+      for (const unregister of stop) {
+        unregister();
+      }
       form?.removeEventListener("submit", dismissOnSend);
     };
   }, [editor]);
+
+  return null;
+}
+
+function suggestionFromBody(partial: string, body: unknown): string | null {
+  const raw =
+    typeof body === "object" && body !== null && "suggestion" in body
+      ? (body as { suggestion: unknown }).suggestion
+      : null;
+  return typeof raw === "string" ? normalizeSuggestion(partial, raw) : null;
+}
+
+function GhostFetchPlugin({ recentPrompts }: { recentPrompts: readonly string[] }) {
+  const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
     let timer: number | undefined;
@@ -248,54 +254,13 @@ function GhostCompletePlugin({ recentPrompts }: { recentPrompts: readonly string
       lastText = snapshot.text;
       window.clearTimeout(timer);
       request?.abort();
-      request = undefined;
 
       timer = window.setTimeout(() => {
-        const still = editor.getEditorState().read(() => $draftText());
-        if (still !== snapshot.text) {
+        if (editor.getEditorState().read(() => $draftText()) !== snapshot.text) {
           return;
         }
         request = new AbortController();
-        void fetch(AUTOCOMPLETE_PATH, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            partialPrompt: snapshot.text,
-            recentPrompts,
-          }),
-          signal: request.signal,
-        })
-          .then((response) => (response.ok ? response.json() : { suggestion: null }))
-          .then((body: unknown) => {
-            const raw =
-              typeof body === "object" && body !== null && "suggestion" in body
-                ? (body as { suggestion: unknown }).suggestion
-                : null;
-            const suggestion = typeof raw === "string" ? normalizeSuggestion(snapshot.text, raw) : null;
-            if (suggestion === null) {
-              return;
-            }
-            editor.update(() => {
-              if ($draftText() !== snapshot.text) {
-                return;
-              }
-              $removeGhosts();
-              const selection = $getSelection();
-              if ($isRangeSelection(selection)) {
-                selection.insertNodes([$createGhostNode(suggestion)]);
-              } else {
-                const last = $getRoot().getLastChild();
-                last?.selectEnd();
-                const next = $getSelection();
-                if ($isRangeSelection(next)) {
-                  next.insertNodes([$createGhostNode(suggestion)]);
-                }
-              }
-            });
-          })
-          .catch(() => {
-            // Network or abort: no ghost, compose still works.
-          });
+        void fetchGhost(editor, snapshot.text, recentPrompts, request.signal);
       }, GHOST_PAUSE_MS);
     });
 
@@ -307,4 +272,33 @@ function GhostCompletePlugin({ recentPrompts }: { recentPrompts: readonly string
   }, [editor, recentPrompts]);
 
   return null;
+}
+
+function fetchGhost(
+  editor: LexicalEditor,
+  partial: string,
+  recentPrompts: readonly string[],
+  signal: AbortSignal,
+): Promise<void> {
+  return fetch(AUTOCOMPLETE_PATH, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ partialPrompt: partial, recentPrompts }),
+    signal,
+  })
+    .then((response) => (response.ok ? response.json() : { suggestion: null }))
+    .then((body: unknown) => {
+      const suggestion = suggestionFromBody(partial, body);
+      if (suggestion === null) {
+        return;
+      }
+      editor.update(() => {
+        if ($draftText() === partial) {
+          $insertGhost(suggestion);
+        }
+      });
+    })
+    .catch(() => {
+      // Network or abort: no ghost, compose still works.
+    });
 }
