@@ -1,14 +1,18 @@
 /**
- * Local Evalite runner for the New England ranking. Not wired to `pnpm test`
- * or turbo: a reviewer with a vendor key invokes this script. Without a key
- * the suite skips so a fresh clone and GitHub Actions stay green.
+ * Local Evalite runner: New England ranking, compare chip, off-thesis ROI, and
+ * Paris unknown-place. Not wired to `pnpm test` or turbo: a reviewer with a
+ * vendor key invokes this script. Without a key the suite skips so a fresh
+ * clone and GitHub Actions stay green.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ANTHROPIC_KEY, OPENAI_KEY, chooseProvider } from "../app/agent-provider.ts";
+import { runCompareEval } from "./compare.eval.ts";
 import { runNewEnglandEval } from "./new-england.eval.ts";
+import { runParisEval } from "./paris.eval.ts";
+import { runRoiEval } from "./roi.eval.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = join(here, "..");
@@ -30,20 +34,33 @@ async function main(): Promise<void> {
     return;
   }
 
-  const result = await runNewEnglandEval();
   mkdirSync(traceDir, { recursive: true });
-  writeFileSync(
-    join(traceDir, "new-england.json"),
-    `${JSON.stringify({ at: new Date().toISOString(), ...result }, null, 2)}\n`,
-  );
 
-  if (!result.verdict.ok) {
-    process.stderr.write(`Evalite failed: ${result.verdict.reason}\n`);
-    process.exitCode = 1;
-    return;
+  const cases = [
+    { name: "new-england", run: runNewEnglandEval },
+    { name: "compare", run: runCompareEval },
+    { name: "roi", run: runRoiEval },
+    { name: "paris", run: runParisEval },
+  ] as const;
+
+  let failed = false;
+  for (const { name, run } of cases) {
+    const result = await run();
+    writeFileSync(
+      join(traceDir, `${name}.json`),
+      `${JSON.stringify({ at: new Date().toISOString(), ...result }, null, 2)}\n`,
+    );
+    if (!result.verdict.ok) {
+      failed = true;
+      process.stderr.write(`Evalite ${name} failed: ${result.verdict.reason}\n`);
+    } else {
+      process.stdout.write(`Evalite ${name} passed: ${result.verdict.reason}\n`);
+    }
   }
 
-  process.stdout.write(`Evalite passed: ${result.verdict.reason}\n`);
+  if (failed) {
+    process.exitCode = 1;
+  }
 }
 
 /** Fill unset keys from Next's local env file; never override a shell value. */

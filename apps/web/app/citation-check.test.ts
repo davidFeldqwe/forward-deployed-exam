@@ -4,8 +4,14 @@ import { test } from "node:test";
 import { queryAirports } from "@repo/scoring";
 
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
-import { checkNewEnglandRanking } from "./citation-check.ts";
-import { assistantMessage } from "./thread-messages.ts";
+import {
+  checkCompareCongestion,
+  checkNewEnglandRanking,
+  checkOffThesisRefusal,
+  checkParisRefusal,
+} from "./citation-check.ts";
+import { ACCEPTED_PLACE_PHRASES, OFF_THESIS_REFUSAL, unknownPlaceRefusal } from "./refusals.ts";
+import { assistantMessage, type ToolCall } from "./thread-messages.ts";
 
 const ranking = runAgentTool("queryAirports", { region: "New England" });
 const methodology = {
@@ -121,5 +127,135 @@ test("the call must be queryAirports with region New England and matched > 0", (
     ).ok,
     false,
     "matched is 0",
+  );
+});
+
+function queryTool(args: Record<string, unknown>): ToolCall {
+  return {
+    tool: "queryAirports",
+    args,
+    result: toolPayloadJson(runAgentTool("queryAirports", args)),
+    durationMs: 5,
+  };
+}
+
+const compareRanking = queryTool({ iata: ["SNA", "LAX"] });
+const compareLookup = queryTool({ iata: ["LAX", "SNA"], metric: "congestion" });
+const laxRow = runAgentTool("queryAirports", { iata: "LAX" }).rows[0];
+const snaRow = runAgentTool("queryAirports", { iata: "SNA" }).rows[0];
+assert.ok(laxRow && snaRow);
+
+test("a two-code ranking of LAX and SNA passes the compare checker", () => {
+  const verdict = checkCompareCongestion(
+    assistantMessage(
+      `${laxRow.iata} congestion is ${laxRow.scoreVector.congestion.raw}; ${snaRow.iata} is ${snaRow.scoreVector.congestion.raw}.`,
+      [compareRanking],
+    ),
+  );
+  assert.equal(verdict.ok, true, verdict.reason);
+});
+
+test("a two-code congestion lookup of LAX and SNA passes the compare checker", () => {
+  const verdict = checkCompareCongestion(
+    assistantMessage(
+      `${laxRow.iata} congestion is ${laxRow.scoreVector.congestion.raw}; ${snaRow.iata} is ${snaRow.scoreVector.congestion.raw}.`,
+      [compareLookup, methodology],
+    ),
+  );
+  assert.equal(verdict.ok, true, verdict.reason);
+});
+
+test("a municipality-only Los Angeles query fails the compare checker", () => {
+  const verdict = checkCompareCongestion(
+    assistantMessage("Los Angeles is one airport.", [queryTool({ municipality: "Los Angeles" })]),
+  );
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.reason, /municipality|LAX|SNA/i);
+});
+
+test("a compare that drops SNA fails", () => {
+  const verdict = checkCompareCongestion(
+    assistantMessage(`${laxRow.iata} congestion is ${laxRow.scoreVector.congestion.raw}.`, [
+      queryTool({ iata: "LAX" }),
+    ]),
+  );
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.reason, /SNA/);
+});
+
+test("an invented IATA on a compare answer fails the citation checker", () => {
+  const verdict = checkCompareCongestion(
+    assistantMessage(`${laxRow.iata} and ${snaRow.iata} compared; CDG is not in the set.`, [
+      compareRanking,
+    ]),
+  );
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.reason, /CDG/);
+});
+
+test("the ROI refusal is the locked copy with no tools", () => {
+  assert.equal(checkOffThesisRefusal(assistantMessage(OFF_THESIS_REFUSAL)).ok, true);
+  assert.equal(
+    checkOffThesisRefusal(assistantMessage(`Lead-in. ${OFF_THESIS_REFUSAL}`)).ok,
+    true,
+    "the locked paragraph may sit inside the prose",
+  );
+  assert.equal(
+    checkOffThesisRefusal(assistantMessage(OFF_THESIS_REFUSAL, [compareRanking])).ok,
+    false,
+    "any tool call fails",
+  );
+  assert.equal(
+    checkOffThesisRefusal(assistantMessage("ROI is outside this screen.")).ok,
+    false,
+    "a paraphrase is not the locked copy",
+  );
+});
+
+const parisResult = runAgentTool("queryAirports", { municipality: "Paris" });
+const parisUnknown: ToolCall = {
+  tool: "queryAirports",
+  args: { municipality: "Paris" },
+  result: toolPayloadJson(parisResult),
+  durationMs: 5,
+};
+const parisRefusal = unknownPlaceRefusal(parisResult.unknownPlace);
+assert.ok(parisRefusal);
+
+const noToolParis = [
+  "Paris did not resolve and the phrase was not geocoded.",
+  `Ask again with ${ACCEPTED_PLACE_PHRASES.join(", ")}.`,
+].join(" ");
+
+test("Paris may refuse with no tools, accepted phrases, and a did-not-resolve claim", () => {
+  const verdict = checkParisRefusal(assistantMessage(noToolParis));
+  assert.equal(verdict.ok, true, verdict.reason);
+});
+
+test("Paris may refuse after queryAirports returns unknownPlace and empty rows", () => {
+  const verdict = checkParisRefusal(assistantMessage(parisRefusal, [parisUnknown]));
+  assert.equal(verdict.ok, true, verdict.reason);
+});
+
+test("invented CDG on a tool-using Paris answer fails the citation checker", () => {
+  const verdict = checkParisRefusal(
+    assistantMessage(`${parisRefusal} CDG would be the guess.`, [parisUnknown]),
+  );
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.reason, /CDG/);
+});
+
+test("a no-tool Paris answer that geocodes or skips accepted phrases fails", () => {
+  assert.equal(
+    checkParisRefusal(assistantMessage("Paris did not resolve. The phrase was not geocoded.")).ok,
+    false,
+    "accepted phrases missing",
+  );
+  assert.equal(
+    checkParisRefusal(
+      assistantMessage(`Paris maps to CDG. Ask again with ${ACCEPTED_PLACE_PHRASES.join(", ")}.`),
+    ).ok,
+    false,
+    "invented CDG / missing not-geocoded claim",
   );
 });
