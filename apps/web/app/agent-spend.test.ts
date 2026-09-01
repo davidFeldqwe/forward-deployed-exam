@@ -36,7 +36,7 @@ test("the spend-cap refusal is a locked line with no ranking and no pretend scor
     parts.map((part) => part.tag),
     ["prose"],
   );
-  assert.equal(parts[0]?.tag === "prose" ? parts[0].text : null, SPEND_CAP_REFUSAL);
+  assert.equal(parts.find((part) => part.tag === "prose")?.text, SPEND_CAP_REFUSAL);
 });
 
 test("one account is allowed a day's worth of vendor calls, then refused", () => {

@@ -28,6 +28,9 @@ export const SPEND_CAP_REFUSAL =
   "stored but unanswered. There is no ranking and no score — the capacity-pressure screen did " +
   "not run. Try again tomorrow.";
 
+/** Shared bucket when the client address is missing or not an IP. */
+const UNKNOWN_NETWORK = "unknown";
+
 export type AgentCall = {
   email: string;
   clientIp: string;
@@ -35,23 +38,54 @@ export type AgentCall = {
   at?: number;
 };
 
-type SpendHost = {
-  __aiiAgentSpend?: { at: number; email: string; ip: string }[];
+type SpendStamp = {
+  at: number;
+  email: string;
+  ip: string;
 };
 
+type SpendHost = {
+  __aiiAgentSpend?: SpendStamp[];
+};
+
+/**
+ * The ledger hangs off `globalThis` for the same reason the thread store does:
+ * Next bundles the page graph and the server-action graph separately, so a
+ * module-level array would give the composer action and a later SSE route a
+ * budget each — which is no lid at all.
+ */
 function spendHost(): SpendHost {
   return globalThis as unknown as SpendHost;
 }
 
-function stamps(): { at: number; email: string; ip: string }[] {
+function spendStamps(): SpendStamp[] {
   const host = spendHost();
   host.__aiiAgentSpend ??= [];
   return host.__aiiAgentSpend;
 }
 
 /** UTC calendar day, so a limit is not a rolling hour that a clock can slide. */
-export function utcDay(at: number): string {
+function utcDay(at: number): string {
   return new Date(at).toISOString().slice(0, 10);
+}
+
+function stampsOn(day: string): SpendStamp[] {
+  return spendStamps().filter((stamp) => utcDay(stamp.at) === day);
+}
+
+/** First four hextets, zero-stripped — an IPv6 /64, not a per-interface id. */
+function ipv6Slash64(address: string): string | null {
+  const groups = address.split(":").filter((group) => group.length > 0);
+  if (groups.length === 0) {
+    return null;
+  }
+  return groups
+    .slice(0, 4)
+    .map((group) => {
+      const value = Number.parseInt(group, 16);
+      return Number.isFinite(value) ? value.toString(16) : group.toLowerCase();
+    })
+    .join(":");
 }
 
 /**
@@ -62,21 +96,16 @@ export function utcDay(at: number): string {
 export function coarseClientIp(raw: string): string {
   const first = raw.split(",")[0]?.trim() ?? "";
   if (first.length === 0) {
-    return "unknown";
+    return UNKNOWN_NETWORK;
   }
-  const v4 = first.replace(/^::ffff:/i, "");
-  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(v4)) {
-    return v4;
+  const mappedV4 = first.replace(/^::ffff:/i, "");
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(mappedV4)) {
+    return mappedV4;
   }
   if (!first.includes(":")) {
-    return "unknown";
+    return UNKNOWN_NETWORK;
   }
-  const groups = first.split(":").filter((group) => group.length > 0);
-  const prefix = groups.slice(0, 4).map((group) => {
-    const value = Number.parseInt(group, 16);
-    return Number.isFinite(value) ? value.toString(16) : group.toLowerCase();
-  });
-  return prefix.length > 0 ? prefix.join(":") : "unknown";
+  return ipv6Slash64(first) ?? UNKNOWN_NETWORK;
 }
 
 /** The left-most forwarded hop, then `X-Real-IP`, else the unknown bucket. */
@@ -93,7 +122,7 @@ export function reserveAgentCall({ email, clientIp, at = Date.now() }: AgentCall
   const day = utcDay(at);
   const ip = coarseClientIp(clientIp);
   const owner = normalizeEmail(email);
-  const today = stamps().filter((stamp) => utcDay(stamp.at) === day);
+  const today = stampsOn(day);
   if (today.length >= AGENT_ASKS_PER_DAY) {
     return false;
   }
@@ -103,7 +132,7 @@ export function reserveAgentCall({ email, clientIp, at = Date.now() }: AgentCall
   if (today.filter((stamp) => stamp.ip === ip).length >= AGENT_ASKS_PER_IP) {
     return false;
   }
-  stamps().push({ at, email: owner, ip });
+  spendStamps().push({ at, email: owner, ip });
   return true;
 }
 

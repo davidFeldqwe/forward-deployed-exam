@@ -230,8 +230,7 @@ export async function askOnThread(
     if (!thread) {
       return null;
     }
-    const email = normalizeEmail(ownerEmail);
-    if (!reserveAgentCall({ email, clientIp, at })) {
+    if (!reserveAgentCall({ email: ownerEmail, clientIp, at })) {
       return (
         appendMessage(ownerEmail, thread.id, assistantMessage(SPEND_CAP_REFUSAL)) ?? thread
       );
