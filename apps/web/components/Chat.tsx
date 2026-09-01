@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ArrowUpIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { recentUserPrompts } from "@/app/autocomplete";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
 import { askOnChatSse } from "@/app/chat-ask";
+import { afterSuccessfulAsk } from "@/app/chat-land";
 import { chatCopy } from "@/app/chat-copy";
 import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
@@ -36,6 +38,17 @@ export function Chat({
   messages?: readonly ThreadMessage[];
   recents: readonly ThreadSummary[];
 }) {
+  const router = useRouter();
+
+  function landThread(nextThreadId: string | null): void {
+    const land = afterSuccessfulAsk(threadId ?? null, nextThreadId);
+    if (land.kind === "refresh") {
+      router.refresh();
+      return;
+    }
+    router.push(land.href);
+  }
+
   // Which transcript is on screen, and how far it has got: a question that
   // landed changes it, and so does opening a different thread.
   const transcriptKey = `${threadId ?? ""}:${messages.length}`;
@@ -112,7 +125,7 @@ export function Chat({
         {/* Transcript and composer are one form so Send can wait on the SSE
             POST until the stream ends; the pending row sits in that wait. */}
         <form
-          action={askOnChatSse}
+          action={(formData) => askOnChatSse(formData, landThread)}
           onSubmit={acceptQuestion}
           className="flex min-h-0 flex-1 flex-col"
           inert={railOpen}

@@ -3,17 +3,19 @@
 import {
   CHAT_SSE_PATH,
   carriedPrompt,
-  chatDestination,
   chatPathWithPrompt,
   loginRedirect,
 } from "@/app/auth-gate";
 import { textField } from "@/app/form-fields";
 
+/** Open or refresh the Thread that the SSE stream just finished writing. */
+export type LandThread = (nextThreadId: string | null) => void;
+
 /**
  * Composer submit: POST the same form to the chat SSE route and wait until the
  * stream ends. The pending row and held Send follow that in-flight wait.
  */
-export async function askOnChatSse(formData: FormData): Promise<void> {
+export async function askOnChatSse(formData: FormData, landThread: LandThread): Promise<void> {
   const question = carriedPrompt(textField(formData, "prompt"));
   if (!question) {
     return;
@@ -42,7 +44,7 @@ export async function askOnChatSse(formData: FormData): Promise<void> {
   }
 
   const threadId = await threadIdFromSse(response.body, textField(formData, "threadId") || null);
-  window.location.assign(chatDestination(threadId));
+  landThread(threadId);
 }
 
 function isLoginRedirect(response: Response): boolean {
