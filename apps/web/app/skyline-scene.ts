@@ -105,11 +105,7 @@ export function mountSkyline(
   camera.layers.enableAll();
   scene.add(...lights(), ...layered(input, palette));
 
-  const insetCameras = Object.fromEntries(
-    INSET_REGIONS.map((region) => [region.key, insetCamera(region)]),
-  ) as Record<InsetKey, THREE.PerspectiveCamera>;
-  /** The boxes as the last fit laid them out: what is drawn, and what is clicked. */
-  let rects: readonly InsetRect[] = [];
+  const atlas = makeAtlas();
   let pane = hostSize(host);
 
   // A canvas is inline by default, which would leave a text descender's worth
@@ -189,32 +185,7 @@ export function mountSkyline(
     };
   };
 
-  // A click is a pointer that went down and came up in the same place. A browser
-  // reports one wherever a drag lets go, so an orbit that finished over the
-  // corner would otherwise fly the visitor to Alaska for turning the country.
-  let pressedAt: { x: number; y: number } | null = null;
-  const onPointerDown = (event: PointerEvent): void => {
-    pressedAt = panedPoint(event);
-  };
-  const onPointerMove = (event: PointerEvent): void => {
-    // The insets are the one thing on this canvas that answers a click.
-    canvas.style.cursor = insetAt(rects, panedPoint(event)) ? "pointer" : "";
-  };
-  const onClick = (event: MouseEvent): void => {
-    const at = panedPoint(event);
-    const down = pressedAt;
-    pressedAt = null;
-    if (down && Math.hypot(at.x - down.x, at.y - down.y) > CLICK_SLOP) {
-      return;
-    }
-    const hit = insetAt(rects, at);
-    if (hit) {
-      easeToRegion(hit.region);
-    }
-  };
-  canvas.addEventListener("pointerdown", onPointerDown);
-  canvas.addEventListener("pointermove", onPointerMove);
-  canvas.addEventListener("click", onClick);
+  const unwatchInsets = watchInsets(canvas, () => atlas.rects, easeToRegion);
 
   const unfit = fitToHost(host, renderer, camera, (size) => {
     // A fit is a drawing buffer nothing has been drawn into yet — a pane of a
@@ -225,10 +196,7 @@ export function mountSkyline(
     // in the corner of a phone turned on its side — and a click on one means
     // the box it is in now rather than the one the page opened with.
     pane = size;
-    rects = insetRects(pane);
-    for (const rect of rects) {
-      frameInset(insetCameras[rect.region.key], rect);
-    }
+    layOutAtlas(atlas, pane);
     // How far out the country can be held is the new pane's business, whoever
     // is driving: a visitor who has taken the controls still has to be able to
     // zoom out far enough to see it after turning the phone.
@@ -273,7 +241,7 @@ export function mountSkyline(
       return;
     }
     pending = false;
-    drawViewports(renderer, scene, camera, pane, rects, insetCameras);
+    drawViewports(renderer, scene, camera, pane, atlas);
   });
 
   return () => {
@@ -281,9 +249,7 @@ export function mountSkyline(
     unfit();
     controls.dispose();
     canvas.removeEventListener("webglcontextrestored", redraw);
-    canvas.removeEventListener("pointerdown", onPointerDown);
-    canvas.removeEventListener("pointermove", onPointerMove);
-    canvas.removeEventListener("click", onClick);
+    unwatchInsets();
     canvas.remove();
     disposeAll(scene);
     renderer.dispose();
@@ -345,24 +311,93 @@ function layered(input: SkylineInput, palette: Palette): THREE.Object3D[] {
   });
 }
 
-/** The camera one inset viewport is drawn through: its own region, and nothing else. */
-function insetCamera(region: InsetRegion): THREE.PerspectiveCamera {
-  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 1);
-  camera.layers.set(region.layer);
-  return camera;
+/**
+ * The corner viewports: one camera per region, and the boxes the last fit laid
+ * them out in. The two travel together because they are one claim twice over —
+ * a camera framed against a box, and the box it is drawn in.
+ */
+type Atlas = {
+  cameras: Record<InsetKey, THREE.PerspectiveCamera>;
+  rects: readonly InsetRect[];
+};
+
+function makeAtlas(): Atlas {
+  const cameras = Object.fromEntries(
+    INSET_REGIONS.map((region) => {
+      // One layer: its own region, and nothing standing between the camera and
+      // it. The shape and the far plane are the box's, taken at every layout.
+      const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 1);
+      camera.layers.set(region.layer);
+      return [region.key, camera];
+    }),
+  ) as Record<InsetKey, THREE.PerspectiveCamera>;
+
+  return { cameras, rects: [] };
 }
 
-/** Frames a region against the box it is drawn in, whatever shape the pane left it. */
-function frameInset(camera: THREE.PerspectiveCamera, rect: InsetRect): void {
-  const aspect = rect.width / rect.height;
-  const { position, target } = insetFrame(rect.region, aspect);
-  camera.aspect = aspect;
-  camera.position.copy(vector(position));
-  camera.lookAt(target.x, target.y, target.z);
-  // Nothing but this region is on the camera's layer, so the far plane has only
-  // to reach past the region itself.
-  camera.far = camera.position.distanceTo(vector(target)) + rect.region.bounds.radius;
-  camera.updateProjectionMatrix();
+/** Puts the boxes in a pane of this size, and frames each region in its own. */
+function layOutAtlas(atlas: Atlas, pane: { width: number; height: number }): void {
+  atlas.rects = insetRects(pane);
+
+  for (const rect of atlas.rects) {
+    const camera = atlas.cameras[rect.region.key];
+    const aspect = rect.width / rect.height;
+    const { position, target } = insetFrame(rect.region, aspect);
+    camera.aspect = aspect;
+    camera.position.copy(vector(position));
+    camera.lookAt(target.x, target.y, target.z);
+    // Nothing but this region is on the camera's layer, so the far plane has
+    // only to reach past the region itself.
+    camera.far = camera.position.distanceTo(vector(target)) + rect.region.bounds.radius;
+    camera.updateProjectionMatrix();
+  }
+}
+
+/**
+ * Listens for a click on one of the boxes and hands back the region it was in.
+ * Returns the teardown.
+ *
+ * A click is a pointer that went down and came up in the same place: a browser
+ * reports one wherever a drag lets go, so an orbit that finished over the
+ * corner would otherwise fly the visitor to Alaska for turning the country.
+ * The boxes are read when the pointer arrives rather than held, because a
+ * resize lays them out again under a pointer that has not moved.
+ */
+function watchInsets(
+  canvas: HTMLCanvasElement,
+  boxes: () => readonly InsetRect[],
+  onPick: (region: InsetRegion) => void,
+): () => void {
+  let pressedAt: { x: number; y: number } | null = null;
+
+  const onPointerDown = (event: PointerEvent): void => {
+    pressedAt = panedPoint(event);
+  };
+  const onPointerMove = (event: PointerEvent): void => {
+    // The insets are the one thing on this canvas that answers a click.
+    canvas.style.cursor = insetAt(boxes(), panedPoint(event)) ? "pointer" : "";
+  };
+  const onClick = (event: MouseEvent): void => {
+    const at = panedPoint(event);
+    const down = pressedAt;
+    pressedAt = null;
+    if (down && Math.hypot(at.x - down.x, at.y - down.y) > CLICK_SLOP) {
+      return;
+    }
+    const hit = insetAt(boxes(), at);
+    if (hit) {
+      onPick(hit.region);
+    }
+  };
+
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("click", onClick);
+  return () => {
+    canvas.removeEventListener("pointerdown", onPointerDown);
+    canvas.removeEventListener("pointermove", onPointerMove);
+    canvas.removeEventListener("click", onClick);
+  };
 }
 
 /**
@@ -378,21 +413,20 @@ function drawViewports(
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   pane: { width: number; height: number },
-  rects: readonly InsetRect[],
-  insetCameras: Record<InsetKey, THREE.PerspectiveCamera>,
+  atlas: Atlas,
 ): void {
   renderer.setScissorTest(true);
   renderer.setViewport(0, 0, pane.width, pane.height);
   renderer.setScissor(0, 0, pane.width, pane.height);
   renderer.render(scene, camera);
 
-  for (const rect of rects) {
+  for (const rect of atlas.rects) {
     // A box is measured from the pane's top-left corner and a viewport from the
     // drawing buffer's bottom-left one.
     const bottom = pane.height - rect.y - rect.height;
     renderer.setViewport(rect.x, bottom, rect.width, rect.height);
     renderer.setScissor(rect.x, bottom, rect.width, rect.height);
-    renderer.render(scene, insetCameras[rect.region.key]);
+    renderer.render(scene, atlas.cameras[rect.region.key]);
   }
 }
 
