@@ -18,7 +18,7 @@ export const landingCopy = {
       { airport: "SNA", delayRate: "18.1%", avgDelay: "11.2 min" },
     ],
   },
-  builtOn: ["Next.js", "Convex", "Vercel AI SDK"],
+  builtOn: ["Next.js", "Convex", "Vercel AI SDK", "Anthropic"],
   suggestedQuestions: [
     "Which airports in New England are renovation-investment candidates?",
     "Compare congestion at Los Angeles and Santa Ana.",

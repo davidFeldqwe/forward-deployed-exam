@@ -64,20 +64,32 @@ test("How it works tiles share size and wrap in the landing column; arrows sit b
 });
 
 test("Built on shows each product's real mark, not a text-only badge", () => {
-  assert.deepEqual([...landingCopy.builtOn], ["Next.js", "Convex", "Vercel AI SDK"]);
+  assert.deepEqual([...landingCopy.builtOn], [
+    "Next.js",
+    "Convex",
+    "Vercel AI SDK",
+    "Anthropic",
+  ]);
 
   const paths = landingCopy.builtOn.map((name) => {
     const mark = stackMarks[name];
     assert.ok(mark, name);
-    assert.match(mark.viewBox, /^0 0 /);
+    assert.match(mark.viewBox, /^\d/);
     assert.ok(mark.path.length > 0, `${name} mark`);
     return mark.path;
   });
   assert.equal(new Set(paths).size, paths.length);
 
+  // Convex's three-blade logomark (dashboard-icons convex.svg), not a chevron.
+  assert.match(stackMarks.Convex.path, /M108\.092 130\.021/);
+  assert.doesNotMatch(stackMarks.Convex.path, /M4\.2 5\.1A3\.1/);
+  // Anthropic's A-mark (simple-icons), filled as currentColor like the rest.
+  assert.match(stackMarks.Anthropic.path, /M17\.3041 3\.541h-3\.6718l6\.696 16\.918H24Z/);
+
   const strip = section('aria-label="Built on"', 'aria-labelledby="questions-heading"');
   assert.match(strip, /stackMarks\[item\]/);
   assert.match(strip, /<svg\b/);
+  assert.match(strip, /fill="currentColor"/);
   assert.doesNotMatch(strip, /<Badge\b/);
   assert.doesNotMatch(strip, /variant="outline"/);
   assertStill(strip);

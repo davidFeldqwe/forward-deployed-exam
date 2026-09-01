@@ -53,11 +53,12 @@ test("demo card is a two-row LAX and SNA fixture, not a live scoring path", () =
   assert.equal(landingCopy.demo.rows.length, 2);
 });
 
-test("built on lists Next.js, Convex, and Vercel AI SDK", () => {
+test("built on lists Next.js, Convex, Vercel AI SDK, and Anthropic", () => {
   assert.deepEqual([...landingCopy.builtOn], [
     "Next.js",
     "Convex",
     "Vercel AI SDK",
+    "Anthropic",
   ]);
 });
 
@@ -108,6 +109,7 @@ test("the footer credits this repo with the same link the header carries", () =>
 test("landing copy does not advertise dropped stack or surfaces", () => {
   const text = visibleText(landingCopy);
   for (const forbidden of [
+    "OpenAI",
     "FastAPI",
     "LangGraph",
     "Neon",

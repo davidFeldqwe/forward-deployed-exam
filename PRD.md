@@ -23,7 +23,7 @@ A signed-in chat agent over a committed snapshot of every US primary commercial 
 2. As a visitor, I want a shared site header that stays on screen — identity on the left, chat, GitHub and a profile control that reaches Sign in on the right — plus Start asking in the hero, so that I can reach an account without hunting.
 3. As a visitor, I want suggested-question cards that use glossary language (renovation-investment candidate, New England, compare two airports), so that I see what the agent actually answers.
 4. As a visitor, I want a How it works strip (ingest → snapshot → tools → answer objects), so that I understand numbers come from code.
-5. As a visitor, I want a Built on row for Next.js, Convex, and Vercel AI SDK, so that the stack on the page matches the repo.
+5. As a visitor, I want a Built on row for Next.js, Convex, Vercel AI SDK, and Anthropic, so that the stack on the page matches the repo.
 6. As a visitor, I want the Landing header to offer **Map** — the one 3D surface we do ship (amended by [public /map](https://github.com/davidFeldqwe/forward-deployed-exam/issues/68)) — and no Chat-as-public-demo or logos for FastAPI / LangGraph / Neon / Clerk, so that the landing advertises only surfaces that exist.
 7. As a visitor, I want the landing in the dark zip palette, so that it matches the signed-in agent.
 8. As a visitor, I want GitHub in the site header on both surfaces, and still in the Landing footer, pointing at this repo, so that a reviewer can open the source.
