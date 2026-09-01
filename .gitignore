@@ -16,3 +16,4 @@ apps/web/convex/_generated/
 .sandcastle/logs/
 .sandcastle/worktrees/
 .cache
+.evalite/

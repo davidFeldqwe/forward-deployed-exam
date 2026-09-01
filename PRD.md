@@ -229,6 +229,8 @@ A good test asserts **external behavior**: given this snapshot (or fixture slice
 
 **Not tests:** LLM-as-judge evals, golden chat transcripts that need a paid key in CI, pixel tests of the zip.
 
+A local Evalite loop (`pnpm --filter @repo/web eval`) may grade the New England ranking against the live agent when a reviewer has a key. It is not CI: a missing key skips, traces stay out of git, and GitHub Actions still refuses those keys. The citation checker itself is an ordinary, key-free test on fixtures.
+
 There is no prior test suite in this repo; scoring tests are the first.
 
 ## Out of Scope

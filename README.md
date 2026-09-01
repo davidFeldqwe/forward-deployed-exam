@@ -120,6 +120,22 @@ Two tests exist to fail loudly if that boundary moves:
 Convex) and `apps/web/app/agent-boundary.test.ts` (exactly one module imports a
 vendor SDK).
 
+## Local Evalite
+
+A reviewer with `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` can grade the New
+England candidates question against the real agent loop (`answerQuestion` /
+`streamAgentModel`, same provider picker as chat):
+
+```sh
+pnpm --filter @repo/web eval
+```
+
+That is not `pnpm test` and turbo does not run it. Without a key the suite
+skips (exit 0) instead of failing, so a fresh clone and GitHub Actions stay
+green. Traces land in `apps/web/.evalite/` and are gitignored. Ordinary tests
+still pin the citation checker on fixtures — invented `CDG` or an invented
+composite fails — so CI proves the scorer without Anthropic.
+
 ## Layout
 
 | Path | What lives there |

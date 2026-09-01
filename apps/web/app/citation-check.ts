@@ -1,0 +1,281 @@
+/**
+ * The code/LLM boundary for one assistant turn: every IATA in prose is in that
+ * turn's `resolvedIata`, and every composite / percentile / delay / growth
+ * figure comes from `rows`. Ordinary tests pin this on fixtures; the local
+ * Evalite loop grades a live `answerQuestion` with the same checker.
+ */
+import { COMPONENTS, type QueryResult, type ScoredAirport } from "@repo/scoring";
+
+import { rankingRows, type ThreadMessage, type ToolCall } from "./thread-messages.ts";
+
+const NEW_ENGLAND = "new england";
+
+/** Three-letter tokens the agent writes that are not airport codes. */
+const NOT_IATA = new Set([
+  "THE",
+  "AND",
+  "FOR",
+  "ARE",
+  "BUT",
+  "NOT",
+  "YOU",
+  "ALL",
+  "CAN",
+  "HER",
+  "WAS",
+  "ONE",
+  "OUR",
+  "OUT",
+  "DAY",
+  "GET",
+  "HAS",
+  "HIM",
+  "HIS",
+  "HOW",
+  "ITS",
+  "LET",
+  "MAY",
+  "NEW",
+  "NOW",
+  "OLD",
+  "SEE",
+  "TWO",
+  "WAY",
+  "WHO",
+  "DID",
+  "ANY",
+  "FEW",
+  "PER",
+  "USE",
+  "FAA",
+  "BTS",
+  "ROI",
+  "CSV",
+  "PDF",
+  "API",
+  "SDK",
+  "LLM",
+  "SSE",
+  "PRD",
+  "HHI",
+  "USA",
+  "USD",
+  "XML",
+  "DOM",
+  "CSS",
+  "NPM",
+  "GIT",
+  "URL",
+]);
+
+export type CitationVerdict = { ok: boolean; reason: string };
+
+/**
+ * Grade a New England candidates answer: `queryAirports` with that region and
+ * `matched > 0`, `describeMethodology` optional, prose bound to that payload.
+ */
+export function checkNewEnglandRanking(answer: ThreadMessage): CitationVerdict {
+  const query = lastQueryCall(answer.toolCalls);
+  if (!query) {
+    return fail("the turn never called queryAirports");
+  }
+  const region = typeof query.args.region === "string" ? query.args.region.trim() : "";
+  if (region.toLowerCase() !== NEW_ENGLAND) {
+    return fail(`queryAirports region must be New England, got ${JSON.stringify(query.args.region)}`);
+  }
+  const payload = queryPayload(query);
+  if (!payload) {
+    return fail("queryAirports did not return a ranking payload");
+  }
+  if (!(payload.matched > 0)) {
+    return fail(`queryAirports matched ${payload.matched}, need more than 0`);
+  }
+  return checkCitations(answer.text, payload);
+}
+
+/**
+ * Every IATA in prose is in `resolvedIata`. Every composite / percentile /
+ * delay / growth figure in prose comes from `rows`. An off-page resolved code
+ * may be named; a composite attached to it is invented unless that number is
+ * that airport's own page row — which it does not have.
+ */
+export function checkCitations(prose: string, payload: QueryResult): CitationVerdict {
+  const resolved = new Set(payload.resolvedIata);
+  const onPage = new Map(payload.rows.map((row) => [row.iata, row]));
+  const allowed = allowedFigures(payload.rows);
+
+  for (const code of citedIata(prose)) {
+    if (!resolved.has(code)) {
+      return fail(`prose names ${code}, which is not in this turn's resolvedIata`);
+    }
+  }
+
+  for (const figure of citedFigures(prose)) {
+    if (figure.iata !== null && resolved.has(figure.iata) && !onPage.has(figure.iata)) {
+      return fail(
+        `${figure.iata} is in the resolved set but not on the page, so a ${figure.kind} attached to it is invented`,
+      );
+    }
+    if (figure.iata !== null && onPage.has(figure.iata)) {
+      const row = onPage.get(figure.iata);
+      if (row && !rowAllows(row, figure)) {
+        return fail(
+          `${figure.kind} ${figure.value} is not a ${figure.iata} figure from this page`,
+        );
+      }
+      continue;
+    }
+    if (!allowed.has(normalizeFigure(figure.value))) {
+      return fail(`${figure.kind} ${figure.value} does not appear on this turn's rows`);
+    }
+  }
+
+  return { ok: true, reason: "prose cites only this turn's payload" };
+}
+
+function fail(reason: string): CitationVerdict {
+  return { ok: false, reason };
+}
+
+function lastQueryCall(calls: readonly ToolCall[]): ToolCall | null {
+  const queries = calls.filter((call) => call.tool === "queryAirports");
+  return queries[queries.length - 1] ?? null;
+}
+
+function queryPayload(call: ToolCall): QueryResult | null {
+  const rows = rankingRows(call);
+  if (!rows || !isRecord(call.result)) {
+    return null;
+  }
+  const { matched, resolvedIata } = call.result;
+  if (typeof matched !== "number" || !Array.isArray(resolvedIata)) {
+    return null;
+  }
+  if (!resolvedIata.every((code): code is string => typeof code === "string")) {
+    return null;
+  }
+  return {
+    rows,
+    matched,
+    resolvedIata,
+    sortBy: null,
+    metric: null,
+    limit: rows.length,
+    unknownIata: [],
+    unknownPlace: [],
+  };
+}
+
+function citedIata(prose: string): string[] {
+  const found = new Set<string>();
+  for (const match of prose.matchAll(/\b[A-Z]{3}\b/g)) {
+    const code = match[0];
+    if (!NOT_IATA.has(code)) {
+      found.add(code);
+    }
+  }
+  return [...found];
+}
+
+type CitedFigure = {
+  kind: "composite" | "percentile" | "delay" | "growth";
+  value: number;
+  iata: string | null;
+};
+
+function citedFigures(prose: string): CitedFigure[] {
+  const figures: CitedFigure[] = [];
+  const push = (kind: CitedFigure["kind"], value: string, iata: string | null) => {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      figures.push({ kind, value: parsed, iata: iataIfCode(iata) });
+    }
+  };
+
+  for (const match of prose.matchAll(
+    /\b([A-Z]{3})\b[^.]{0,80}?\bcomposite(?:\s+score)?\s*(?:of|at|is|:)?\s*(-?\d+(?:\.\d+)?)/gi,
+  )) {
+    push("composite", match[2] ?? "", match[1] ?? null);
+  }
+  for (const match of prose.matchAll(/\bcomposite(?:\s+score)?\s*(?:of|at|is|:)?\s*(-?\d+(?:\.\d+)?)/gi)) {
+    const value = match[1] ?? "";
+    if (!figures.some((figure) => figure.kind === "composite" && figure.value === Number(value))) {
+      push("composite", value, null);
+    }
+  }
+  for (const match of prose.matchAll(/(-?\d+(?:\.\d+)?)\s*(?:st|nd|rd|th)?\s*(?:percentile|pctl)\b/gi)) {
+    push("percentile", match[1] ?? "", null);
+  }
+  for (const match of prose.matchAll(/(-?\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?)\b/gi)) {
+    push("delay", match[1] ?? "", null);
+  }
+  for (const match of prose.matchAll(/\bgrowth\b[^%]{0,40}?(-?\d+(?:\.\d+)?)\s*%/gi)) {
+    push("growth", match[1] ?? "", null);
+  }
+  for (const match of prose.matchAll(/(-?\d+(?:\.\d+)?)\s*%[^.]{0,20}\bgrowth\b/gi)) {
+    push("growth", match[1] ?? "", null);
+  }
+  return figures;
+}
+
+function iataIfCode(value: string | null): string | null {
+  if (value === null) return null;
+  const code = value.toUpperCase();
+  return NOT_IATA.has(code) ? null : code;
+}
+
+function allowedFigures(rows: readonly ScoredAirport[]): Set<string> {
+  const allowed = new Set<string>();
+  for (const row of rows) {
+    for (const value of rowFigures(row)) {
+      allowed.add(normalizeFigure(value));
+    }
+  }
+  return allowed;
+}
+
+function rowFigures(row: ScoredAirport): number[] {
+  const values: number[] = [];
+  const add = (value: number | null) => {
+    if (value !== null && Number.isFinite(value)) {
+      values.push(value);
+    }
+  };
+  add(row.composite);
+  add(row.longHaulShare);
+  for (const component of COMPONENTS) {
+    add(row.scoreVector[component].percentile);
+    add(row.scoreVector[component].raw);
+  }
+  return values;
+}
+
+function rowAllows(row: ScoredAirport, figure: CitedFigure): boolean {
+  const values = rowFigures(row).map(normalizeFigure);
+  if (values.includes(normalizeFigure(figure.value))) {
+    return true;
+  }
+  if (figure.kind === "growth") {
+    const share = row.longHaulShare;
+    if (share !== null && normalizeFigure(share * 100) === normalizeFigure(figure.value)) {
+      return true;
+    }
+    const growth = row.scoreVector.growth.raw;
+    if (growth !== null && normalizeFigure(growth * 100) === normalizeFigure(figure.value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function normalizeFigure(value: number): string {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+  const rounded = Math.round(value * 1e6) / 1e6;
+  return String(rounded);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

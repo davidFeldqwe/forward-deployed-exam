@@ -26,7 +26,7 @@ These standards summarize the conventions already present in this repo. Review c
 - Use descriptive test names that state expected behavior and important edge cases.
 - Preserve regression tests for bugs, especially: missing ≠ zero; partial inputs withhold composite; SNA and LAX not in the same peer group; region filter does not re-percentile; IATA identity (ORD and MDW stay distinct); scoring import purity (no LLM, network, or Convex); LLM-free rank HTTP equals the module output for a pinned query.
 - Keep tests deterministic. Avoid real network calls and paid LLM keys in CI. The shell seam (HTTP gate, Convex auth) is allowed without an LLM.
-- Not tests: LLM-as-judge evals, golden chat transcripts that need a paid key in CI, pixel tests of the zip.
+- Not tests: LLM-as-judge evals, golden chat transcripts that need a paid key in CI, pixel tests of the zip. A local Evalite loop (`pnpm --filter @repo/web eval`) is allowed beside the web app for a reviewer with a key; it is not the default test job, and a missing key skips.
 - Run the relevant validation before handoff. For broad changes, run `pnpm typecheck`, `pnpm lint`, and `pnpm test`; for scoped changes, run the matching `pnpm --filter <package> …` plus any affected package task.
 
 ## Architecture
