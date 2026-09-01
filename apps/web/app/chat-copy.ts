@@ -9,7 +9,7 @@ export const chatCopy = {
   recentsLabel: "Recents",
   newThreadLabel: "New thread",
   noRecentsLabel: "No threads yet — ask a question to start one.",
-  /** The narrow-viewport control that slides the recents rail in and out. */
+  /** The control that shows and hides recents: a column on desktop, a drawer on a narrow viewport. */
   showRecentsLabel: "Show recents",
   hideRecentsLabel: "Hide recents",
   chips: [

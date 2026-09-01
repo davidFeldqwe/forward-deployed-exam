@@ -1,16 +1,22 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { PanelLeftIcon, PlusIcon } from "lucide-react";
 
 import { chatCopy } from "@/app/chat-copy";
-import { threadRail, type RailDestination } from "@/app/thread-rail";
+import {
+  DRAWER_TOGGLE_ID,
+  RAIL_COLUMN_MEDIA,
+  recentsDrawerKey,
+  threadRail,
+  type RailDestination,
+} from "@/app/thread-rail";
 import type { ThreadSummary } from "@/app/thread-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Shared by the rail and the header control that points `aria-controls` at it. */
+/** Shared by the rail and the header controls that point `aria-controls` at it. */
 const RAIL_ID = "thread-rail";
 
 /**
@@ -30,48 +36,88 @@ const drawerOpenClass = "max-md:translate-x-0 max-md:opacity-100";
 
 /**
  * A closed drawer is `invisible`, so its links leave the accessibility tree
- * too. Every class here is `max-md:`, because from `md` up the rail is a column
- * a screen reader should always reach.
+ * too. Every class here is `max-md:`, because from `md` up the rail is a
+ * column unless `collapsed` takes it out of the layout.
  */
 const drawerClosedClass = "max-md:invisible max-md:-translate-x-full max-md:opacity-0";
 
 /**
- * A rail row: dense, one line, and instant. The press scale is the only
- * movement — opening a thread is a navigation, and a control reached this often
- * should not make the analyst wait for a transition to finish before the next
- * one is readable. `data-thread-row` carries the hover paint, which
- * `globals.css` gates to a fine pointer so a tap does not leave a row lit.
+ * A rail row: one line, and instant. On the drawer the hit area is thumb-sized
+ * (`h-11`); the desktop column stays the dense `h-8` so a long list stays
+ * scannable. The press scale is the only movement — opening a thread is a
+ * navigation, and a control reached this often should not make the analyst wait
+ * for a transition to finish before the next one is readable. `data-thread-row`
+ * carries the hover paint, which `globals.css` gates to a fine pointer so a tap
+ * does not leave a row lit.
  */
 const rowClass =
-  "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] text-sidebar-foreground/70 no-underline transition-[transform,background-color,color] duration-[120ms] ease-[var(--ease-out)] active:scale-[0.97]";
+  "flex h-11 md:h-8 items-center gap-2 rounded-md px-2 text-[13px] text-sidebar-foreground/70 no-underline transition-[transform,background-color,color] duration-[120ms] ease-[var(--ease-out)] active:scale-[0.97]";
 
 const currentRowClass = "bg-sidebar-accent text-sidebar-accent-foreground";
 
 /**
- * Recents as a persistent left column (issue #32; PRD story 17): the analyst's
- * threads by first question, and New thread above them. On a narrow viewport
- * the same rail is a drawer `ThreadRailToggle` opens.
+ * Recents as a left column (issue #55 / #32; PRD story 17): the analyst's
+ * threads by first question, and New thread above them. A header control
+ * collapses the column from `md` up; on a narrow viewport the same rail is a
+ * drawer that control opens.
  */
 export function ThreadRail({
   threads,
   openThreadId,
   open,
+  collapsed,
   onClose,
 }: {
   threads: readonly ThreadSummary[];
   openThreadId: string | null;
   /** Whether the narrow-viewport drawer is showing. Ignored from `md` up. */
   open: boolean;
+  /** Whether the desktop column is out of the layout. Ignored under `md`. */
+  collapsed: boolean;
   /** Closes the drawer, once a destination is picked or the scrim is tapped. */
   onClose: () => void;
 }) {
   const { newThread, rows } = threadRail(threads, openThreadId);
 
+  // The drawer flag is only an overlay under `md`. Crossing that breakpoint
+  // with it still true would leave the transcript `inert` on desktop.
+  useEffect(() => {
+    const column = window.matchMedia(RAIL_COLUMN_MEDIA);
+    function onChange(event: MediaQueryListEvent) {
+      if (event.matches) {
+        onClose();
+      }
+    }
+    column.addEventListener("change", onChange);
+    return () => column.removeEventListener("change", onChange);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (recentsDrawerKey(event.key, open) !== "dismiss") {
+        return;
+      }
+      event.preventDefault();
+      onClose();
+      document.getElementById(DRAWER_TOGGLE_ID)?.focus();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   return (
     <>
       <aside
         id={RAIL_ID}
-        className={cn(railClass, drawerClass, open ? drawerOpenClass : drawerClosedClass)}
+        className={cn(
+          railClass,
+          drawerClass,
+          open ? drawerOpenClass : drawerClosedClass,
+          collapsed && "md:hidden",
+        )}
       >
         <div className="p-2">
           <RailLink destination={newThread} onClose={onClose}>
@@ -126,16 +172,57 @@ export function ThreadRail({
 }
 
 /**
- * The header control for the drawer, and only for the drawer: from `md` up the
- * rail is a column that is always on screen, so the control is not there.
+ * The header recents control: one for the narrow drawer, one for the desktop
+ * column. Only one is drawn at a given width, so the bar still has a single
+ * leading control, and each keeps an `aria-expanded` that matches what that
+ * viewport actually shows.
  */
-export function ThreadRailToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+export function ThreadRailToggle({
+  open,
+  onToggle,
+  collapsed,
+  onCollapsedToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  collapsed: boolean;
+  onCollapsedToggle: () => void;
+}) {
+  return (
+    <>
+      <RailToggle
+        id={DRAWER_TOGGLE_ID}
+        open={open}
+        onToggle={onToggle}
+        className="md:hidden"
+      />
+      <RailToggle
+        open={!collapsed}
+        onToggle={onCollapsedToggle}
+        className="max-md:hidden"
+      />
+    </>
+  );
+}
+
+function RailToggle({
+  id,
+  open,
+  onToggle,
+  className,
+}: {
+  id?: string;
+  open: boolean;
+  onToggle: () => void;
+  className: string;
+}) {
   return (
     <Button
+      id={id}
       type="button"
       variant="ghost"
       size="icon-sm"
-      className="md:hidden"
+      className={className}
       aria-expanded={open}
       aria-controls={RAIL_ID}
       onClick={onToggle}

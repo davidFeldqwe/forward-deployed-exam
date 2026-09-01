@@ -37,8 +37,11 @@ export function Chat({
   // landed changes it, and so does opening a different thread.
   const transcriptKey = `${threadId ?? ""}:${messages.length}`;
 
-  // The rail is a drawer only below `md`; from there up the classes ignore it.
+  // The rail is a drawer only below `md`; from there up `collapsed` hides the
+  // column. Each starts in the state that width already showed: drawer closed,
+  // column on screen.
   const [railOpen, setRailOpen] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
 
   const [draft, setDraft] = useState(initialPrompt ?? "");
   // Asking inside an open thread redirects back to the same route, so React
@@ -68,23 +71,31 @@ export function Chat({
       <SiteHeader
         signedIn
         current="chat"
-        leading={<ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />}
+        leading={
+          <ThreadRailToggle
+            open={railOpen}
+            onToggle={() => setRailOpen((wasOpen) => !wasOpen)}
+            collapsed={railCollapsed}
+            onCollapsedToggle={() => setRailCollapsed((wasCollapsed) => !wasCollapsed)}
+          />
+        }
         status={<ComparisonWindow />}
       />
 
-      {/* The rail is a column of its own from `md` up, and a drawer over the
-          transcript below it. */}
+      {/* The rail is a column of its own from `md` up unless collapsed, and a
+          drawer over the transcript below it. */}
       <div className="flex min-h-0 flex-1">
         <ThreadRail
           threads={recents}
           openThreadId={threadId}
           open={railOpen}
+          collapsed={railCollapsed}
           onClose={() => setRailOpen(false)}
         />
 
         {/* Transcript and composer are one form, so the pending answer above the
             composer can read the same submission `useFormStatus` reports on. */}
-        <form action={askQuestion} className="flex min-h-0 flex-1 flex-col">
+        <form action={askQuestion} className="flex min-h-0 flex-1 flex-col" inert={railOpen}>
           {threadId ? <input type="hidden" name="threadId" value={threadId} /> : null}
           <main
             ref={transcriptPane}

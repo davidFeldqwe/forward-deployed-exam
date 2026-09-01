@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { CHAT_PATH, chatDestination } from "./auth-gate.ts";
 import { chatCopy } from "./chat-copy.ts";
-import { threadRail } from "./thread-rail.ts";
+import { RAIL_COLUMN_MEDIA, recentsDrawerKey, threadRail } from "./thread-rail.ts";
 import type { ThreadSummary } from "./thread-store.ts";
 
 const web = new URL("../", import.meta.url);
@@ -63,6 +63,17 @@ test("empty recents still offers New thread, and the copy explains the empty lis
   assert.match(chatCopy.noRecentsLabel, /ask a question to start one/i);
 });
 
+test("Escape dismisses an open recents drawer, and nothing else does", () => {
+  assert.equal(recentsDrawerKey("Escape", true), "dismiss");
+  assert.equal(recentsDrawerKey("Escape", false), null);
+  assert.equal(recentsDrawerKey("Tab", true), null);
+  assert.equal(recentsDrawerKey("Enter", true), null);
+});
+
+test("the recents column starts at Tailwind md, the same width the drawer ends", () => {
+  assert.equal(RAIL_COLUMN_MEDIA, "(min-width: 768px)");
+});
+
 test("the rail is a labelled list of thread links, and marks the open one", () => {
   const rail = source("components/ThreadRail.tsx");
 
@@ -112,29 +123,68 @@ test("switching threads is instant; only the narrow-viewport drawer slides", () 
   assert.match(rail, /motion-reduce:max-md:transition-\[opacity,visibility\]/);
 });
 
-test("the shared header leads with the drawer control and keeps the window", () => {
+test("the shared header leads with the recents control and keeps the window", () => {
   const chat = source("components/Chat.tsx");
 
   // `\b` after `ThreadRail`: the rail itself, not the header control for it.
   assert.match(chat, /<ThreadRail\b/);
-  assert.match(chat, /leading=\{<ThreadRailToggle/);
+  assert.match(chat, /<ThreadRailToggle/);
   // The window is the shared bar's now, handed to its `status` slot; the
   // header's own test pins the strings.
   assert.match(chat, /status=\{<ComparisonWindow/);
 });
 
-test("the drawer control names the list it opens, and points at that same list", () => {
+test("the recents control names the list it opens, and points at that same list", () => {
   const rail = source("components/ThreadRail.tsx");
 
   // One id shared by the rail and the control, so `aria-controls` cannot drift
   // away from the element it names.
   assert.match(rail, /id=\{RAIL_ID\}/);
   assert.match(rail, /aria-controls=\{RAIL_ID\}/);
-  // The control says whether the drawer is open, and is gone from `md` up.
   assert.match(rail, /aria-expanded=\{open\}/);
+  // The drawer control is still only the narrow viewport; desktop has its own.
   assert.match(rail, /md:hidden/);
   assert.match(rail, /chatCopy\.showRecentsLabel/);
   assert.match(rail, /chatCopy\.hideRecentsLabel/);
+});
+
+test("on a desktop-width viewport a top control hides the recents column", () => {
+  const rail = source("components/ThreadRail.tsx");
+  const chat = source("components/Chat.tsx");
+
+  // The header still leads with the control, now at md as well as the drawer.
+  assert.match(rail, /max-md:hidden/);
+  assert.match(chat, /collapsed/);
+  // Collapsed, the column is `display: none` from md up, so the transcript's
+  // `flex-1` is the remaining width. Instant: no slide on that breakpoint.
+  assert.match(rail, /collapsed && "md:hidden"/);
+  assert.match(chat, /flex min-h-0 flex-1 flex-col/);
+  // Collapse is `display: none` from md, not a transform the drawer already uses.
+  assert.doesNotMatch(rail, /(?<!max-)md:(?:translate|transition)/);
+});
+
+test("recents rows are a thumb-sized tap on the drawer, still dense on desktop", () => {
+  const rail = source("components/ThreadRail.tsx");
+
+  // ~44px on the drawer (`h-11`); the desktop column stays the dense `h-8` row.
+  assert.match(rail, /h-11 md:h-8/);
+  assert.doesNotMatch(rail, /"flex h-8 /);
+});
+
+test("the recents drawer dismisses on Escape and returns to the header control", () => {
+  const rail = source("components/ThreadRail.tsx");
+  const chat = source("components/Chat.tsx");
+
+  assert.match(rail, /recentsDrawerKey\(/);
+  assert.match(rail, /DRAWER_TOGGLE_ID/);
+  assert.match(rail, /\.focus\(/);
+  // Crossing `md` must drop the drawer flag, or the transcript stays inert.
+  assert.match(rail, /matchMedia\(RAIL_COLUMN_MEDIA\)/);
+  // The transcript under the scrim cannot take Tab: that is how a keyboard
+  // user would otherwise land in the composer with no Escape path back.
+  assert.match(chat, /inert=\{railOpen\}/);
+  // Escape is the way out; we do not trap focus inside a modal with no close.
+  assert.doesNotMatch(rail, /aria-modal|focus-trap|focusTrap/);
 });
 
 test("the header recents menu is gone", () => {

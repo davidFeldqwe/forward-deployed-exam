@@ -114,7 +114,7 @@ test("the thread rail is Recents and New thread, in the glossary's words", () =>
   assert.equal(chatCopy.recentsLabel, "Recents");
   assert.equal(chatCopy.newThreadLabel, "New thread");
   assert.match(chatCopy.noRecentsLabel, /No threads yet/);
-  // The narrow-viewport control names the same list it slides in.
+  // The narrow-viewport control names the same list it shows and hides.
   assert.match(chatCopy.showRecentsLabel, /recents/i);
   assert.match(chatCopy.hideRecentsLabel, /recents/i);
 
