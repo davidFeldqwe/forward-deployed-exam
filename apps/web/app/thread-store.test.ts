@@ -42,68 +42,68 @@ function textsOf(thread: Thread | null): string[] {
   return (thread?.messages ?? []).map((message) => message.text);
 }
 
-test("a thread survives a later read, titled with its first user question", () => {
+test("a thread survives a later read, titled with its first user question", async () => {
   const analyst = "refresh@example.com";
-  const started = startThread(analyst, `  ${NEW_ENGLAND}  `);
+  const started = (await startThread(analyst, `  ${NEW_ENGLAND}  `))!;
 
-  const reread = readThread(analyst, started.id);
+  const reread = await readThread(analyst, started.id);
 
   assert.equal(reread?.title, NEW_ENGLAND);
   assert.equal(reread?.ownerEmail, analyst);
   assert.deepEqual(reread?.messages, [userMessage(NEW_ENGLAND)]);
-  assert.deepEqual(listThreads(analyst), [{ id: started.id, title: NEW_ENGLAND }]);
+  assert.deepEqual(await listThreads(analyst), [{ id: started.id, title: NEW_ENGLAND }]);
 });
 
-test("a thread belongs to its owner: nobody else can read, list, or append to it", () => {
+test("a thread belongs to its owner: nobody else can read, list, or append to it", async () => {
   const owner = "owner@example.com";
   const other = "other@example.com";
-  const thread = startThread(owner, NEW_ENGLAND);
+  const thread = (await startThread(owner, NEW_ENGLAND))!;
 
-  assert.equal(readThread(other, thread.id), null);
-  assert.equal(appendMessage(other, thread.id, assistantMessage("stolen")), null);
-  assert.deepEqual(listThreads(other), []);
-  assert.equal(latestThreadId(other), null);
-  assert.deepEqual(readThread(owner, thread.id)?.messages, [userMessage(NEW_ENGLAND)]);
+  assert.equal(await readThread(other, thread.id), null);
+  assert.equal(await appendMessage(other, thread.id, assistantMessage("stolen")), null);
+  assert.deepEqual(await listThreads(other), []);
+  assert.equal(await latestThreadId(other), null);
+  assert.deepEqual((await readThread(owner, thread.id))?.messages, [userMessage(NEW_ENGLAND)]);
 });
 
-test("the owner is the account, however they typed their email at sign-in", () => {
-  const thread = startThread("Analyst@Example.com", NEW_ENGLAND);
+test("the owner is the account, however they typed their email at sign-in", async () => {
+  const thread = (await startThread("Analyst@Example.com", NEW_ENGLAND))!;
 
-  assert.equal(readThread("  analyst@example.com ", thread.id)?.id, thread.id);
+  assert.equal((await readThread("  analyst@example.com ", thread.id))?.id, thread.id);
   assert.equal(thread.ownerEmail, "analyst@example.com");
 });
 
-test("a new thread starts a new conversation instead of appending to the old ranking", () => {
+test("a new thread starts a new conversation instead of appending to the old ranking", async () => {
   const analyst = "newthread@example.com";
-  const first = startThread(analyst, NEW_ENGLAND);
-  const second = startThread(analyst, "What is long-haul share out of Anchorage?");
+  const first = (await startThread(analyst, NEW_ENGLAND))!;
+  const second = (await startThread(analyst, "What is long-haul share out of Anchorage?"))!;
 
   assert.notEqual(second.id, first.id);
-  assert.equal(readThread(analyst, first.id)?.messages.length, 1);
-  assert.equal(latestThreadId(analyst), second.id);
+  assert.equal((await readThread(analyst, first.id))?.messages.length, 1);
+  assert.equal(await latestThreadId(analyst), second.id);
   assert.deepEqual(
-    listThreads(analyst).map((summary) => summary.title),
+    (await listThreads(analyst)).map((summary) => summary.title),
     ["What is long-haul share out of Anchorage?", NEW_ENGLAND],
   );
 });
 
-test("recents puts the thread the analyst last spoke in first", () => {
+test("recents puts the thread the analyst last spoke in first", async () => {
   const analyst = "recents@example.com";
-  const first = startThread(analyst, NEW_ENGLAND);
-  const second = startThread(analyst, "How much unmet flight demand is there at SFO?");
+  const first = (await startThread(analyst, NEW_ENGLAND))!;
+  const second = (await startThread(analyst, "How much unmet flight demand is there at SFO?"))!;
 
-  appendMessage(analyst, first.id, assistantMessage("BOS leads at composite 79."));
+  await appendMessage(analyst, first.id, assistantMessage("BOS leads at composite 79."));
 
-  assert.equal(latestThreadId(analyst), first.id);
+  assert.equal(await latestThreadId(analyst), first.id);
   assert.deepEqual(
-    listThreads(analyst).map((summary) => summary.id),
+    (await listThreads(analyst)).map((summary) => summary.id),
     [first.id, second.id],
   );
 });
 
-test("an appended message is stored whole, and a broken payload is refused", () => {
+test("an appended message is stored whole, and a broken payload is refused", async () => {
   const analyst = "append@example.com";
-  const thread = startThread(analyst, NEW_ENGLAND);
+  const thread = (await startThread(analyst, NEW_ENGLAND))!;
   const answer = assistantMessage("BOS leads at composite 79.", [
     {
       tool: "describeMethodology",
@@ -113,7 +113,7 @@ test("an appended message is stored whole, and a broken payload is refused", () 
     },
   ]);
 
-  assert.deepEqual(appendMessage(analyst, thread.id, answer)?.messages, [
+  assert.deepEqual((await appendMessage(analyst, thread.id, answer))?.messages, [
     userMessage(NEW_ENGLAND),
     answer,
   ]);
@@ -121,29 +121,29 @@ test("an appended message is stored whole, and a broken payload is refused", () 
   const broken = assistantMessage("prose", [
     { tool: "queryAirports", args: {}, result: { rows: [{ iata: "BOS" }] }, durationMs: 9 },
   ]);
-  assert.equal(appendMessage(analyst, thread.id, broken), null);
-  assert.equal(readThread(analyst, thread.id)?.messages.length, 2);
+  assert.equal(await appendMessage(analyst, thread.id, broken), null);
+  assert.equal((await readThread(analyst, thread.id))?.messages.length, 2);
 });
 
-test("a stored thread is a copy, so a caller cannot reach into the store", () => {
+test("a stored thread is a copy, so a caller cannot reach into the store", async () => {
   const analyst = "copy@example.com";
-  const thread = startThread(analyst, NEW_ENGLAND);
+  const thread = (await startThread(analyst, NEW_ENGLAND))!;
   const methodology: ToolCall = {
     tool: "describeMethodology",
     args: { of: "weights" },
     result: {},
     durationMs: 4,
   };
-  appendMessage(analyst, thread.id, assistantMessage("Weights are fixed.", [methodology]));
+  await appendMessage(analyst, thread.id, assistantMessage("Weights are fixed.", [methodology]));
 
-  const handedOut = readThread(analyst, thread.id)!;
+  const handedOut = (await readThread(analyst, thread.id))!;
   handedOut.title = "renamed";
   handedOut.messages.push(assistantMessage("not persisted"));
   // A tool payload is nested, so a shallow copy would hand out the store's own.
   handedOut.messages[1]!.toolCalls[0]!.args.of = "edited through the snapshot";
   methodology.args.of = "edited through the message that was appended";
 
-  const reread = readThread(analyst, thread.id);
+  const reread = await readThread(analyst, thread.id);
   assert.equal(reread?.title, NEW_ENGLAND);
   assert.equal(reread?.messages.length, 2);
   assert.deepEqual(reread?.messages[1]?.toolCalls, [
@@ -155,10 +155,10 @@ test("a stored thread is a copy, so a caller cannot reach into the store", () =>
 // committed universe holds a territory airport — SJU, which the Census Bureau
 // files under no division. A store check stricter than the snapshot refused the
 // whole answer, so the analyst got a thread with the question and no ranking.
-test("a territory airport's answer stores on the thread and draws again as a ranking row", () => {
+test("a territory airport's answer stores on the thread and draws again as a ranking row", async () => {
   const analyst = "territory@example.com";
   const args = { iata: "SJU" };
-  const thread = startThread(analyst, "Is San Juan a renovation-investment candidate?");
+  const thread = (await startThread(analyst, "Is San Juan a renovation-investment candidate?"))!;
   const call: ToolCall = {
     tool: "queryAirports",
     args,
@@ -167,11 +167,11 @@ test("a territory airport's answer stores on the thread and draws again as a ran
   };
 
   assert.notEqual(
-    appendMessage(analyst, thread.id, assistantMessage("SJU is one row.", [call])),
+    await appendMessage(analyst, thread.id, assistantMessage("SJU is one row.", [call])),
     null,
   );
 
-  const stored = readThread(analyst, thread.id)?.messages[1]?.toolCalls[0];
+  const stored = (await readThread(analyst, thread.id))?.messages[1]?.toolCalls[0];
   assert.equal(rankingRows(stored)?.[0]?.region, null);
   assert.deepEqual(
     rankingView(stored)?.rows.map((row) => row.iata),
@@ -179,8 +179,8 @@ test("a territory airport's answer stores on the thread and draws again as a ran
   );
 });
 
-test("an unknown thread id is not found rather than fabricated", () => {
-  assert.equal(readThread("nobody@example.com", "nosuchthread"), null);
+test("an unknown thread id is not found rather than fabricated", async () => {
+  assert.equal(await readThread("nobody@example.com", "nosuchthread"), null);
 });
 
 test("two copies of this module share one store, as Next's route bundles are", async () => {
@@ -191,42 +191,42 @@ test("two copies of this module share one store, as Next's route bundles are", a
   const asThePage = await import("./thread-store.ts?bundle=page");
 
   const analyst = "twobundles@example.com";
-  const started = asTheAction.startThread(analyst, NEW_ENGLAND);
+  const started = (await asTheAction.startThread(analyst, NEW_ENGLAND))!;
 
-  assert.equal(asThePage.readThread(analyst, started.id)?.title, NEW_ENGLAND);
-  assert.equal(asThePage.latestThreadId(analyst), started.id);
+  assert.equal((await asThePage.readThread(analyst, started.id))?.title, NEW_ENGLAND);
+  assert.equal(await asThePage.latestThreadId(analyst), started.id);
 });
 
-test("a thread needs a first question: a blank one is refused, not stored untitled", () => {
+test("a thread needs a first question: a blank one is refused, not stored untitled", async () => {
   // Recents shows the first user question, so a thread with no question is a
   // blank row that opens a blank transcript. `appendMessage` already refuses a
   // message that cannot render; starting one is held to the same rule.
   const analyst = "blank@example.com";
 
-  assert.equal(startThread(analyst, "   \n\t "), null);
-  assert.deepEqual(listThreads(analyst), []);
-  assert.equal(latestThreadId(analyst), null);
+  assert.equal(await startThread(analyst, "   \n\t "), null);
+  assert.deepEqual(await listThreads(analyst), []);
+  assert.equal(await latestThreadId(analyst), null);
 });
 
-test("a question sent to a thread that is gone opens a new one instead of vanishing", () => {
+test("a question sent to a thread that is gone opens a new one instead of vanishing", async () => {
   // The composer posts the open thread id in a hidden field, so a thread this
   // account never owned — a forged id, or one Convex no longer has — used to
   // send the analyst to an empty chat with their question dropped on the floor.
   const analyst = "restarted@example.com";
 
-  const thread = recordQuestion(analyst, "athreadthatisgone", NEW_ENGLAND);
+  const thread = await recordQuestion(analyst, "athreadthatisgone", NEW_ENGLAND);
 
   assert.notEqual(thread, null);
   assert.equal(thread?.title, NEW_ENGLAND);
   assert.deepEqual(thread?.messages, [userMessage(NEW_ENGLAND)]);
-  assert.equal(latestThreadId(analyst), thread?.id);
+  assert.equal(await latestThreadId(analyst), thread?.id);
 });
 
-test("a question with an open thread the analyst owns is appended to it", () => {
+test("a question with an open thread the analyst owns is appended to it", async () => {
   const analyst = "followup@example.com";
-  const thread = startThread(analyst, NEW_ENGLAND)!;
+  const thread = (await startThread(analyst, NEW_ENGLAND))!;
 
-  const same = recordQuestion(analyst, thread.id, "And the second one?");
+  const same = await recordQuestion(analyst, thread.id, "And the second one?");
 
   assert.equal(same?.id, thread.id);
   assert.equal(same?.title, NEW_ENGLAND);
@@ -234,30 +234,30 @@ test("a question with an open thread the analyst owns is appended to it", () => 
     userMessage(NEW_ENGLAND),
     userMessage("And the second one?"),
   ]);
-  assert.deepEqual(listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
+  assert.deepEqual(await listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
 });
 
-test("a question aimed at someone else's thread opens the asker's own, leaving theirs alone", () => {
+test("a question aimed at someone else's thread opens the asker's own, leaving theirs alone", async () => {
   const owner = "owner-untouched@example.com";
   const other = "forger@example.com";
-  const theirs = startThread(owner, NEW_ENGLAND)!;
+  const theirs = (await startThread(owner, NEW_ENGLAND))!;
 
-  const mine = recordQuestion(other, theirs.id, "What is long-haul share out of Anchorage?");
+  const mine = await recordQuestion(other, theirs.id, "What is long-haul share out of Anchorage?");
 
   assert.notEqual(mine?.id, theirs.id);
   assert.equal(mine?.title, "What is long-haul share out of Anchorage?");
-  assert.deepEqual(readThread(owner, theirs.id)?.messages, [userMessage(NEW_ENGLAND)]);
-  assert.deepEqual(listThreads(owner), [{ id: theirs.id, title: NEW_ENGLAND }]);
+  assert.deepEqual((await readThread(owner, theirs.id))?.messages, [userMessage(NEW_ENGLAND)]);
+  assert.deepEqual(await listThreads(owner), [{ id: theirs.id, title: NEW_ENGLAND }]);
 });
 
-test("a blank question is refused whether or not a thread is open", () => {
+test("a blank question is refused whether or not a thread is open", async () => {
   const analyst = "blankask@example.com";
-  const thread = startThread(analyst, NEW_ENGLAND)!;
+  const thread = (await startThread(analyst, NEW_ENGLAND))!;
 
-  assert.equal(recordQuestion(analyst, thread.id, "  \n "), null);
-  assert.equal(recordQuestion(analyst, null, ""), null);
-  assert.equal(readThread(analyst, thread.id)?.messages.length, 1);
-  assert.deepEqual(listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
+  assert.equal(await recordQuestion(analyst, thread.id, "  \n "), null);
+  assert.equal(await recordQuestion(analyst, null, ""), null);
+  assert.equal((await readThread(analyst, thread.id))?.messages.length, 1);
+  assert.deepEqual(await listThreads(analyst), [{ id: thread.id, title: NEW_ENGLAND }]);
 });
 
 // #60: the composer holds Send while a question is in flight, but a second tab
@@ -266,7 +266,7 @@ test("a blank question is refused whether or not a thread is open", () => {
 // answers, leaving the reply to the first question sitting under the second.
 test("two overlapping asks on one thread keep each answer under its own question", async () => {
   const analyst = "overlap@example.com";
-  const opened = startThread(analyst, NEW_ENGLAND)!;
+  const opened = (await startThread(analyst, NEW_ENGLAND))!;
   const turns = [gate(), gate()];
   const asked: string[][] = [];
   const answer = async (thread: Thread) => {
@@ -282,7 +282,7 @@ test("two overlapping asks on one thread keep each answer under its own question
   // The second ask has not run, and its question is not stored yet either: one
   // ask holds this thread from the question to the answer under it.
   assert.deepEqual(asked, [[NEW_ENGLAND, "Which is first?"]]);
-  assert.deepEqual(textsOf(readThread(analyst, opened.id)), [NEW_ENGLAND, "Which is first?"]);
+  assert.deepEqual(textsOf(await readThread(analyst, opened.id)), [NEW_ENGLAND, "Which is first?"]);
 
   for (const turn of turns) {
     turn.release();
@@ -308,8 +308,8 @@ test("two overlapping asks on one thread keep each answer under its own question
 
 test("an ask waits on its own thread only, not on every thread the analyst has", async () => {
   const analyst = "twothreads@example.com";
-  const busy = startThread(analyst, NEW_ENGLAND)!;
-  const free = startThread(analyst, "How much unmet flight demand is there at SFO?")!;
+  const busy = (await startThread(analyst, NEW_ENGLAND))!;
+  const free = (await startThread(analyst, "How much unmet flight demand is there at SFO?"))!;
   const inFlight = gate();
 
   const slow = askOnThread(analyst, busy.id, "Hold this thread.", async () => {
@@ -331,7 +331,7 @@ test("an ask waits on its own thread only, not on every thread the analyst has",
 
 test("an ask that fails hands the thread on rather than wedging it shut", async () => {
   const analyst = "failedask@example.com";
-  const opened = startThread(analyst, NEW_ENGLAND)!;
+  const opened = (await startThread(analyst, NEW_ENGLAND))!;
 
   await assert.rejects(
     askOnThread(analyst, opened.id, "The one that fails?", async () => {
@@ -358,7 +358,7 @@ test("an ask that fails hands the thread on rather than wedging it shut", async 
 // left it, so the analyst saw their own question and silence under it.
 test("an answer the store refuses still leaves a reply under the question", async () => {
   const analyst = "refusedanswer@example.com";
-  const opened = startThread(analyst, NEW_ENGLAND)!;
+  const opened = (await startThread(analyst, NEW_ENGLAND))!;
 
   const thread = await askOnThread(analyst, opened.id, "Which are candidates?", async () =>
     assistantMessage("BOS leads at composite 79.", [
@@ -375,19 +375,19 @@ test("an answer the store refuses still leaves a reply under the question", asyn
   // Nor does the line that replaces it quote a number, so there is nothing in
   // the transcript to read as a score the screen returned.
   assert.doesNotMatch(UNSTORABLE_ANSWER, /\d/);
-  assert.deepEqual(textsOf(readThread(analyst, opened.id)), textsOf(thread));
+  assert.deepEqual(textsOf(await readThread(analyst, opened.id)), textsOf(thread));
 });
 
 test("a blank ask is refused before the agent is run at all", async () => {
   const analyst = "blankaskrun@example.com";
-  const opened = startThread(analyst, NEW_ENGLAND)!;
+  const opened = (await startThread(analyst, NEW_ENGLAND))!;
 
   const refused = await askOnThread(analyst, opened.id, "  \n ", async () => {
     assert.fail("a question with nothing in it must not reach the agent");
   });
 
   assert.equal(refused, null);
-  assert.deepEqual(textsOf(readThread(analyst, opened.id)), [NEW_ENGLAND]);
+  assert.deepEqual(textsOf(await readThread(analyst, opened.id)), [NEW_ENGLAND]);
 });
 
 test("the lock is on the store, so both of Next's bundles take one turn each", async () => {
@@ -398,7 +398,7 @@ test("the lock is on the store, so both of Next's bundles take one turn each", a
   const asThePage = await import("./thread-store.ts?bundle=page");
 
   const analyst = "bundledask@example.com";
-  const opened = asTheAction.startThread(analyst, NEW_ENGLAND)!;
+  const opened = (await asTheAction.startThread(analyst, NEW_ENGLAND))!;
   const inFlight = gate();
   let pageAskRan = false;
 

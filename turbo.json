@@ -1,5 +1,16 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_MODEL",
+    "OPENAI_MODEL",
+    "AUTOCOMPLETE_MODEL",
+    "MOCK_LLM",
+    "AUTH_SECRET",
+    "CONVEX_URL",
+    "CONVEX_DEPLOY_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

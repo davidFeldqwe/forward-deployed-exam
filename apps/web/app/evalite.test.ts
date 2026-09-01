@@ -14,12 +14,20 @@ type Manifest = { scripts?: Record<string, string> };
 const webManifest = JSON.parse(readFileSync(new URL("package.json", web), "utf8")) as Manifest;
 const rootManifest = JSON.parse(readFileSync(new URL("package.json", repo), "utf8")) as Manifest;
 const turbo = JSON.parse(readFileSync(new URL("turbo.json", repo), "utf8")) as {
+  globalEnv?: string[];
   tasks?: Record<string, unknown>;
 };
 const gitignore = readFileSync(new URL(".gitignore", repo), "utf8");
 const workflow = readFileSync(new URL(".github/workflows/ci.yml", repo), "utf8");
 const evalScript = readFileSync(new URL("evals/run.ts", web), "utf8");
 const evalCase = readFileSync(new URL("evals/new-england.eval.ts", web), "utf8");
+
+test("turbo passes the Vercel-hosted secrets through to the web build", () => {
+  const env = turbo.globalEnv ?? [];
+  for (const name of [ANTHROPIC_KEY, OPENAI_KEY, "AUTH_SECRET", "CONVEX_URL", "CONVEX_DEPLOY_KEY"]) {
+    assert.ok(env.includes(name), `${name} is in turbo.json globalEnv`);
+  }
+});
 
 test("Evalite is a dedicated eval script, not turbo or pnpm test", () => {
   assert.ok(webManifest.scripts?.eval, "apps/web declares an eval script");

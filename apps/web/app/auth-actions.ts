@@ -24,8 +24,8 @@ export async function submitLogin(
   const password = textField(formData, "password");
   const result =
     textField(formData, "mode") === "signUp"
-      ? createAccount(email, password)
-      : authenticate(email, password);
+      ? await createAccount(email, password)
+      : await authenticate(email, password);
 
   if (!result.ok) {
     return { email, errors: result.errors };

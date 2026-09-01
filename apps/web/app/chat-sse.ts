@@ -75,6 +75,7 @@ export async function chatSseResponse(request: Request, ask: ChatSseAsk): Promis
     headers: {
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-cache, no-transform",
+      "x-accel-buffering": "no",
     },
   });
 }

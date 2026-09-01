@@ -67,7 +67,7 @@ test("a signed-out POST is sent to login and is not an event stream", async () =
 });
 
 test("a signed-in ask streams SSE, stores the question first, then one Thread answer", async () => {
-  const opened = startThread(ANALYST, "How congested is BOS?")!;
+  const opened = (await startThread(ANALYST, "How congested is BOS?"))!;
   let vendorSaw: string[] = [];
 
   const response = await chatSseResponse(askRequest(QUESTION, opened.id), {
@@ -77,8 +77,8 @@ test("a signed-in ask streams SSE, stores the question first, then one Thread an
       vendorSaw = request.messages.map((turn) => turn.content);
       // The question is already in the thread the model is asked about.
       assert.ok(vendorSaw.includes(QUESTION));
-      assert.equal(readThread(ANALYST, opened.id)?.messages.at(-1)?.role, "user");
-      assert.equal(readThread(ANALYST, opened.id)?.messages.at(-1)?.text, QUESTION);
+      assert.equal((await readThread(ANALYST, opened.id))?.messages.at(-1)?.role, "user");
+      assert.equal((await readThread(ANALYST, opened.id))?.messages.at(-1)?.text, QUESTION);
 
       onEvent?.({ type: "tool", call: rankingCall });
       onEvent?.({ type: "text", delta: "PVD leads" });
@@ -99,7 +99,7 @@ test("a signed-in ask streams SSE, stores the question first, then one Thread an
   assert.equal(events[1]?.type === "tool" && events[1].call.tool, "queryAirports");
   assert.equal(events.at(-1)?.type === "done" && events.at(-1).threadId, opened.id);
 
-  const stored = readThread(ANALYST, opened.id);
+  const stored = await readThread(ANALYST, opened.id);
   assert.deepEqual(
     stored?.messages.map((message) => message.role),
     ["user", "user", "assistant"],
@@ -113,7 +113,7 @@ test("a signed-in ask streams SSE, stores the question first, then one Thread an
 });
 
 test("a failed model still leaves the question in the thread", async () => {
-  const opened = startThread(ANALYST, "Compare LAX and SNA.")!;
+  const opened = (await startThread(ANALYST, "Compare LAX and SNA."))!;
 
   const response = await chatSseResponse(askRequest(QUESTION, opened.id), {
     email: ANALYST,
@@ -127,7 +127,7 @@ test("a failed model still leaves the question in the thread", async () => {
   assert.equal(events[0]?.type, "question");
   assert.equal(events.at(-1)?.type, "done");
 
-  const stored = readThread(ANALYST, opened.id);
+  const stored = await readThread(ANALYST, opened.id);
   assert.equal(stored?.messages.at(-2)?.text, QUESTION);
   assert.equal(stored?.messages.at(-1)?.text, AGENT_ERROR_ANSWER);
   assert.deepEqual(stored?.messages.at(-1)?.toolCalls, []);
@@ -135,7 +135,7 @@ test("a failed model still leaves the question in the thread", async () => {
 
 test("a spend-capped SSE ask stores the question, skips the vendor, and does not rank", async () => {
   const analyst = "sse-cap@example.com";
-  const opened = startThread(analyst, "Texas candidates?")!;
+  const opened = (await startThread(analyst, "Texas candidates?"))!;
   const ip = "192.0.2.44";
   const day = Date.UTC(2026, 8, 1, 12);
   for (let n = 0; n < AGENT_ASKS_PER_EMAIL; n += 1) {
@@ -158,7 +158,7 @@ test("a spend-capped SSE ask stores the question, skips the vendor, and does not
   assert.equal(events.at(-1)?.type, "done");
   assert.ok(!events.some((event) => event.type === "tool"));
 
-  const stored = readThread(analyst, opened.id);
+  const stored = await readThread(analyst, opened.id);
   assert.equal(stored?.messages.at(-2)?.text, "And New England?");
   assert.equal(stored?.messages.at(-1)?.text, SPEND_CAP_REFUSAL);
   assert.deepEqual(stored?.messages.at(-1)?.toolCalls, []);
@@ -166,7 +166,7 @@ test("a spend-capped SSE ask stores the question, skips the vendor, and does not
 
 test("overlapping SSE asks on one thread keep each answer under its own question", async () => {
   const analyst = "sse-overlap@example.com";
-  const opened = startThread(analyst, "Open.")!;
+  const opened = (await startThread(analyst, "Open."))!;
   let releaseFirst!: () => void;
   const firstHeld = new Promise<void>((resolve) => {
     releaseFirst = resolve;
@@ -201,7 +201,7 @@ test("overlapping SSE asks on one thread keep each answer under its own question
   await secondBody;
 
   assert.deepEqual(
-    readThread(analyst, opened.id)?.messages.map((message) => message.text),
+    (await readThread(analyst, opened.id))?.messages.map((message) => message.text),
     ["Open.", "First?", "answer one", "Second?", "answer two"],
   );
 });
@@ -224,7 +224,7 @@ test("a blank ask is not a stream and does not call the vendor", async () => {
 
 test("the stored ranking is the complete queryAirports payload, not a streamed sentence", async () => {
   const analyst = "sse-rank@example.com";
-  const opened = startThread(analyst, "BOS delay?")!;
+  const opened = (await startThread(analyst, "BOS delay?"))!;
 
   const response = await chatSseResponse(askRequest(QUESTION, opened.id), {
     email: analyst,
@@ -237,7 +237,7 @@ test("the stored ranking is the complete queryAirports payload, not a streamed s
   });
 
   const events = await readEvents(response);
-  const stored = readThread(analyst, opened.id)!;
+  const stored = (await readThread(analyst, opened.id))!;
   const parts = threadAnswer(stored.messages, stored.messages.length - 1);
 
   assert.ok(parts.some((part) => part.tag === "inspect"));

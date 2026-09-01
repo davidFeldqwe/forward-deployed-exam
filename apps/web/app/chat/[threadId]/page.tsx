@@ -17,7 +17,7 @@ export default async function ThreadPage({
     redirect(loginRedirect(chatDestination(threadId)));
   }
 
-  const thread = readThread(session.email, threadId);
+  const thread = await readThread(session.email, threadId);
   if (!thread) {
     // Someone else's thread, or one Convex no longer has.
     redirect(CHAT_PATH);
@@ -27,7 +27,7 @@ export default async function ThreadPage({
     <Chat
       threadId={thread.id}
       messages={thread.messages}
-      recents={listThreads(session.email)}
+      recents={await listThreads(session.email)}
     />
   );
 }

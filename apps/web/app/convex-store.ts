@@ -1,11 +1,14 @@
 /**
  * Convex's two tables, and only those two: accounts and Threads. Airports,
  * scores, and the snapshot stay files/modules (PRD). A hosted deployment is
- * `CONVEX_URL` / `CONVEX_DEPLOY_KEY`; until those point at a live project the
- * same two documents live in `.convex/` so a process restart does not drop them.
+ * `CONVEX_URL`; until that points at a live project the same two documents
+ * live in `.convex/` so a process restart does not drop them.
  */
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { ConvexHttpClient } from "convex/browser";
+import { makeFunctionReference } from "convex/server";
 
 export const CONVEX_TABLES = ["accounts", "threads"] as const;
 
@@ -28,9 +31,25 @@ export type ConvexDocuments = {
   threads: Record<string, ConvexThread>;
 };
 
+export type ConvexBackend = {
+  getAccount(email: string): Promise<ConvexAccount | null>;
+  putAccount(account: ConvexAccount): Promise<void>;
+  getThread(threadId: string, ownerEmail: string): Promise<ConvexThread | null>;
+  putThread(thread: ConvexThread): Promise<ConvexThread | null>;
+  listThreadsByOwner(ownerEmail: string): Promise<ConvexThread[]>;
+};
+
 type ConvexHost = {
   __aiiConvexDocuments?: ConvexDocuments;
 };
+
+const accountsGet = makeFunctionReference<"query">("accounts:get");
+const accountsPut = makeFunctionReference<"mutation">("accounts:put");
+const threadsGet = makeFunctionReference<"query">("threads:get");
+const threadsListByOwner = makeFunctionReference<"query">("threads:listByOwner");
+const threadsPut = makeFunctionReference<"mutation">("threads:put");
+
+let sharedBackend: ConvexBackend | null = null;
 
 /** The hosted deployment a clone configures, when it has one. */
 export function convexEnv(): { url: string; deployKey: string } {
@@ -38,6 +57,14 @@ export function convexEnv(): { url: string; deployKey: string } {
     url: process.env.CONVEX_URL ?? "",
     deployKey: process.env.CONVEX_DEPLOY_KEY ?? "",
   };
+}
+
+/**
+ * Tests inject a fake so CI can prove a write still reads after RAM and the
+ * pid file are gone, without a live Convex project.
+ */
+export function useSharedConvexBackend(backend: ConvexBackend | null): void {
+  sharedBackend = backend;
 }
 
 function host(): ConvexHost {
@@ -122,43 +149,155 @@ export function convexThreadMap(): Record<string, ConvexThread> {
   return convexDocuments().threads;
 }
 
+function hostedConvexUrl(): string {
+  // node --test sets NODE_TEST_CONTEXT; never hit a developer's live project.
+  if (process.env.NODE_TEST_CONTEXT) {
+    return "";
+  }
+  return convexEnv().url;
+}
+
+function convexHttp(): ConvexHttpClient {
+  return new ConvexHttpClient(hostedConvexUrl(), { logger: false });
+}
+
+function parsedAccount(value: unknown): ConvexAccount | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  if (typeof value.email !== "string" || typeof value.passwordHash !== "string") {
+    return null;
+  }
+  return accountDocument({ email: value.email, passwordHash: value.passwordHash });
+}
+
+function parsedThread(value: unknown): ConvexThread | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  if (
+    typeof value.id !== "string" ||
+    typeof value.ownerEmail !== "string" ||
+    typeof value.title !== "string" ||
+    typeof value.createdAt !== "number" ||
+    typeof value.updatedAt !== "number" ||
+    !Array.isArray(value.messages)
+  ) {
+    return null;
+  }
+  return threadDocument({
+    id: value.id,
+    ownerEmail: value.ownerEmail,
+    title: value.title,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+    messages: value.messages,
+  });
+}
+
+const fileBackend: ConvexBackend = {
+  async getAccount(email) {
+    return convexAccountMap()[email] ?? null;
+  },
+  async putAccount(account) {
+    convexAccountMap()[account.email] = accountDocument(account);
+    persistConvexStore();
+  },
+  async getThread(threadId, ownerEmail) {
+    const thread = convexThreadMap()[threadId];
+    return thread && thread.ownerEmail === ownerEmail ? thread : null;
+  },
+  async putThread(thread) {
+    const threads = convexThreadMap();
+    delete threads[thread.id];
+    const stored = threadDocument({
+      ...thread,
+      messages: structuredClone(thread.messages),
+    });
+    threads[thread.id] = stored;
+    persistConvexStore();
+    return stored;
+  },
+  async listThreadsByOwner(ownerEmail) {
+    return Object.values(convexThreadMap())
+      .filter((thread) => thread.ownerEmail === ownerEmail)
+      .reverse();
+  },
+};
+
+const httpBackend: ConvexBackend = {
+  async getAccount(email) {
+    return parsedAccount(await convexHttp().query(accountsGet, { email }));
+  },
+  async putAccount(account) {
+    await convexHttp().mutation(
+      accountsPut,
+      { email: account.email, passwordHash: account.passwordHash },
+      { skipQueue: true },
+    );
+  },
+  async getThread(threadId, ownerEmail) {
+    return parsedThread(await convexHttp().query(threadsGet, { threadId, ownerEmail }));
+  },
+  async putThread(thread) {
+    const stored = await convexHttp().mutation(
+      threadsPut,
+      {
+        threadId: thread.id,
+        ownerEmail: thread.ownerEmail,
+        title: thread.title,
+        createdAt: thread.createdAt,
+        updatedAt: thread.updatedAt,
+        messages: thread.messages,
+      },
+      { skipQueue: true },
+    );
+    return parsedThread(stored);
+  },
+  async listThreadsByOwner(ownerEmail) {
+    const rows = await convexHttp().query(threadsListByOwner, { ownerEmail });
+    if (!Array.isArray(rows)) {
+      return [];
+    }
+    return rows.flatMap((row) => {
+      const thread = parsedThread(row);
+      return thread ? [thread] : [];
+    });
+  },
+};
+
+function backend(): ConvexBackend {
+  if (sharedBackend) {
+    return sharedBackend;
+  }
+  return hostedConvexUrl() ? httpBackend : fileBackend;
+}
+
 export async function getAccount(email: string): Promise<ConvexAccount | null> {
-  return convexAccountMap()[email] ?? null;
+  return backend().getAccount(email);
 }
 
 export async function putAccount(account: ConvexAccount): Promise<void> {
-  convexAccountMap()[account.email] = accountDocument(account);
-  persistConvexStore();
+  await backend().putAccount(account);
 }
 
 export async function getThread(
   threadId: string,
   ownerEmail: string,
 ): Promise<ConvexThread | null> {
-  const thread = convexThreadMap()[threadId];
-  return thread && thread.ownerEmail === ownerEmail ? thread : null;
+  return backend().getThread(threadId, ownerEmail);
 }
 
 /**
  * Inserts the Thread last so recents order is object insertion order (last
  * spoken in last, first after reverse). Extra keys on the argument are dropped.
  */
-export async function putThread(thread: ConvexThread): Promise<ConvexThread> {
-  const threads = convexThreadMap();
-  delete threads[thread.id];
-  const stored = threadDocument({
-    ...thread,
-    messages: structuredClone(thread.messages),
-  });
-  threads[thread.id] = stored;
-  persistConvexStore();
-  return stored;
+export async function putThread(thread: ConvexThread): Promise<ConvexThread | null> {
+  return backend().putThread(thread);
 }
 
 export async function listThreadsByOwner(ownerEmail: string): Promise<ConvexThread[]> {
-  return Object.values(convexThreadMap())
-    .filter((thread) => thread.ownerEmail === ownerEmail)
-    .reverse();
+  return backend().listThreadsByOwner(ownerEmail);
 }
 
 /**
@@ -184,7 +323,12 @@ export function reloadConvexStore(): void {
   delete host().__aiiConvexDocuments;
 }
 
-// Hosted Convex is configured through convexEnv(); the local file is the same
-// two tables when CONVEX_URL is unset. Reading the env here keeps the names in
-// this module so the README table cannot document a variable nothing reads.
-void convexEnv();
+/** RAM and the pid file are gone, as on a different Vercel isolate. */
+export function dropLocalConvexReplica(): void {
+  reloadConvexStore();
+  try {
+    unlinkSync(dataPath());
+  } catch {
+    // No replica on disk yet.
+  }
+}
