@@ -181,6 +181,14 @@ export function mountSkyline(
     canvas.remove();
     disposeAll(scene);
     renderer.dispose();
+    // `dispose` frees three's own caches and listeners; the GL context is a
+    // separate thing it holds, and a browser allows only a handful of live ones
+    // at a time. Without this, a visit that walks chat → map → chat → map keeps
+    // every abandoned context until the detached canvas is collected, and the
+    // skyline eventually opens on a context the browser refuses — the empty
+    // state, shown to a browser that has WebGL. Last, so the loss it announces
+    // on the canvas reaches nothing this mount still has listening.
+    renderer.forceContextLoss();
   };
 }
 

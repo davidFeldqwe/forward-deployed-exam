@@ -252,6 +252,10 @@ type FakeRenderer = {
   pixelRatio: number;
   loopStopped: boolean;
   disposed: boolean;
+  /** Whether the GL context itself was handed back, not just three's caches. */
+  contextReleased: boolean;
+  /** How many listeners were still on the canvas when it was. */
+  listenersAtRelease: number;
 };
 
 /** A canvas as far as this module and OrbitControls reach into one. */
@@ -334,6 +338,8 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
     pixelRatio: 0,
     loopStopped: false,
     disposed: false,
+    contextReleased: false,
+    listenersAtRelease: -1,
     // The loop is handed the clock the mount reads its own start from, so a
     // frame at 100 is 100 ms into the page rather than into the process.
     frame: (now) => loop?.(mountedAt + now),
@@ -356,6 +362,10 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
     },
     dispose: () => {
       renderer.disposed = true;
+    },
+    forceContextLoss: () => {
+      renderer.contextReleased = true;
+      renderer.listenersAtRelease = canvas.listeners.size;
     },
   };
 
@@ -578,7 +588,7 @@ test("a resize re-frames the view nobody has taken, and never one they have", ()
   assert.equal(camera.aspect, 780 / 390);
 });
 
-test("teardown stops the loop, drops the canvas and hands the context back", () => {
+test("teardown stops the loop, drops the canvas and frees what three holds", () => {
   const map = mountFake(true);
   map.renderer.frame(0);
 
@@ -587,7 +597,7 @@ test("teardown stops the loop, drops the canvas and hands the context back", () 
   assert.equal(map.renderer.loopStopped, true, "the animation loop is stopped");
   assert.equal(map.observerDisconnected, true, "the resize observer is disconnected");
   assert.equal(map.canvas.removed, true, "the canvas leaves the page");
-  assert.equal(map.renderer.disposed, true, "the context is handed back");
+  assert.equal(map.renderer.disposed, true, "three's own caches are freed");
   // The controls let the page's own listeners go with them, and the fit lets go
   // of the display it was watching the resolution of.
   assert.equal(map.canvas.listeners.size, 0, "no listener outlives the canvas");
@@ -643,4 +653,24 @@ test("a window carried to another display is drawn at the pixels that one has", 
   assert.equal(map.renderer.pixelRatio, 1, "the plain screen's pixels are the ones drawn");
 
   map.teardown();
+});
+
+test("teardown hands the GL context back, so the next visit has one to ask for", () => {
+  // `renderer.dispose()` frees three's own caches and drops its listeners; the
+  // GL context is a separate thing it keeps, and only `forceContextLoss` gives
+  // that back before the detached canvas is collected. A browser allows a
+  // handful of live contexts at once (Chrome drops the oldest past sixteen), so
+  // a visit that walks chat → map → chat → map holds every abandoned one: the
+  // skyline eventually opens on a context the browser refuses, which is the
+  // no-WebGL empty state shown to a browser that has WebGL.
+  const map = mountFake(true);
+  map.renderer.frame(0);
+
+  map.teardown();
+
+  assert.equal(map.renderer.contextReleased, true, "the hardware gets its context back");
+  assert.equal(map.renderer.disposed, true, "and three's own caches are freed");
+  // The loss is announced on the canvas, so it is given up only once nothing is
+  // left listening to it — a teardown must not provoke its own redraw.
+  assert.equal(map.renderer.listenersAtRelease, 0, "nothing is listening when it goes");
 });
