@@ -44,15 +44,29 @@ export function Chat({
   const [railCollapsed, setRailCollapsed] = useState(false);
 
   const [draft, setDraft] = useState(initialPrompt ?? "");
-  // Asking inside an open thread redirects back to the same route, so React
-  // reconciles rather than remounts and this controlled field would still hold
-  // the question that was just sent — one Send away from appending it twice.
+  // The pending user turn holds the question that Send just accepted. The
+  // composer itself is emptied immediately, so those words are not a second
+  // click away from posting twice, and the form still posts them via formValue.
+  const [asked, setAsked] = useState("");
+  // Opening a different thread (or the same route coming back with the landed
+  // question) must not leave either the draft or that in-flight copy behind.
   const [clearedFor, setClearedFor] = useState(transcriptKey);
   if (clearedFor !== transcriptKey) {
     setClearedFor(transcriptKey);
     setDraft("");
+    setAsked("");
   }
   const ready = draft.trim().length > 0;
+  const formValue = draft.trim().length > 0 ? draft : asked;
+
+  function acceptQuestion(): void {
+    const question = draft.trim();
+    if (question.length === 0) {
+      return;
+    }
+    setAsked(question);
+    setDraft("");
+  }
 
   // A thread that survived a refresh opens where the conversation is: at the
   // newest message, not scrolled back up to the first question.
@@ -95,7 +109,12 @@ export function Chat({
 
         {/* Transcript and composer are one form, so the pending answer above the
             composer can read the same submission `useFormStatus` reports on. */}
-        <form action={askOnChatSse} className="flex min-h-0 flex-1 flex-col" inert={railOpen}>
+        <form
+          action={askOnChatSse}
+          onSubmit={acceptQuestion}
+          className="flex min-h-0 flex-1 flex-col"
+          inert={railOpen}
+        >
           {threadId ? <input type="hidden" name="threadId" value={threadId} /> : null}
           <main
             ref={transcriptPane}
@@ -112,7 +131,7 @@ export function Chat({
               )}
               {/* A question in flight: the pending row shows no scores, so a
                   half-composite is never on screen. */}
-              <PendingAnswer question={draft} />
+              <PendingAnswer question={asked} />
             </div>
           </main>
 
@@ -122,12 +141,13 @@ export function Chat({
                 <Composer
                   id="chat-draft"
                   value={draft}
+                  formValue={formValue}
                   onChange={setDraft}
                   recentPrompts={recentUserPrompts(messages)}
                   placeholder={chatCopy.composerPlaceholder}
                   maxLength={PROMPT_MAX_LENGTH}
                 />
-                <InputGroupAddon align="inline-end">
+                <InputGroupAddon align="inline-end" className="py-0">
                   <SendButton ready={ready} />
                 </InputGroupAddon>
               </InputGroup>
@@ -140,11 +160,9 @@ export function Chat({
 }
 
 /**
- * Send, held while the question is on its way into the Thread. The composer
- * only clears once the transcript comes back with the question in it, so until
- * then a second click would post the same question again and append it twice.
- * `ready` is the trimmed draft, including a carried prompt on first paint, so a
- * valid draft is enabled in the initial HTML and an empty or in-flight one is not.
+ * Send, held while the question is on its way into the Thread. `ready` is the
+ * trimmed draft still in the field — a carried prompt on first paint is enabled
+ * in the initial HTML; an empty field or an in-flight ask is not.
  */
 function SendButton({ ready }: { ready: boolean }) {
   const { pending } = useFormStatus();

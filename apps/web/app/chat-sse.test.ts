@@ -275,7 +275,7 @@ test("the route is an authenticated POST SSE and does not import a vendor SDK", 
 
 test("composer and pending follow SSE in flight through useFormStatus", () => {
   const chat = source("../components/Chat.tsx");
-  const form = chat.indexOf("<form action={askOnChatSse}");
+  const form = chat.search(/<form[\s\S]*?action=\{askOnChatSse\}/);
   const pending = chat.indexOf("<PendingAnswer");
   const composer = chat.indexOf("<Composer");
 

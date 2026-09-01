@@ -72,13 +72,40 @@ test("empty draft cannot activate send; a ready draft stays enabled unless in fl
   assert.match(composerChrome, /send\.disabled/);
 });
 
+test("send clears the composer as soon as the question is accepted", () => {
+  // The field the analyst types in is emptied on submit. The pending user turn
+  // keeps the words; leftover composer text would look like a second Send away.
+  assert.match(chatChrome, /onSubmit=\{acceptQuestion\}/);
+  assert.match(chatChrome, /setAsked\(question\)/);
+  assert.match(chatChrome, /setDraft\(""\)/);
+  assert.match(chatChrome, /<PendingAnswer question=\{asked\}/);
+  assert.match(chatChrome, /const ready = draft\.trim\(\)\.length > 0/);
+  // The form still posts those words after the field is empty.
+  assert.match(composerChrome, /name="prompt"/);
+  assert.match(composerChrome, /value=\{formValue\}/);
+});
+
 test("a long draft wraps and scrolls inside the field instead of clipping sideways", () => {
   const field = composerChrome.match(/<ContentEditable[\s\S]*?\/>/)?.[0] ?? "";
-  assert.match(field, /min-h-9/);
+  assert.match(field, /min-h-8/);
   assert.match(field, /max-h-/);
   assert.match(field, /overflow-y-auto/);
   assert.doesNotMatch(field, /whitespace-nowrap/);
   assert.doesNotMatch(field, /overflow-y-hidden/);
+});
+
+test("placeholder and a one-line draft sit on the send control's midline", () => {
+  const field = composerChrome.match(/<ContentEditable[\s\S]*?\/>/)?.[0] ?? "";
+  const placeholder = composerChrome.match(/placeholder=\{\s*<div[\s\S]*?<\/div>/)?.[0] ?? "";
+  // The field's one-row height is the Send control (icon-sm size-8). Growing
+  // wraps downward; items-end keeps Send on that first-row midline until then.
+  assert.match(field, /min-h-8/);
+  assert.match(field, /leading-6/);
+  assert.match(field, /\[&_p\]:my-0/);
+  assert.match(placeholder, /absolute inset-0/);
+  assert.match(placeholder, /items-center/);
+  assert.match(chatChrome, /InputGroup className="[^"]*items-end/);
+  assert.match(chatChrome, /InputGroupAddon align="inline-end" className="py-0"/);
 });
 
 test("header and composer stay on screen; the transcript is the region that shrinks", () => {

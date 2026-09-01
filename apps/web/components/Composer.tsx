@@ -45,6 +45,7 @@ const editorConfig = {
 export function Composer({
   id,
   value,
+  formValue,
   onChange,
   recentPrompts,
   placeholder,
@@ -52,6 +53,7 @@ export function Composer({
 }: {
   id: string;
   value: string;
+  formValue: string;
   onChange: (value: string) => void;
   recentPrompts: readonly string[];
   placeholder: string;
@@ -59,7 +61,7 @@ export function Composer({
 }) {
   return (
     <LexicalComposer initialConfig={editorConfig}>
-      <div className="relative min-h-9 min-w-0 flex-1">
+      <div className="relative min-h-8 min-w-0 flex-1">
         <label className="sr-only" htmlFor={id}>
           {placeholder}
         </label>
@@ -69,17 +71,17 @@ export function Composer({
               id={id}
               aria-placeholder={placeholder}
               placeholder={
-                <div className="pointer-events-none absolute inset-0 z-0 flex items-center px-3 text-base text-muted-foreground md:text-base">
+                <div className="pointer-events-none absolute inset-0 z-0 flex items-center px-3 text-base leading-6 text-muted-foreground md:text-base">
                   {placeholder}
                 </div>
               }
               data-slot="input-group-control"
-              className="relative z-10 block min-h-9 max-h-32 overflow-x-hidden overflow-y-auto px-3 py-1.5 text-base break-words outline-none md:text-base"
+              className="relative z-10 block min-h-8 max-h-32 overflow-x-hidden overflow-y-auto px-3 py-1 text-base leading-6 break-words outline-none md:text-base [&_p]:my-0"
             />
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
-        <input type="hidden" name="prompt" value={value} />
+        <input type="hidden" name="prompt" value={formValue} />
       </div>
       <SyncDraftPlugin maxLength={maxLength} value={value} />
       <DraftChangePlugin maxLength={maxLength} onChange={onChange} />

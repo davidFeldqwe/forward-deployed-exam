@@ -54,7 +54,7 @@ test("the pending row draws no composite, no lamp pill and no hue", () => {
 
 test("the composer's form is what the pending answer is drawn inside", () => {
   const chat = source(THE_COMPOSER);
-  const form = chat.indexOf("<form action={askOnChatSse}");
+  const form = chat.search(/<form[\s\S]*?action=\{askOnChatSse\}/);
   const pending = chat.indexOf("<PendingAnswer");
   const composer = chat.indexOf("<Composer");
 
@@ -78,7 +78,8 @@ test("the question in flight is a user turn above the pending answer, not inside
   assert.ok(asked > 0, "the question is drawn as a user turn");
   assert.ok(asked < answering, "and before the assistant's");
   assert.ok(answering < list, "which is what the pending list is drawn under");
-  // The words under the user label are the question the composer holds.
+  // The words under the user label are the question Send just accepted, not
+  // leftover composer text.
   assert.match(pending.slice(asked, answering), /<Prose text=\{asked\}/);
   // Both sides of the same chrome: a question in flight is set like the same
   // question once it has landed in the transcript, so both files draw the turn
