@@ -201,7 +201,11 @@ function readable(value: string): boolean {
     .equals(new THREE.Color(0xffffff).setStyle(value));
 }
 
-test("a hue the canvas cannot read greys, rather than whitening the column", () => {
+test("a hue the canvas cannot read greys, rather than whitening the column", (t) => {
+  // A style three cannot read is warned about, and this test hands it three of
+  // them on purpose: the warnings are the fixture, not news about the suite.
+  t.mock.method(console, "warn", () => {});
+
   // three.js speaks hex, comma-separated `rgb()` and `hsl()`, and the colour
   // names — not the spaces CSS has gained since, and not the space-separated
   // `rgb()` this stylesheet already writes its borders in. A value it cannot
