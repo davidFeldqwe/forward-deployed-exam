@@ -73,7 +73,7 @@ test("the composer's form is what the pending answer is drawn inside", () => {
 test("the question in flight is a user turn above the pending answer, not inside it", () => {
   const pending = source(THE_PENDING_TURN);
   const asked = pending.indexOf("<UserTurn");
-  const answering = pending.indexOf('<RoleLabel role="assistant" />');
+  const answering = pending.indexOf("<AssistantTurn");
   const list = pending.indexOf("<ThreadAnswer");
 
   assert.ok(asked > 0, "the question is drawn as a user turn");
@@ -91,8 +91,9 @@ test("the question in flight is a user turn above the pending answer, not inside
       chrome
         ?.split(",")
         .map((name) => name.trim())
+        .filter((name) => name.length > 0)
         .sort(),
-      ["RoleLabel", "UserTurn"],
+      ["AssistantTurn", "UserTurn"],
       file,
     );
   }

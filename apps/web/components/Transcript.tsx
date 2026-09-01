@@ -1,7 +1,7 @@
 import { threadAnswer } from "@/app/thread-answer";
 import type { ThreadMessage } from "@/app/thread-messages";
 import { ThreadAnswer } from "@/components/answers/ThreadAnswer";
-import { RoleLabel, UserTurn } from "@/components/Turn";
+import { AssistantTurn, UserTurn } from "@/components/Turn";
 
 /**
  * The persisted message list. A question is the analyst's words; an answer is
@@ -16,10 +16,9 @@ export function Transcript({ messages }: { messages: readonly ThreadMessage[] })
       {messages.map((message, index) => (
         <li key={index}>
           {message.role === "assistant" ? (
-            <div className="flex flex-col gap-3">
-              <RoleLabel role="assistant" />
+            <AssistantTurn>
               <ThreadAnswer parts={threadAnswer(messages, index)} />
-            </div>
+            </AssistantTurn>
           ) : (
             <UserTurn text={message.text} />
           )}

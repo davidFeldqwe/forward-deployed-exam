@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { ThreadRole } from "@/app/thread-messages";
 
 /**
@@ -5,7 +7,8 @@ import type { ThreadRole } from "@/app/thread-messages";
  * pending row (story 35) draws a turn that is not in the message list yet, so
  * the label and the prose live here rather than in the transcript — a question
  * in flight is set like the same question once it has landed. User words sit in
- * a right-aligned muted pill (`UserTurn`); agent words stay left and full width.
+ * a right-aligned muted pill (`UserTurn`); agent words stay left and full width
+ * (`AssistantTurn`).
  */
 const ROLE_LABELS: Readonly<Record<ThreadRole, string>> = {
   user: "You",
@@ -36,6 +39,16 @@ export function UserTurn({ text }: { text: string }) {
       <div className="w-fit max-w-full min-w-0 break-words rounded-2xl bg-raised px-3.5 py-2">
         <Prose text={text} />
       </div>
+    </div>
+  );
+}
+
+/** The agent's reply: left, un-pilled, full width — label plus the Thread answer. */
+export function AssistantTurn({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <RoleLabel role="assistant" />
+      {children}
     </div>
   );
 }
