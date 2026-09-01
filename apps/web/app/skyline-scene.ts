@@ -101,9 +101,9 @@ export function mountSkyline(
 
   // Nothing in this scene moves on its own, so a frame is worth drawing only
   // when something moved it: the opening ease, a drag or a scroll — both of
-  // which the controls report as a change — or a resize. The first frame is
-  // always one. Left open on a desk the page then costs nothing, rather than a
-  // GPU frame every 16 ms for pixels that are already on screen.
+  // which the controls report as a change — or a fit. The first frame is always
+  // one. Left open on a desk the page then costs nothing, rather than a GPU
+  // frame every 16 ms for pixels that are already on screen.
   let pending = true;
   const redraw = (): void => {
     pending = true;
@@ -128,9 +128,10 @@ export function mountSkyline(
   controls.addEventListener("start", () => {
     untouched = false;
   });
-  const resize = fitToHost(host, renderer, camera, () => {
-    // A pane of a new shape is a new frustum even where the camera has not
-    // moved, so the next frame is drawn whether or not it is re-framed.
+  const unfit = fitToHost(host, renderer, camera, () => {
+    // A fit is a drawing buffer nothing has been drawn into yet — a pane of a
+    // new shape, or the same pane at the resolution of another display — so the
+    // next frame is drawn whether or not the camera is re-framed.
     pending = true;
     // How far out the country can be held is the new pane's business, whoever
     // is driving: a visitor who has taken the controls still has to be able to
@@ -170,7 +171,7 @@ export function mountSkyline(
 
   return () => {
     renderer.setAnimationLoop(null);
-    resize.disconnect();
+    unfit();
     controls.dispose();
     canvas.removeEventListener("webglcontextrestored", redraw);
     canvas.remove();
@@ -391,16 +392,46 @@ function pixelRatio(): number {
 }
 
 /**
- * Keeps the drawing buffer the size of the element it is drawn into, and tells
- * the caller the shape it now has: how far back the country has to be seen from
- * is the aspect ratio's own business.
+ * Calls back when a CSS pixel changes what it is worth on this display. A
+ * window dragged from a laptop's retina screen onto the projector beside it —
+ * or the other way — keeps every CSS pixel the pane had, so nothing is resized
+ * and no fit is asked for: the buffer would draw at the ratio the page opened
+ * with, soft or wastefully sharp, for the rest of the visit.
+ *
+ * A media query is what announces it. `(resolution: Ndppx)` matches only on the
+ * display it was made for, so the watch is re-made for the display the window
+ * is on now each time it stops matching. A browser that cannot read the query
+ * never matches and never fires, which is the behaviour there was before rather
+ * than a broken one.
+ */
+function watchPixelRatio(onChange: () => void): () => void {
+  let display: MediaQueryList | null = null;
+  const moved = (): void => {
+    watch();
+    onChange();
+  };
+  const watch = (): void => {
+    display?.removeEventListener("change", moved);
+    display = matchMedia(`(resolution: ${globalThis.devicePixelRatio ?? 1}dppx)`);
+    display.addEventListener("change", moved);
+  };
+
+  watch();
+  return () => display?.removeEventListener("change", moved);
+}
+
+/**
+ * Keeps the drawing buffer the size — and the resolution — of the element it is
+ * drawn into, and tells the caller the shape it now has: how far back the
+ * country has to be seen from is the aspect ratio's own business. Returns the
+ * teardown for both of the things it watches.
  */
 function fitToHost(
   host: HTMLElement,
   renderer: THREE.WebGLRenderer,
   camera: THREE.PerspectiveCamera,
   onFit: () => void,
-): ResizeObserver {
+): () => void {
   const fit = (): void => {
     // One measurement for both, so the drawing buffer and the frustum cannot be
     // told two different shapes by a layout that moved between the reads.
@@ -421,7 +452,11 @@ function fitToHost(
   fit();
   const observer = new ResizeObserver(fit);
   observer.observe(host);
-  return observer;
+  const unwatch = watchPixelRatio(fit);
+  return () => {
+    observer.disconnect();
+    unwatch();
+  };
 }
 
 /** Every buffer and material this scene made, handed back to the GPU. */

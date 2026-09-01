@@ -299,19 +299,31 @@ function restoreContext(map: MountedSkyline): void {
   restored({});
 }
 
+/** The display the window is on, as the browser's media queries report it. */
+type FakeDisplay = { query: string; watchers: Set<() => void> };
+
 type MountedSkyline = {
   renderer: FakeRenderer;
   canvas: ReturnType<typeof fakeCanvas>;
   /** Re-measures the host, the way a browser's ResizeObserver would. */
   resize: (width: number, height: number) => void;
+  /**
+   * The window dragged onto a display of another resolution: the pane keeps
+   * every CSS pixel it had, so nothing resizes and the media query the buffer
+   * was sized against is the only thing that changes.
+   */
+  moveToDisplay: (ratio: number) => void;
+  /** How many listeners the mount has left on the display it is watching. */
+  displayWatchers: number;
   observerDisconnected: boolean;
   teardown: () => void;
 };
 
 /**
  * Mounts the skyline into a host of the given shape. The globals a canvas host
- * brings — the computed stylesheet and the resize observer — are stubbed here
- * for the same reason the renderer is: they are the browser, not the module.
+ * brings — the computed stylesheet, the resize observer and the display's own
+ * media queries — are stubbed here for the same reason the renderer is: they
+ * are the browser, not the module.
  */
 function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedSkyline {
   const canvas = fakeCanvas();
@@ -358,6 +370,19 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
   const globals = globalThis as unknown as Record<string, unknown>;
   globals.devicePixelRatio = 1;
   globals.getComputedStyle = () => ({ getPropertyValue: () => "#4cb782" });
+  // A query is made for the display the window is on now, so the newest one is
+  // the one a move announces itself through.
+  let display: FakeDisplay | null = null;
+  globals.matchMedia = (query: string) => {
+    const watchers = new Set<() => void>();
+    display = { query, watchers };
+    return {
+      media: query,
+      matches: true,
+      addEventListener: (_type: string, watcher: () => void) => watchers.add(watcher),
+      removeEventListener: (_type: string, watcher: () => void) => watchers.delete(watcher),
+    };
+  };
   globals.ResizeObserver = class {
     constructor(callback: () => void) {
       observed = callback;
@@ -383,6 +408,15 @@ function mountFake(reducedMotion: boolean, width = 1280, height = 720): MountedS
       host.clientWidth = w;
       host.clientHeight = h;
       observed?.();
+    },
+    moveToDisplay: (ratio) => {
+      globals.devicePixelRatio = ratio;
+      // The query the buffer was sized against has stopped matching; the ones
+      // watching it are told, and they are the only ones told at all.
+      for (const watcher of [...(display?.watchers ?? [])]) watcher();
+    },
+    get displayWatchers() {
+      return display?.watchers.size ?? 0;
     },
     get observerDisconnected() {
       return state.observerDisconnected;
@@ -555,8 +589,10 @@ test("teardown stops the loop, drops the canvas and hands the context back", () 
   assert.equal(map.observerDisconnected, true, "the resize observer is disconnected");
   assert.equal(map.canvas.removed, true, "the canvas leaves the page");
   assert.equal(map.renderer.disposed, true, "the context is handed back");
-  // The controls let the page's own listeners go with them.
+  // The controls let the page's own listeners go with them, and the fit lets go
+  // of the display it was watching the resolution of.
   assert.equal(map.canvas.listeners.size, 0, "no listener outlives the canvas");
+  assert.equal(map.displayWatchers, 0, "no watcher outlives the mount");
 });
 
 test("a zoomed browser is drawn at the pixels it now has, not the ones it opened with", () => {
@@ -582,4 +618,30 @@ test("a zoomed browser is drawn at the pixels it now has, not the ones it opened
 
   map.teardown();
   display.devicePixelRatio = 1;
+});
+
+test("a window carried to another display is drawn at the pixels that one has", () => {
+  // The demo-night move: the page is opened on a laptop's retina screen and the
+  // window is dragged onto the projector beside it. A display of another
+  // resolution changes what a CSS pixel is worth without changing how many of
+  // them the pane has, so nothing is resized and the buffer keeps the ratio the
+  // page opened with — half the pixels the screen has, or twice, for the rest
+  // of the visit. The only announcement is the media query's.
+  const map = mountFake(true, 1280, 720);
+  map.renderer.frame(0);
+  assert.equal(map.renderer.pixelRatio, 1);
+  assert.deepEqual(map.renderer.size, { width: 1280, height: 720 });
+
+  map.moveToDisplay(2);
+  assert.equal(map.renderer.pixelRatio, 2, "the retina screen's pixels are the ones drawn");
+  assert.deepEqual(map.renderer.size, { width: 1280, height: 720 }, "the pane is the same pane");
+  map.renderer.frame(16);
+  assert.equal(map.renderer.draws, 2, "a buffer of a new size is a frame worth drawing");
+
+  // And back again: the watch is re-armed for the display it is on now, rather
+  // than spent on the first move.
+  map.moveToDisplay(1);
+  assert.equal(map.renderer.pixelRatio, 1, "the plain screen's pixels are the ones drawn");
+
+  map.teardown();
 });
