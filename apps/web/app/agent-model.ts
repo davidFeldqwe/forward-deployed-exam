@@ -69,9 +69,9 @@ export function runAgentModel(request: AgentRequest): Promise<ModelAnswer> {
 
 /**
  * The same complete answer, with the loop run as a stream — what the SSE chat
- * route (#65) will build its pending row and tool rows from. Nothing partial
- * comes back here: the ranking is drawn from a finished `queryAirports` payload,
- * never from a half-read one.
+ * route (#65) builds its pending row and tool rows from. Nothing partial comes
+ * back here: the ranking is drawn from a finished `queryAirports` payload, never
+ * from a half-read one.
  */
 export function streamAgentModel(
   request: AgentRequest,

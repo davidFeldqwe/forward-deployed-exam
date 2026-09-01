@@ -2,11 +2,16 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { afterEach, test } from "node:test";
 
-import { SPEND_CAP_REFUSAL, resetAgentSpend, reserveAgentCall, AGENT_ASKS_PER_EMAIL } from "./agent-spend.ts";
+import { AGENT_ERROR_ANSWER } from "./agent.ts";
+import {
+  AGENT_ASKS_PER_EMAIL,
+  SPEND_CAP_REFUSAL,
+  reserveAgentCall,
+  resetAgentSpend,
+} from "./agent-spend.ts";
+import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
 import { LOGIN_PATH, chatPathWithPrompt, loginRedirect } from "./auth-gate.ts";
 import { CHAT_SSE_PATH, chatSseResponse, type ChatSseEvent } from "./chat-sse.ts";
-import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
-import { AGENT_ERROR_ANSWER } from "./agent.ts";
 import { threadAnswer } from "./thread-answer.ts";
 import { readThread, startThread } from "./thread-store.ts";
 

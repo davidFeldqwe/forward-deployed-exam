@@ -31,8 +31,8 @@ export async function askOnChatSse(formData: FormData): Promise<void> {
     return;
   }
 
-  const loginAt = response.headers.get("Location") ?? loginRedirect(chatPathWithPrompt(question));
-  if (response.status === 303 || response.status === 401 || response.type === "opaqueredirect") {
+  if (isLoginRedirect(response)) {
+    const loginAt = response.headers.get("Location") ?? loginRedirect(chatPathWithPrompt(question));
     window.location.assign(loginAt);
     return;
   }
@@ -42,12 +42,24 @@ export async function askOnChatSse(formData: FormData): Promise<void> {
     return;
   }
 
-  let threadId = textField(formData, "threadId") || null;
-  const decoder = new TextDecoder();
-  const reader = response.body.getReader();
-  let buffer = "";
+  const threadId = await threadIdFromSse(response.body, textField(formData, "threadId") || null);
+  window.location.assign(chatDestination(threadId));
+}
 
-  for (;;) {
+function isLoginRedirect(response: Response): boolean {
+  return response.status === 303 || response.status === 401 || response.type === "opaqueredirect";
+}
+
+async function threadIdFromSse(
+  body: ReadableStream<Uint8Array>,
+  fallback: string | null,
+): Promise<string | null> {
+  const decoder = new TextDecoder();
+  const reader = body.getReader();
+  let buffer = "";
+  let threadId = fallback;
+
+  while (true) {
     const { done, value } = await reader.read();
     if (done) {
       break;
@@ -56,16 +68,22 @@ export async function askOnChatSse(formData: FormData): Promise<void> {
     const blocks = buffer.split("\n\n");
     buffer = blocks.pop() ?? "";
     for (const block of blocks) {
-      const dataLine = block.split("\n").find((line) => line.startsWith("data: "));
-      if (!dataLine) {
-        continue;
-      }
-      const event = JSON.parse(dataLine.slice("data: ".length)) as { threadId?: unknown };
-      if (typeof event.threadId === "string" && event.threadId.length > 0) {
-        threadId = event.threadId;
-      }
+      threadId = threadIdInSseBlock(block) ?? threadId;
     }
   }
 
-  window.location.assign(chatDestination(threadId));
+  return threadId;
+}
+
+function threadIdInSseBlock(block: string): string | null {
+  const dataLine = block.split("\n").find((line) => line.startsWith("data: "));
+  if (!dataLine) {
+    return null;
+  }
+  const event: unknown = JSON.parse(dataLine.slice("data: ".length));
+  if (typeof event !== "object" || event === null || !("threadId" in event)) {
+    return null;
+  }
+  const threadId = event.threadId;
+  return typeof threadId === "string" && threadId.length > 0 ? threadId : null;
 }

@@ -6,8 +6,8 @@ import { ArrowUpIcon } from "lucide-react";
 
 import { recentUserPrompts } from "@/app/autocomplete";
 import { PROMPT_MAX_LENGTH } from "@/app/auth-gate";
-import { chatCopy } from "@/app/chat-copy";
 import { askOnChatSse } from "@/app/chat-ask";
+import { chatCopy } from "@/app/chat-copy";
 import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { Composer } from "@/components/Composer";

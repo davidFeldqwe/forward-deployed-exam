@@ -7,6 +7,7 @@
 import {
   streamAgentModel,
   type AgentRequest,
+  type AgentStreamEvent,
   type AgentStreamObserver,
   type ModelAnswer,
 } from "./agent-model.ts";
@@ -15,19 +16,16 @@ import {
   carriedPrompt,
   chatPathWithPrompt,
   CHAT_PATH,
-  CHAT_SSE_PATH,
   loginRedirect,
 } from "./auth-gate.ts";
 import { textField } from "./form-fields.ts";
-import { type ToolCall } from "./thread-messages.ts";
 import { askOnThread } from "./thread-store.ts";
 
-export { CHAT_SSE_PATH };
+export { CHAT_SSE_PATH } from "./auth-gate.ts";
 
 export type ChatSseEvent =
   | { type: "question"; threadId: string }
-  | { type: "tool"; call: ToolCall }
-  | { type: "text"; delta: string }
+  | AgentStreamEvent
   | { type: "done"; threadId: string };
 
 export type ChatSseAsk = {
@@ -40,8 +38,9 @@ export type ChatSseAsk = {
 
 export async function chatSseResponse(request: Request, ask: ChatSseAsk): Promise<Response> {
   const { question, threadId } = await readAsk(request);
+  const email = ask.email;
 
-  if (!ask.email) {
+  if (!email) {
     const next = question ? chatPathWithPrompt(question) : CHAT_PATH;
     return new Response(null, { status: 303, headers: { Location: loginRedirect(next) } });
   }
@@ -50,6 +49,7 @@ export async function chatSseResponse(request: Request, ask: ChatSseAsk): Promis
     return new Response(null, { status: 204 });
   }
 
+  const run = ask.run ?? streamAgentModel;
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -58,16 +58,12 @@ export async function chatSseResponse(request: Request, ask: ChatSseAsk): Promis
       };
       try {
         const thread = await askOnThread(
-          ask.email!,
+          email,
           threadId,
           question,
           async (open) => {
             send({ type: "question", threadId: open.id });
-            return answerQuestion(open.messages, (request) =>
-              (ask.run ?? streamAgentModel)(request, (event) => {
-                send(event);
-              }),
-            );
+            return answerQuestion(open.messages, (request) => run(request, send));
           },
           ask.clientIp,
           ask.at,
