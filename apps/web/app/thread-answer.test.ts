@@ -89,6 +89,14 @@ function tags(parts: readonly ThreadAnswerPart[]): ThreadAnswerTag[] {
   return parts.map((part) => part.tag);
 }
 
+/** The parts of one tag, in the order the answer draws them. */
+function partsOf<T extends ThreadAnswerTag>(
+  parts: readonly ThreadAnswerPart[],
+  tag: T,
+): Extract<ThreadAnswerPart, { tag: T }>[] {
+  return parts.filter((part): part is Extract<ThreadAnswerPart, { tag: T }> => part.tag === tag);
+}
+
 /** The Thread answer for a thread of one question and the answer to it. */
 function answerTurn(answer: ThreadMessage): ThreadAnswerPart[] {
   return threadAnswer([userMessage("Which ones?"), answer], 1);
@@ -148,21 +156,13 @@ test("two queryAirports calls group all sets, then prose, then all tables, then 
     "caveats",
   ]);
 
-  const caveats = parts.filter((part) => part.tag === "caveats");
+  const caveats = partsOf(parts, "caveats");
   assert.equal(caveats.length, 1);
   // One block, so a line both queries carry is printed once.
   const lines = [...caveats[0]!.assumptions, ...caveats[0]!.gaps];
   assert.equal(new Set(lines).size, lines.length);
   assert.ok(lines.length > 0);
 });
-
-/** The parts of one tag, in the order the answer draws them. */
-function partsOf<T extends ThreadAnswerTag>(
-  parts: readonly ThreadAnswerPart[],
-  tag: T,
-): Extract<ThreadAnswerPart, { tag: T }>[] {
-  return parts.filter((part): part is Extract<ThreadAnswerPart, { tag: T }> => part.tag === tag);
-}
 
 // Grouping says where each tag sits; it does not say what is inside a group. A
 // turn of several calls is read by pairing what it shows back to the call it
