@@ -15,7 +15,10 @@ import {
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
   MIN_POLAR_ANGLE,
+  WORLD_REACH,
   easeOut,
+  farLimit,
+  farPlane,
   introEase,
   openingPosition,
   type ScenePoint,
@@ -27,9 +30,10 @@ const web = new URL("../", import.meta.url);
 
 /**
  * The shapes the canvas pane comes in, from an ultrawide desktop down to the
- * tall sliver a phone leaves between the bar and the key.
+ * tall sliver a phone leaves between the bar and the key — and past it, to a
+ * browser window dragged narrow or a split-screen pane beside another app.
  */
-const ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5];
+const ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5, 0.4, 0.33];
 
 /**
  * Alaska, Hawaii and Puerto Rico. The opening frame is the contiguous states —
@@ -60,7 +64,7 @@ function contiguousPoints(): THREE.Vector3[] {
 
 /** The camera as the scene builds it, in the frame this module opens on. */
 function openingCamera(aspect: number): THREE.PerspectiveCamera {
-  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, 400);
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, farPlane(aspect));
   const { x, y, z } = openingPosition(aspect);
   camera.position.set(x, y, z);
   camera.lookAt(CONUS_VIEW.target.x, CONUS_VIEW.target.y, CONUS_VIEW.target.z);
@@ -174,6 +178,23 @@ test("the ease arrives rather than stopping, and is bounded at both ends", () =>
   }
 });
 
+test("the ease steps back before it comes in, on every pane", () => {
+  // The move is a step out and a tilt in. A far limit that did not grow with
+  // the frame would pin the start on top of the finish on a narrow pane: the
+  // canvas would hold still for the ease's whole duration and then open on a
+  // country with its coasts cut off.
+  for (const aspect of ASPECTS) {
+    const intro = introEase(false, aspect);
+    const from = orbitOf(intro.from);
+    const to = orbitOf(intro.to);
+
+    assert.ok(
+      from.distance > to.distance * 1.1,
+      `aspect ${aspect}: ${from.distance.toFixed(1)} is not a step back from ${to.distance.toFixed(1)}`,
+    );
+  }
+});
+
 test("the ease starts and ends somewhere the orbit could have been put", () => {
   // An endpoint outside the limits would be clamped by the controls on the very
   // first frame, so the opening move would fight the constraint rather than run.
@@ -185,8 +206,47 @@ test("the ease starts and ends somewhere the orbit could have been put", () => {
       assert.ok(polar >= MIN_POLAR_ANGLE, `aspect ${aspect}: polar ${polar}`);
       assert.ok(polar <= MAX_POLAR_ANGLE, `aspect ${aspect}: polar ${polar}`);
       assert.ok(distance >= MIN_DISTANCE, `aspect ${aspect}: distance ${distance}`);
-      assert.ok(distance <= MAX_DISTANCE, `aspect ${aspect}: distance ${distance}`);
+      // The ease starts exactly at the far limit on a narrow pane, so the two
+      // are compared with a rounding trip's worth of slack rather than exactly.
+      assert.ok(distance <= farLimit(aspect) + 1e-9, `aspect ${aspect}: distance ${distance}`);
     }
+  }
+});
+
+test("scroll can always reach the frame the map opened in", () => {
+  // A far limit nearer than the opening frame is the controls clamping the
+  // country's coasts off a narrow pane on the first update, and again every
+  // time the visitor zooms out to look for them.
+  for (const aspect of ASPECTS) {
+    const opening = orbitOf(openingPosition(aspect)).distance;
+
+    assert.ok(farLimit(aspect) >= opening, `aspect ${aspect}: ${farLimit(aspect)} < ${opening}`);
+    assert.ok(farLimit(aspect) >= MAX_DISTANCE, `aspect ${aspect}: nearer than a wide pane's`);
+    assert.ok(farLimit(aspect) > MIN_DISTANCE);
+  }
+  // A wide pane is not pushed out by a rule written for a narrow one.
+  assert.equal(farLimit(1.78), MAX_DISTANCE);
+});
+
+test("the camera can see the whole world from the furthest the orbit may stand", () => {
+  // Everything drawn, ground and columns alike, measured from the orbit's own
+  // target: the Aleutians are the furthest of it. A far plane short of the
+  // limit plus this would clip the country out of the frame it opened in.
+  const target = new THREE.Vector3(CONUS_VIEW.target.x, CONUS_VIEW.target.y, CONUS_VIEW.target.z);
+  const reach = Math.max(
+    ...groundOutlines().flatMap((outline) =>
+      outline.rings.flatMap((ring) =>
+        ring.map((point) => new THREE.Vector3(point.x, 0, point.z).distanceTo(target)),
+      ),
+    ),
+    ...mapMarks(scoreUniverse(loadSnapshot())).map((mark) =>
+      new THREE.Vector3(mark.x, mark.height, mark.z).distanceTo(target),
+    ),
+  );
+
+  assert.ok(WORLD_REACH >= reach, `${WORLD_REACH} covers ${reach}`);
+  for (const aspect of ASPECTS) {
+    assert.ok(farPlane(aspect) >= farLimit(aspect) + reach, `aspect ${aspect}`);
   }
 });
 
@@ -196,7 +256,9 @@ test("the scene takes its limits from this module, and never pans off the ground
   assert.match(scene, /minPolarAngle = MIN_POLAR_ANGLE/);
   assert.match(scene, /maxPolarAngle = MAX_POLAR_ANGLE/);
   assert.match(scene, /minDistance = MIN_DISTANCE/);
-  assert.match(scene, /maxDistance = MAX_DISTANCE/);
+  // The far limit and the far plane are the pane's, not one number for all of
+  // them, and both are taken again when the pane changes shape.
+  assert.match(scene, /maxDistance = farLimit\(camera\.aspect\)/);
   // Pan would carry the target off the plane the columns stand on, and an
   // orbit with the world's up vector is what keeps the country from rolling.
   assert.match(scene, /enablePan = false/);
@@ -208,11 +270,15 @@ test("the scene frames against its own pane, and keeps a view the visitor set", 
 
   // One field of view, and the aspect the canvas is actually drawn at: a camera
   // built with a fixed pair would frame a pane the page does not have.
-  assert.match(scene, /PerspectiveCamera\(FIELD_OF_VIEW, hostAspect\(host\)/);
+  assert.match(scene, /const aspect = hostAspect\(host\);/);
+  assert.match(scene, /PerspectiveCamera\(FIELD_OF_VIEW, aspect, 0\.1, farPlane\(aspect\)\)/);
   assert.match(scene, /openingPosition\(camera\.aspect\)/);
-  // A resize re-frames only while nothing has been dragged or zoomed.
+  assert.match(scene, /camera\.far = farPlane\(camera\.aspect\)/);
+  // A resize re-frames only while nothing has been dragged or zoomed — but how
+  // far out the country can be held is the new pane's, whoever is driving.
   assert.match(scene, /untouched = false/);
   assert.match(scene, /if \(!untouched\)/);
+  assert.match(scene, /maxDistance = farLimit\(camera\.aspect\);\n\s*if \(!untouched\)/);
 });
 
 test("the ease the scene runs is this module's, and it asks the visitor first", () => {

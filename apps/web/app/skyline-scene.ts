@@ -20,12 +20,13 @@ import { lampVariable } from "./lamp-hue.ts";
 import {
   CONUS_VIEW,
   FIELD_OF_VIEW,
-  MAX_DISTANCE,
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
   MIN_POLAR_ANGLE,
   type ScenePoint,
   easeOut,
+  farLimit,
+  farPlane,
   introEase,
   openingPosition,
 } from "./map-camera.ts";
@@ -61,7 +62,8 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
   const scene = new THREE.Scene();
   // The frame is chosen against the pane's own shape, so a narrow one opens
   // holding the country rather than cutting both coasts off it.
-  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, hostAspect(host), 0.1, 400);
+  const aspect = hostAspect(host);
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, farPlane(aspect));
 
   const palette = resolvePalette(host);
   scene.add(
@@ -93,6 +95,10 @@ export function mountSkyline(host: HTMLElement, input: SkylineInput): (() => voi
     untouched = false;
   });
   const resize = fitToHost(host, renderer, camera, () => {
+    // How far out the country can be held is the new pane's business, whoever
+    // is driving: a visitor who has taken the controls still has to be able to
+    // zoom out far enough to see it after turning the phone.
+    controls.maxDistance = farLimit(camera.aspect);
     if (!untouched) {
       return;
     }
@@ -284,7 +290,7 @@ function orbit(
   controls.minPolarAngle = MIN_POLAR_ANGLE;
   controls.maxPolarAngle = MAX_POLAR_ANGLE;
   controls.minDistance = MIN_DISTANCE;
-  controls.maxDistance = MAX_DISTANCE;
+  controls.maxDistance = farLimit(camera.aspect);
   controls.update();
   return controls;
 }
@@ -321,6 +327,9 @@ function fitToHost(
     // pixel ratio above 1 sharpens the canvas rather than doubling its box.
     renderer.setSize(width, height);
     camera.aspect = hostAspect(host);
+    // The far plane follows the far limit: a pane that has to be seen from
+    // further out must be able to see that far.
+    camera.far = farPlane(camera.aspect);
     camera.updateProjectionMatrix();
     onFit();
   };

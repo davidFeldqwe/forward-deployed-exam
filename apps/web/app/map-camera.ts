@@ -53,9 +53,22 @@ const FRAME_FILL = 0.9;
 export const MIN_POLAR_ANGLE = 0.12;
 export const MAX_POLAR_ANGLE = Math.PI / 2 - 0.06;
 
-/** How close and how far scroll may take the camera from the target. */
+/**
+ * How close scroll may take the camera to the target, and how far — on a pane
+ * that holds the country from nearer than this. A narrower pane has to open
+ * further out than it, so the far limit itself is `farLimit(aspect)`: a fixed
+ * ceiling would clamp the opening frame away on the pane that needed it most.
+ */
 export const MIN_DISTANCE = 3;
 export const MAX_DISTANCE = 46;
+
+/**
+ * How far the drawn world reaches past the orbit's target, in world units: the
+ * Aleutians, the furthest thing on the ground plane. The camera's far plane is
+ * this beyond wherever the orbit may stand, so the country is never clipped by
+ * it. A test pins it to the committed geometry.
+ */
+export const WORLD_REACH = 25;
 
 /** The first-load ease, in milliseconds: a demo moment, not a fly-through. */
 const INTRO_MS = 850;
@@ -64,12 +77,16 @@ const INTRO_MS = 850;
  * The direction the ease starts from: nearly overhead, looking down on the
  * country rather than along it, so the move is a tilt into the frame. Only the
  * heading is read — the distance is the opening frame's own, pulled back a
- * little — so the start is inside the orbit's limits at every aspect and the
- * controls never clamp the first frame out from under the move.
+ * little — so the start is inside `farLimit`'s own limits at every aspect and
+ * the controls never clamp the first frame out from under the move.
  */
 const INTRO_HEADING: ScenePoint = { x: 0, y: 26, z: 6 };
 
-/** How much further out the ease starts than it ends: a step back, not a flight. */
+/**
+ * How much further out the ease starts than it ends: a step back, not a flight.
+ * The zoom's far limit is this much past the opening frame too, so the step is
+ * the same one on every pane rather than a crawl on a narrow one.
+ */
 const INTRO_PULL_BACK = 1.2;
 
 /** How far the camera stands from the target in `CONUS_VIEW`. */
@@ -98,13 +115,32 @@ function atDistance(heading: ScenePoint, distance: number): ScenePoint {
  * in the frustum of a pane this shape. Half the frustum's width is the aspect
  * ratio times half its height, so a portrait pane that kept the wide pane's
  * distance would cut both coasts off. Never nearer than `CONUS_VIEW` — a wide
- * pane is not pulled in on top of the skyline — and never past the zoom's own
- * far limit, which is the furthest the orbit could hold anyway.
+ * pane is not pulled in on top of the skyline — and not capped, because the
+ * zoom's far limit is worked out from this rather than the other way round.
  */
 function openingDistance(aspect: number): number {
   const halfHeightPerUnit = Math.tan((FIELD_OF_VIEW * Math.PI) / 360);
   const needed = CONUS_HALF_WIDTH / (halfHeightPerUnit * aspect * FRAME_FILL);
-  return Math.min(Math.max(needed, BASE_DISTANCE), MAX_DISTANCE);
+  return Math.max(needed, BASE_DISTANCE);
+}
+
+/**
+ * How far scroll may take the camera out on a pane of this shape. Never nearer
+ * than where the map opens and steps back from — a limit that stopped short of
+ * the opening frame would be clamping the country's own coasts off a narrow
+ * pane, and holding the intro ease still while it did it.
+ */
+export function farLimit(aspect: number): number {
+  return Math.max(MAX_DISTANCE, openingDistance(aspect) * INTRO_PULL_BACK);
+}
+
+/**
+ * How far the camera can see on a pane of this shape: past the furthest the
+ * orbit may stand, and past the world's own reach behind the target. A fixed
+ * far plane would clip the country out of the frame it was moved back to hold.
+ */
+export function farPlane(aspect: number): number {
+  return farLimit(aspect) + WORLD_REACH;
 }
 
 /**
@@ -137,8 +173,11 @@ export function introEase(reducedMotion: boolean, aspect: number): IntroEase {
     return { from: to, to, durationMs: 0 };
   }
 
-  const distance = Math.min(openingDistance(aspect) * INTRO_PULL_BACK, MAX_DISTANCE);
-  return { from: atDistance(INTRO_HEADING, distance), to, durationMs: INTRO_MS };
+  return {
+    from: atDistance(INTRO_HEADING, openingDistance(aspect) * INTRO_PULL_BACK),
+    to,
+    durationMs: INTRO_MS,
+  };
 }
 
 /**
