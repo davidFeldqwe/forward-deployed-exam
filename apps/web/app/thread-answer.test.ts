@@ -315,6 +315,31 @@ test("the tag list and the component's cases name the same tags", () => {
   assert.deepEqual(cases.sort(), [...THREAD_ANSWER_TAGS].sort());
 });
 
+/**
+ * What the analyst reads is the list drawn, so the last seam is the walk
+ * itself: every order test in this file is on the list `threadAnswer` returns,
+ * and `[...parts].reverse().map(...)` in the component would draw those same
+ * blocks upside down without failing one of them. The tag switch is handed an
+ * order; it does not get to have an opinion about it, or about which parts are
+ * worth drawing.
+ */
+test("the tag switch draws the parts it is handed, all of them, in that order", () => {
+  const body = source(THE_TAG_SWITCH)
+    .match(/export function ThreadAnswer\([\s\S]*?\) \{\n([\s\S]*?)\n\}/)?.[1]
+    ?.trim();
+  assert.ok(body !== undefined, `no ThreadAnswer component in ${THE_TAG_SWITCH}`);
+
+  // The whole component is a walk of the prop: not a copy to sort, not a
+  // filtered list, and nothing chosen before the walk begins.
+  const walk = body.match(/^return parts\.map\(\((\w+)[^)]*\) => ([\s\S]+)\);$/);
+  assert.ok(walk, body);
+
+  // And the walk draws one block per part, unconditionally: a tag left out by
+  // a ternary here is a tag the order tests still see in the list.
+  const [, part, drawn] = walk;
+  assert.match(drawn, new RegExp(`^<Part\\b[^>]*\\bpart=\\{${part}\\}[^>]*/>$`), drawn);
+});
+
 // Each claim the walk carries below is that some file is *not* in a list, so a
 // walk that came back short would pass every one of them and mean nothing. It
 // is checked once, here: these are the files those claims are about.
