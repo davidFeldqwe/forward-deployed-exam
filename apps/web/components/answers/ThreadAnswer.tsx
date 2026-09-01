@@ -6,6 +6,7 @@ import { Caveats } from "@/components/answers/Caveats";
 import { PendingRow } from "@/components/answers/PendingRow";
 import { Ranking } from "@/components/answers/Ranking";
 import { ReadAloud } from "@/components/answers/ReadAloud";
+import { ResolvedMap } from "@/components/answers/ResolvedMap";
 import { ResolvedSet } from "@/components/answers/ResolvedSet";
 import { ToolRow } from "@/components/answers/ToolRow";
 import { Prose } from "@/components/Turn";
@@ -33,6 +34,8 @@ function Part({ part }: { part: ThreadAnswerPart }): ReactElement {
       return <ProseBlock part={part} />;
     case "ranking":
       return <Ranking rows={part.rows} lookup={part.lookup} sortLabel={part.sortLabel} />;
+    case "map":
+      return <ResolvedMap map={part.map} />;
     case "pending":
       return <PendingRow row={part} />;
     case "caveats":

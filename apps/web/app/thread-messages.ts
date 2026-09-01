@@ -5,7 +5,12 @@
  * resolved set, so a follow-up reads prior tool payloads back out of it, and
  * every message crossing the store boundary is checked in both directions.
  */
-import { isScoredAirport, type ScoredAirport } from "@repo/scoring";
+import {
+  isScoredAirport,
+  LOOKUP_METRICS,
+  type LookupMetric,
+  type ScoredAirport,
+} from "@repo/scoring";
 
 import { clip } from "./text.ts";
 
@@ -66,6 +71,24 @@ export function assistantMessage(
 }
 
 /**
+ * The question an answer replies to: the nearest user turn above it, or null
+ * when there is none. Both the carried context and the map gate read *this*
+ * message and no other, so they read it the same way.
+ */
+export function previousQuestion(
+  messages: readonly ThreadMessage[],
+  index: number,
+): string | null {
+  for (let at = index - 1; at >= 0; at -= 1) {
+    const message = messages[at];
+    if (message?.role === "user") {
+      return message.text;
+    }
+  }
+  return null;
+}
+
+/**
  * The rows a persisted `queryAirports` call re-renders from, or null when the
  * call is not a ranking. Anything the result carries beside `rows` — the
  * matched count, the sort key — is stored verbatim and read from there.
@@ -92,6 +115,18 @@ function scoredRows(result: unknown): ScoredAirport[] | null {
   }
   const { rows } = result;
   return Array.isArray(rows) && rows.every(isScoredAirport) ? rows : null;
+}
+
+/**
+ * The one metric a persisted `queryAirports` call was asked for, as the result
+ * echoes it back, or null when the call is a ranking. Read here rather than in
+ * each answer object: the ranking table draws one number instead of a composite
+ * and a lamp for a lookup, and the map gate withholds a picture of lamps the
+ * answer never lit, so both have to agree on what a lookup is.
+ */
+export function lookupMetric(call: ToolCall): LookupMetric | null {
+  const metric = isRecord(call.result) ? call.result.metric : undefined;
+  return LOOKUP_METRICS.find((candidate) => candidate === metric) ?? null;
 }
 
 /**

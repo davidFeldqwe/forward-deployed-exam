@@ -60,6 +60,26 @@ export function lampPill(lamp: CandidateLamp): string {
   return LAMP_PILL[LAMP_TONES[lamp]];
 }
 
+/**
+ * The marker one lamp word draws on the resolved-set map (issue #29): the same
+ * three hues, as a filled dot with its own outline. A dot carries no words, so
+ * this is only ever drawn beside the map's legend — which is the ranking
+ * table's legend, printing all five lamp words — and each marker keeps its IATA
+ * code next to it. Partial inputs and No data are an outline and no hue here
+ * too: a coverage state is not a weak composite on a map either.
+ */
+const LAMP_MARKER: Readonly<Record<LampTone, string>> = {
+  strong: "fill-lamp-strong/70 stroke-lamp-strong",
+  mixed: "fill-lamp-mixed/70 stroke-lamp-mixed",
+  weak: "fill-lamp-weak/70 stroke-lamp-weak",
+  none: "fill-transparent stroke-muted-foreground",
+};
+
+/** The marker classes one lamp word draws, from the same tone as its pill. */
+export function lampMarker(lamp: CandidateLamp): string {
+  return LAMP_MARKER[LAMP_TONES[lamp]];
+}
+
 export const LAMP_LEGEND_NOTE =
   "Hue reads with the lamp words, never instead of them. Partial inputs and No data " +
   "take an outline and no hue: a missing component is not a low composite.";

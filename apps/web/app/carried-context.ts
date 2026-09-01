@@ -12,7 +12,13 @@
 import { PLACE_FIELDS } from "@repo/scoring";
 
 import { rankingView } from "./ranking-view.ts";
-import { rankingRows, type JsonObject, type ThreadMessage } from "./thread-messages.ts";
+import { indexOfPhrase } from "./text.ts";
+import {
+  previousQuestion,
+  rankingRows,
+  type JsonObject,
+  type ThreadMessage,
+} from "./thread-messages.ts";
 
 /** One airport a reference resolved to, and where in the earlier set it sat. */
 export type CarriedAirport = { iata: string; name: string; rank: number };
@@ -105,17 +111,6 @@ function filtersByCodeAlone(args: JsonObject): boolean {
   return namesCodes && !filtersByPlace;
 }
 
-/** The question this answer replies to: the nearest user turn above it. */
-function previousQuestion(messages: readonly ThreadMessage[], index: number): string | null {
-  for (let at = index - 1; at >= 0; at -= 1) {
-    const message = messages[at];
-    if (message?.role === "user") {
-      return message.text;
-    }
-  }
-  return null;
-}
-
 /** The reference as the analyst wrote it, so the block quotes them. */
 function referencePhrase(question: string): string | null {
   for (const pattern of REFERENCE_PATTERNS) {
@@ -141,10 +136,9 @@ function namesAnAirport(
   );
 }
 
+/** Whether the text spells this word out, rather than containing its letters. */
 function containsWord(text: string, word: string): boolean {
-  if (word.trim().length === 0) return false;
-  const escaped = word.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-  return new RegExp(`(?:^|[^\\p{L}])${escaped}(?:[^\\p{L}]|$)`, "iu").test(text);
+  return indexOfPhrase(text, word) !== -1;
 }
 
 /**

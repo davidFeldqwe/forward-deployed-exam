@@ -123,6 +123,7 @@ test("a stored ranking turn is one list: tool, resolved set, prose, table, cavea
     "resolved",
     "prose",
     "ranking",
+    "map",
     "caveats",
   ]);
 });
@@ -136,6 +137,18 @@ test("carried context sits before the resolved airport set and the table", () =>
     "ranking",
     "caveats",
   ]);
+});
+
+test("a place-named ranking draws its map after the table, a follow-up does not", () => {
+  assert.deepEqual(tags(threadAnswer(followUpThread, 1)), [
+    "tool",
+    "resolved",
+    "prose",
+    "ranking",
+    "map",
+    "caveats",
+  ]);
+  assert.equal(tags(threadAnswer(followUpThread, 3)).includes("map"), false);
 });
 
 // Two calls in one turn are grouped by tag, not interleaved per call: every
@@ -156,6 +169,8 @@ test("two queryAirports calls group all sets, then prose, then all tables, then 
     "prose",
     "ranking",
     "ranking",
+    "map",
+    "map",
     "caveats",
   ]);
 
@@ -232,7 +247,13 @@ test("an empty tag is omitted: no rows is no table and no caveats", () => {
   // admits it as long as it carries a payload (`parseThreadMessage`), so the
   // prose tag is omitted rather than drawn as a blank line above the table.
   const wordless = [userMessage("New England?"), assistantMessage(" ", [newEngland])];
-  assert.deepEqual(tags(threadAnswer(wordless, 1)), ["tool", "resolved", "ranking", "caveats"]);
+  assert.deepEqual(tags(threadAnswer(wordless, 1)), [
+    "tool",
+    "resolved",
+    "ranking",
+    "map",
+    "caveats",
+  ]);
 });
 
 test("the prose heading is drawn only where a table sits under it", () => {
@@ -366,6 +387,7 @@ const TAG_BLOCKS = {
   carried: "CarriedContext",
   resolved: "ResolvedSet",
   ranking: "Ranking",
+  map: "ResolvedMap",
   pending: "PendingRow",
   caveats: "Caveats",
 } as const satisfies Record<Exclude<ThreadAnswerTag, "prose">, string>;

@@ -8,7 +8,6 @@
 import {
   COMPONENTS,
   COMPONENT_LABELS,
-  LOOKUP_METRICS,
   LOOKUP_METRIC_LABELS,
   PLACE_FIELDS,
   SORT_KEYS,
@@ -23,7 +22,13 @@ import {
 import { peerGroupSchema, type PeerGroup } from "@repo/snapshot";
 
 import { unknownIataRefusal, unknownPlaceRefusal } from "./refusals.ts";
-import { rankingRows, type JsonObject, type JsonValue, type ToolCall } from "./thread-messages.ts";
+import {
+  lookupMetric,
+  rankingRows,
+  type JsonObject,
+  type JsonValue,
+  type ToolCall,
+} from "./thread-messages.ts";
 
 /**
  * A composite the screen withheld, as the table prints it. Named because the
@@ -126,7 +131,7 @@ export function rankingView(call: ToolCall | undefined): RankingView | null {
   // same object — the matched set, the sort key, the unknowns — off it.
   const result = isObject(call.result) ? call.result : {};
   const resolvedIata = stringsOf(result.resolvedIata) ?? rows.map((row) => row.iata);
-  const metric = metricOf(result.metric);
+  const metric = lookupMetric(call);
   const sortLabel = orderLabel(metric, sortKeyOf(result.sortBy));
 
   return {
@@ -334,10 +339,6 @@ function unknownPlacesOf(value: JsonValue | undefined): { field: string; value: 
 
 function sortKeyOf(value: JsonValue | undefined): SortBy {
   return SORT_KEYS.find((key) => key === value) ?? "composite";
-}
-
-function metricOf(value: JsonValue | undefined): LookupMetric | null {
-  return LOOKUP_METRICS.find((metric) => metric === value) ?? null;
 }
 
 /** What the rows are in the order of, in the words the answer prints elsewhere. */

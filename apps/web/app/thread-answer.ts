@@ -1,8 +1,9 @@
 /**
  * A **Thread answer**: one assistant turn as an ordered list of tags, in the
- * locked grouped order (issue #35) — the inspectable tool rows, the carried
- * context a follow-up resolved, every resolved airport set, the model's prose,
- * every ranking or lookup table, then one caveats block for the whole turn.
+ * locked grouped order (issue #35, map slot from #29) — the inspectable tool
+ * rows, the carried context a follow-up resolved, every resolved airport set,
+ * the model's prose, every ranking or lookup table, the in-thread map of each
+ * ranking that earned one, then one caveats block for the whole turn.
  *
  * Grouped, not interleaved: a turn that ran `queryAirports` twice names both
  * sets before it says anything, and prints both tables under the one sentence
@@ -24,7 +25,8 @@ import {
   type ResolvedSet,
 } from "./ranking-view.ts";
 import { spokenProse } from "./read-aloud.ts";
-import type { ThreadMessage, ToolCall } from "./thread-messages.ts";
+import { resolvedMap, type ResolvedMapView } from "./resolved-map.ts";
+import { previousQuestion, type ThreadMessage, type ToolCall } from "./thread-messages.ts";
 
 /** One block of an answer: the tag `ThreadAnswer.tsx` draws, and what it draws from. */
 export type ThreadAnswerPart =
@@ -43,6 +45,7 @@ export type ThreadAnswerPart =
       spoken: string | null;
     }
   | { tag: "ranking"; rows: RankingRowView[]; lookup: RankingView["lookup"]; sortLabel: string }
+  | { tag: "map"; map: ResolvedMapView }
   | ({ tag: "pending" } & typeof pendingAnswer)
   | { tag: "caveats"; assumptions: string[]; gaps: string[] };
 
@@ -70,6 +73,7 @@ export const THREAD_ANSWER_TAGS = [
   "resolved",
   "prose",
   "ranking",
+  "map",
   "pending",
   "caveats",
 ] as const satisfies readonly ThreadAnswerTag[];
@@ -143,6 +147,16 @@ export function threadAnswer(
       lookup: view.lookup,
       sortLabel: view.sortLabel,
     });
+  }
+  // After every table, still before caveats: a picture of the same rows, when
+  // this question named a place the call filtered on. Grouped by tag the way
+  // the tables are — not interleaved between two rankings.
+  const question = previousQuestion(messages, index);
+  for (const call of message.toolCalls) {
+    const map = resolvedMap(question, call);
+    if (map) {
+      parts.push({ tag: "map", map });
+    }
   }
   const assumptions = mergedLines(queries, "assumptions");
   const gaps = mergedLines(queries, "gaps");
