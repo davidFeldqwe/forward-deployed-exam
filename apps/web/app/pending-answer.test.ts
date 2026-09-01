@@ -57,13 +57,18 @@ test("the composer's form is what the pending answer is drawn inside", () => {
   // the composer that submits it are inside the one form.
   assert.ok(form > 0 && pending > form, "the pending answer is inside the composer's form");
   assert.ok(composer > pending, "the transcript's pending row is drawn above the composer");
-  // The pending answer is the one block that reads the form status, and nothing
-  // under the Thread answer it draws does: the list and every block in it are a
-  // function of the messages, so an answer cannot decide it is in flight.
+});
+
+// The list and every block in it are a function of the messages, so an answer
+// cannot decide it is in flight: only the block outside the message list reads
+// the form status.
+test("the pending answer is the one block that reads the form status", () => {
   const answers = readdirSync(new URL("components/answers/", web), { encoding: "utf8" })
     .filter((file) => file.endsWith(".tsx"))
     .map((file) => `components/answers/${file}`);
+  // The walk sees the file this is a claim about.
   assert.ok(answers.includes("components/answers/ThreadAnswer.tsx"));
+
   assert.deepEqual(
     answers.filter((file) => source(file).includes("useFormStatus")),
     ["components/answers/PendingAnswer.tsx"],

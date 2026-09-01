@@ -215,13 +215,15 @@ test("every Thread answer reads down the locked tag order", () => {
 });
 
 // The transcript draws tags. It cannot draw one it has no case for, and the
-// list is free to hand it any of them, so the two are pinned to each other.
-test("every tag a Thread answer may hold is drawn by the component", () => {
-  const component = source(THE_TAG_SWITCH);
+// list is free to hand it any of them, so the two are pinned to each other —
+// as sets, both ways. The switch is exhaustive over the part union already (its
+// `ReactElement` return type is what says so), so this is also what keeps the
+// list the whole union rather than most of it: a tag the union grows and this
+// list forgets gets a case, and nowhere in the order to be drawn.
+test("the tag list and the component's cases name the same tags", () => {
+  const cases = [...source(THE_TAG_SWITCH).matchAll(/case "(\w+)":/g)].map(([, tag]) => tag);
 
-  for (const tag of THREAD_ANSWER_TAGS) {
-    assert.match(component, new RegExp(`case "${tag}":`), tag);
-  }
+  assert.deepEqual(cases.sort(), [...THREAD_ANSWER_TAGS].sort());
 });
 
 /**

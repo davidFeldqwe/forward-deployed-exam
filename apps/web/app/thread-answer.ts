@@ -80,9 +80,9 @@ export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
 
 /**
  * The answer between Send and the tool payload landing (PRD story 35): a row,
- * and nothing that could carry a score. There is no composite, no candidate
- * lamp and no score vector in this list — not even the withheld-composite mark,
- * which says the screen ran and held a number back, and nothing has run yet.
+ * and nothing that could carry a score — no composite, no candidate lamp, no
+ * score vector, and not the withheld-composite mark either (`pending-answer.ts`
+ * says why).
  *
  * The in-flight question is a user turn, not part of this list, and the
  * composer's form is what says the answer is still on its way.
@@ -103,12 +103,12 @@ export function threadAnswer(
   if (!message || message.role !== "assistant") {
     return [];
   }
-  const views = message.toolCalls
+  const rankings = message.toolCalls
     .map((call) => rankingView(call))
     .filter((view) => view !== null);
   // A query that matched nothing has a resolved set to show and no table, so
   // the tables are their own list: what the prose is labelled off from.
-  const tables = views.filter((view) => view.rows.length > 0);
+  const tables = rankings.filter((view) => view.rows.length > 0);
   const carried = carriedContext(messages, index);
 
   // The locked order, one group per block, each one skipped where it is empty.
@@ -121,7 +121,7 @@ export function threadAnswer(
   if (carried) {
     parts.push({ tag: "carried", carried });
   }
-  for (const view of views) {
+  for (const view of rankings) {
     parts.push({ tag: "resolved", resolved: view.resolved, unknown: view.unknown });
   }
   if (message.text.trim().length > 0) {
@@ -140,8 +140,8 @@ export function threadAnswer(
       sortLabel: view.sortLabel,
     });
   }
-  const assumptions = mergedLines(views, "assumptions");
-  const gaps = mergedLines(views, "gaps");
+  const assumptions = mergedLines(rankings, "assumptions");
+  const gaps = mergedLines(rankings, "gaps");
   if (assumptions.length > 0 || gaps.length > 0) {
     parts.push({ tag: "caveats", assumptions, gaps });
   }
