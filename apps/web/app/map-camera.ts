@@ -41,8 +41,9 @@ export const FIELD_OF_VIEW = 45;
  * one. A test pins it to the committed outline.
  *
  * Alaska, Hawaii and Puerto Rico are outside this: framing them would shrink
- * the contiguous states to nothing, and the inset viewports that carry them are
- * #68's follow-on. They are drawn, and an orbit reaches them.
+ * the contiguous states to nothing. All three are drawn where they are, and an
+ * orbit reaches them; Alaska and Hawaii are also held in the atlas insets
+ * (`app/map-insets.ts`), which is what a visitor reaches them by.
  */
 export const CONUS_HALF_WIDTH = 8.3;
 

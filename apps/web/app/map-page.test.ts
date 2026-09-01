@@ -67,6 +67,7 @@ test("the walk reaches the modules the map is made of", () => {
     "components/SkylineCanvas.tsx",
     "app/skyline-scene.ts",
     "app/map-view.ts",
+    "app/map-insets.ts",
   ];
 
   for (const file of made) {

@@ -26,6 +26,10 @@ _Avoid_: session, chat history (as the object)
 The public `/map` surface: one capacity-pressure skyline of the screened universe, extruded from `scoreUniverse`. A surface of its own, not a **Landing** section and not a **Thread** answer object. Column height is the **composite score**; hue is the **candidate lamp**; a withheld composite is a flat ring.
 _Avoid_: heat map, globe, basemap, dashboard
 
+**Atlas inset**:
+A corner viewport of the **Map**'s own renderer, holding Alaska or Hawaii while the main view holds the contiguous states. The same scene and the same scored columns, seen from a second camera; clicking one brings the main view to that region. There are two, and no more: other territories stay at true coordinates in the main view.
+_Avoid_: mini-map, second map, thumbnail
+
 ### Thesis
 
 **Renovation-investment candidate**:
