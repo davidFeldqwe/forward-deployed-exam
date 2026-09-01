@@ -1,5 +1,5 @@
 import { lampMarker } from "@/app/lamp-hue";
-import type { MapMarker, MapRing, ResolvedMapView } from "@/app/resolved-map";
+import type { MapMarker, MapOutline, MapRing, ResolvedMapView } from "@/app/resolved-map";
 import { LampLegend } from "@/components/answers/LampLegend";
 
 /**
@@ -40,16 +40,9 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
           role="img"
           aria-label={description}
         >
-          {map.ground.flatMap((outline) =>
-            outline.rings.map((ring, index) => (
-              <path
-                key={`${outline.state}-${index}`}
-                d={pathOf(ring)}
-                className="fill-muted/55 stroke-grid"
-                strokeWidth={0.8}
-              />
-            )),
-          )}
+          {map.ground.map((outline) => (
+            <Ground key={outline.state} outline={outline} />
+          ))}
           {map.markers.map((marker) => (
             <Marker key={marker.iata} marker={marker} />
           ))}
@@ -61,6 +54,17 @@ export function ResolvedMap({ map }: { map: ResolvedMapView }) {
       </p>
     </section>
   );
+}
+
+function Ground({ outline }: { outline: MapOutline }) {
+  return outline.rings.map((ring, index) => (
+    <path
+      key={`${outline.state}-${index}`}
+      d={pathOf(ring)}
+      className="fill-muted/55 stroke-grid"
+      strokeWidth={0.8}
+    />
+  ));
 }
 
 /**

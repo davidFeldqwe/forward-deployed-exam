@@ -9,9 +9,7 @@
  * so a column cannot stand off the state it is in.
  */
 import { groundPoint } from "./map-view.ts";
-import { US_STATES, type StateOutline } from "./us-outlines.ts";
-
-export { US_STATES, type StateOutline };
+import { US_STATES } from "./us-outlines.ts";
 
 /** A ring as the canvas draws it: ground-plane points in the columns' frame. */
 export type GroundRing = readonly { x: number; z: number }[];

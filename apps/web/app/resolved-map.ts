@@ -27,7 +27,7 @@ import { CENSUS_DIVISIONS } from "@repo/snapshot";
 
 import { indexOfPhrase } from "./text.ts";
 import { lookupMetric, rankingRows, type JsonObject, type ToolCall } from "./thread-messages.ts";
-import { US_STATES } from "./us-outlines.ts";
+import { US_STATES, type StateOutline } from "./us-outlines.ts";
 
 /** The drawing box, in SVG user units. The card scales it to its own width. */
 export const MAP_WIDTH = 320;
@@ -246,7 +246,7 @@ function frameOf(rows: readonly Located[]): Frame {
   return { narrowing, longitudes, latitudes, scale };
 }
 
-function xy(longitude: number, latitude: number, frame: Frame): { x: number; y: number } {
+function projectPoint(longitude: number, latitude: number, frame: Frame): { x: number; y: number } {
   return {
     x: round((longitude * frame.narrowing - frame.longitudes.middle) * frame.scale + MAP_WIDTH / 2),
     // North is up, so latitude runs the other way from the SVG's y axis.
@@ -256,7 +256,7 @@ function xy(longitude: number, latitude: number, frame: Frame): { x: number; y: 
 
 function project(rows: readonly Located[], frame: Frame): MapMarker[] {
   return rows.map((row) => {
-    const { x, y } = xy(row.longitude, row.latitude, frame);
+    const { x, y } = projectPoint(row.longitude, row.latitude, frame);
     return {
       iata: row.iata,
       name: row.name,
@@ -276,9 +276,7 @@ function project(rows: readonly Located[], frame: Frame): MapMarker[] {
 function groundOf(frame: Frame): MapOutline[] {
   const drawn: MapOutline[] = [];
   for (const { state, rings } of US_STATES) {
-    const visible = rings
-      .map((ring) => ring.map(([longitude, latitude]) => xy(longitude, latitude, frame)))
-      .filter(ringMeetsCrop);
+    const visible = rings.map((ring) => projectRing(ring, frame)).filter(ringMeetsCrop);
     if (visible.length > 0) {
       drawn.push({ state, rings: visible });
     }
@@ -286,15 +284,16 @@ function groundOf(frame: Frame): MapOutline[] {
   return drawn;
 }
 
+function projectRing(ring: StateOutline["rings"][number], frame: Frame): MapRing {
+  return ring.map(([longitude, latitude]) => projectPoint(longitude, latitude, frame));
+}
+
 function ringMeetsCrop(ring: MapRing): boolean {
   const xs = ring.map((point) => point.x);
   const ys = ring.map((point) => point.y);
-  return (
-    Math.max(...xs) >= 0 &&
-    Math.min(...xs) <= MAP_WIDTH &&
-    Math.max(...ys) >= 0 &&
-    Math.min(...ys) <= MAP_HEIGHT
-  );
+  const overlapsX = Math.max(...xs) >= 0 && Math.min(...xs) <= MAP_WIDTH;
+  const overlapsY = Math.max(...ys) >= 0 && Math.min(...ys) <= MAP_HEIGHT;
+  return overlapsX && overlapsY;
 }
 
 /**
