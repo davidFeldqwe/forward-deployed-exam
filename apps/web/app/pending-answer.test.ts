@@ -93,9 +93,18 @@ test("the question in flight is a user turn above the pending answer, not inside
   // The words under the user label are the question the composer holds.
   assert.match(pending.slice(asked, answering), /<Prose text=\{asked\}/);
   // Both sides of the same chrome: a question in flight is set like the same
-  // question once it has landed in the transcript.
+  // question once it has landed in the transcript, so both files draw the turn
+  // out of `Turn.tsx` rather than one of them writing its own.
   for (const file of ["components/answers/PendingAnswer.tsx", "components/Transcript.tsx"]) {
-    assert.match(source(file), /import \{ Prose, RoleLabel \} from "@\/components\/Turn"/, file);
+    const chrome = source(file).match(/import \{([^}]*)\} from "@\/components\/Turn"/)?.[1];
+    assert.deepEqual(
+      chrome
+        ?.split(",")
+        .map((name) => name.trim())
+        .sort(),
+      ["Prose", "RoleLabel"],
+      file,
+    );
   }
   // And the question reaches no block: all the tag switch is handed is the
   // constant list.
