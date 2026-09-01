@@ -67,6 +67,10 @@ test("empty draft cannot activate send; a ready draft stays enabled unless in fl
   // `ready` is the trimmed draft, including a server-rendered carried prompt, so
   // a valid draft is enabled in the initial HTML and an empty one is not.
   assert.match(chatChrome, /disabled=\{!ready \|\| pending\}/);
+  // Enter posts through `requestSubmit`, which would skip a disabled button unless
+  // the composer checks that control first.
+  assert.match(composerChrome, /button\[type="submit"\]/);
+  assert.match(composerChrome, /send\.disabled/);
 });
 
 test("a long draft wraps and scrolls inside the field instead of clipping sideways", () => {

@@ -197,10 +197,11 @@ function GhostKeysPlugin() {
         (event) => {
           event?.preventDefault();
           $removeGhosts();
-          if ($draftText().trim().length === 0) {
-            return true;
+          const form = editor.getRootElement()?.closest("form");
+          const send = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+          if (form && send && !send.disabled) {
+            form.requestSubmit(send);
           }
-          editor.getRootElement()?.closest("form")?.requestSubmit();
           return true;
         },
         COMMAND_PRIORITY_HIGH,
