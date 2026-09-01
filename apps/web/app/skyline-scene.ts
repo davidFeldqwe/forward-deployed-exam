@@ -163,24 +163,24 @@ export function mountSkyline(
    */
   const easeToRegion = (region: InsetRegion): void => {
     const frame = insetFrame(region, camera.aspect);
-    const to = vector(frame.position);
-    const toTarget = vector(frame.target);
+    const stands = vector(frame.position);
+    const looksAt = vector(frame.target);
     // The view is the visitor's from here, the way a drag or a scroll makes it:
     // a resize re-frames the pane after this, never the country.
     untouched = false;
     if (input.reducedMotion) {
       flight = null;
-      camera.position.copy(to);
-      controls.target.copy(toTarget);
+      camera.position.copy(stands);
+      controls.target.copy(looksAt);
       // Which the controls report as a change, so the frame is drawn.
       controls.update();
       return;
     }
     flight = {
       from: camera.position.clone(),
-      to,
+      to: stands,
       fromTarget: controls.target.clone(),
-      toTarget,
+      toTarget: looksAt,
       startedAt: performance.now(),
     };
   };
