@@ -23,7 +23,7 @@ One persisted conversation for a signed-in user. Its title is the first user que
 _Avoid_: session, chat history (as the object)
 
 **Map**:
-The public `/map` surface: one capacity-pressure skyline of the screened universe, extruded from `scoreUniverse`. A surface of its own, not a **Landing** section and not a **Thread** answer object. Column height is the **composite score**; hue is the **candidate lamp**; a withheld composite is a flat ring.
+The public `/map` surface: one capacity-pressure skyline of the screened universe, extruded from `scoreUniverse`. A surface of its own, not a **Landing** section and not a **Thread** answer object. Column height is the **composite score**; hue is the **candidate lamp**; a withheld composite is a flat ring. Inspect is one tooltip (IATA, lamp, composite, **score vector**), not a sidecar table.
 _Avoid_: heat map, globe, basemap, dashboard
 
 **Atlas inset**:
