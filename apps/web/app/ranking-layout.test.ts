@@ -10,6 +10,7 @@ function source(file: string): string {
 
 const ranking = source("components/answers/Ranking.tsx");
 const pending = source("components/answers/PendingRow.tsx");
+const strip = source("components/answers/ranking-strip.ts");
 const styles = source("app/globals.css");
 
 const RIGID_RANKING = /grid-cols-\[26px_1fr_74px_150px/;
@@ -25,13 +26,17 @@ test("ranking and pending-ranking columns shrink and wrap in a narrow chat colum
   for (const [name, file] of [
     ["ranking", ranking],
     ["pending", pending],
+    ["strip", strip],
   ] as const) {
     // Fixed tracks that cannot wrap are what clipped the lamp and composite
     // inside overflow-hidden. The airport cell has to be allowed to shrink.
     assert.doesNotMatch(file, RIGID_RANKING, name);
-    assert.match(file, /min-w-0/, name);
-    assert.match(file, /flex-wrap/, name);
   }
+
+  assert.match(strip, /min-w-0/);
+  assert.match(strip, /flex-wrap/);
+  assert.match(ranking, /RANKING_STRIP/);
+  assert.match(pending, /RANKING_STRIP/);
 
   // A lookup has fewer columns, but a long airport name still needs the same
   // shrink rather than a 150px third track that eats the name.

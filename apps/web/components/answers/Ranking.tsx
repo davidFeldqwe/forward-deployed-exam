@@ -7,6 +7,22 @@ import {
 } from "@/app/ranking-view";
 import { HeadCell } from "@/components/answers/HeadCell";
 import { LampLegend } from "@/components/answers/LampLegend";
+import {
+  RANKING_AIRPORT,
+  RANKING_RANK,
+  RANKING_STRIP,
+} from "@/components/answers/ranking-strip";
+
+const CHEVRON = "w-[14px] shrink-0";
+
+const AIRPORT_LABELS = "flex min-w-0 flex-wrap items-baseline gap-2";
+
+const AIRPORT_CELL = `${RANKING_AIRPORT} ${AIRPORT_LABELS}`;
+
+const LOOKUP_GRID = "grid grid-cols-[26px_minmax(0,1fr)_minmax(0,max-content)] items-center gap-3";
+
+const VECTOR_GRID =
+  "grid grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.35fr)_minmax(0,1.5fr)_minmax(0,auto)]";
 
 /**
  * The ranking table (PRD stories 23-24), rendered from the `queryAirports`
@@ -41,9 +57,9 @@ export function Ranking({
 function RankingTable({ rows, sortLabel }: { rows: RankingRowView[]; sortLabel: string }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
-      <div className={`${STRIP} border-b bg-row-head py-2.5`}>
-        <HeadCell className={RANK}>#</HeadCell>
-        <HeadCell className={AIRPORT}>Airport</HeadCell>
+      <div className={`${RANKING_STRIP} border-b bg-row-head py-2.5`}>
+        <HeadCell className={RANKING_RANK}>#</HeadCell>
+        <HeadCell className={RANKING_AIRPORT}>Airport</HeadCell>
         <HeadCell className="shrink-0 text-right">Composite</HeadCell>
         <HeadCell className="shrink-0">Candidate lamp</HeadCell>
         <span className={CHEVRON} />
@@ -88,23 +104,12 @@ function LookupTable({
   );
 }
 
-/** Rank stays put; airport, composite and lamp wrap in a narrow chat column. */
-const STRIP = "flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5";
-
-const RANK = "w-[26px] shrink-0";
-
-const AIRPORT = "flex min-w-0 flex-1 basis-40 flex-wrap items-baseline gap-2";
-
-const CHEVRON = "w-[14px] shrink-0";
-
-const LOOKUP_GRID = "grid grid-cols-[26px_minmax(0,1fr)_minmax(0,max-content)] items-center gap-3";
-
 /** One airport and the one number the lookup asked for. Nothing else. */
 function LookupRow({ row }: { row: RankingRowView }) {
   return (
     <div className={`${LOOKUP_GRID} border-b border-grid px-3.5 py-3 last:border-b-0`}>
       <span className="font-mono text-xs text-muted-foreground/70">{row.rank}</span>
-      <span className="flex min-w-0 flex-wrap items-baseline gap-2">
+      <span className={AIRPORT_LABELS}>
         <span className="font-mono text-sm font-medium text-foreground">{row.iata}</span>
         <span className="text-[13.5px] text-body">{row.name}</span>
       </span>
@@ -118,10 +123,10 @@ function Row({ row }: { row: RankingRowView }) {
     <details className="group border-b border-grid last:border-b-0">
       <summary
         data-ranking-row
-        className={`${STRIP} cursor-pointer list-none py-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden`}
+        className={`${RANKING_STRIP} cursor-pointer list-none py-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden`}
       >
-        <span className={`${RANK} font-mono text-xs text-muted-foreground/70`}>{row.rank}</span>
-        <span className={AIRPORT}>
+        <span className={`${RANKING_RANK} font-mono text-xs text-muted-foreground/70`}>{row.rank}</span>
+        <span className={AIRPORT_CELL}>
           <span className="font-mono text-sm font-medium text-foreground">{row.iata}</span>
           <span className="text-[13.5px] text-body">{row.name}</span>
           {row.whyLabels.map((label) => (
@@ -188,9 +193,6 @@ function ScoreVector({ row }: { row: RankingRowView }) {
     </div>
   );
 }
-
-const VECTOR_GRID =
-  "grid grid-cols-2 items-center gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.35fr)_minmax(0,1.5fr)_minmax(0,auto)]";
 
 function VectorRow({ cell }: { cell: VectorCell }) {
   return (
