@@ -10,6 +10,7 @@ const web = new URL("../", import.meta.url);
 const landing = readFileSync(new URL("components/Landing.tsx", web), "utf8");
 
 const MOTION = /animate-|fade-in|slide-in/;
+const NESTED_OVERFLOW = /overflow-(?:x-|y-)?(?:auto|scroll)/;
 
 /** Inclusive slice of Landing.tsx from `from` up to (not including) `until`. */
 function section(from: string, until: string): string {
@@ -40,32 +41,20 @@ test("Start asking is the large primary hero action, and the only one", () => {
   assertStill(hero);
 });
 
-test("How it works fits the landing column without a nested scrollbar", () => {
+test("How it works tiles share size and wrap in the landing column; arrows sit between them", () => {
   const strip = section('aria-labelledby="how-heading"', 'aria-label="Privacy"');
 
-  // The page is the only scroller. Wrapping or stacking is allowed; a nested
-  // overflow region on the strip is not (issue #91).
-  assert.doesNotMatch(strip, /overflow-x-auto/);
-  assert.doesNotMatch(strip, /overflow-y-auto/);
-  assert.doesNotMatch(strip, /overflow-auto/);
-  assert.doesNotMatch(strip, /overflow-scroll/);
+  // The page is the only scroller (issue #91). Equal flex allotment, not
+  // content-sized boxes; extra steps wrap instead of scrolling the row.
+  assert.doesNotMatch(strip, NESTED_OVERFLOW);
   assert.match(strip, /flex-wrap/);
   assert.doesNotMatch(strip, /flex-nowrap/);
-  assert.equal(landingCopy.howItWorks.steps.length, 5);
-  assertStill(strip);
-});
-
-test("How it works tiles share width and height; arrows sit between them", () => {
-  const strip = section('aria-labelledby="how-heading"', 'aria-label="Privacy"');
-
-  // Equal flex allotment, not content-sized boxes. A shared min width keeps
-  // a wrapping label from eating a neighbour; extra steps wrap instead of
-  // scrolling the row.
   assert.match(strip, /items-stretch/);
   assert.match(strip, /flex-1 basis-0/);
   assert.match(strip, /min-w-\[/);
   assert.match(strip, /min-h-\[/);
   assert.match(strip, /h-full w-full/);
+  assert.equal(landingCopy.howItWorks.steps.length, 5);
 
   // Arrows are their own list items, so they cannot steal width from earlier
   // tiles and make those labels wrap more than the last step.
