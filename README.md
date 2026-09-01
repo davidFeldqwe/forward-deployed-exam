@@ -1,6 +1,6 @@
 # Airport Investment Intelligence
 
-A capacity-pressure screen of the ~100 largest US airports: a signed-in chat
+A capacity-pressure screen of every US primary commercial airport: a signed-in chat
 agent that ranks renovation-investment candidates from a committed snapshot,
 where every number comes from code and the model never invents one.
 
@@ -59,8 +59,9 @@ deployment lands its own URL and deploy key join this table.
 
 ## A clone is offline
 
-Scoring reads `packages/snapshot/data/us-airports-snapshot.json` — the top 100 US
-airports by FAA ACAIS enplanements, Zod-validated at load, keyed by IATA. No FAA
+Scoring reads `packages/snapshot/data/us-airports-snapshot.json` — every US
+primary commercial airport in FAA ACAIS, large hub through nonhub, Zod-validated
+at load, keyed by IATA. No FAA
 or BTS request is made when you clone the repo, when you run the tests, when
 `/map` draws, or when the agent answers a question, so demo night does not depend
 on a BTS outage. The snapshot's `asOf` and comparison window are its vintage; see
