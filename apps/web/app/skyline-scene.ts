@@ -8,6 +8,10 @@
  * skyline and the ranking table light the same token rather than two hex
  * strings that could drift.
  *
+ * Alaska and Hawaii are atlas insets (issue #72): two more viewports of this
+ * one renderer, drawn through cameras of their own onto the same scene, so an
+ * inset column is the same instance of the same mesh the main view draws.
+ *
  * The one caller is `components/SkylineCanvas.tsx`. `mountSkyline` returns null
  * when the browser gives no WebGL context, which is the empty state's signal.
  */
@@ -23,6 +27,7 @@ import {
   MAX_POLAR_ANGLE,
   MIN_DISTANCE,
   MIN_POLAR_ANGLE,
+  REGION_EASE_MS,
   type ScenePoint,
   easeOut,
   farLimit,
@@ -30,6 +35,18 @@ import {
   introEase,
   openingPosition,
 } from "./map-camera.ts";
+import {
+  INSET_REGIONS,
+  type InsetKey,
+  type InsetRect,
+  type InsetRegion,
+  MAIN_LAYER,
+  insetAt,
+  insetFrame,
+  insetRects,
+  layerAt,
+  layerOfState,
+} from "./map-insets.ts";
 import { COLUMN_RADIUS, type MapMark } from "./map-view.ts";
 import type { PlacedOutline } from "./us-ground.ts";
 
@@ -83,11 +100,17 @@ export function mountSkyline(
   const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, farPlane(aspect));
 
   const palette = resolvePalette(host);
-  scene.add(
-    ...lights(),
-    groundLines(input.outlines, palette.ground),
-    ...markMeshes(input.marks, palette.lamp),
-  );
+  // Every layer, so the main view is one country with Alaska and Hawaii on it
+  // at their own coordinates; each inset camera sees only the region it frames.
+  camera.layers.enableAll();
+  scene.add(...lights(), ...layered(input, palette));
+
+  const insetCameras = Object.fromEntries(
+    INSET_REGIONS.map((region) => [region.key, insetCamera(region)]),
+  ) as Record<InsetKey, THREE.PerspectiveCamera>;
+  /** The boxes as the last fit laid them out: what is drawn, and what is clicked. */
+  let rects: readonly InsetRect[] = [];
+  let pane = hostSize(host);
 
   // A canvas is inline by default, which would leave a text descender's worth
   // of gap under it inside a pane sized to the viewport.
@@ -129,14 +152,83 @@ export function mountSkyline(
   // for them: the opening ease lets go where it stands, and a resize re-frames
   // the pane without moving the camera the visitor put there.
   let untouched = true;
+  // The ease onto a region an inset was clicked for, while it is running.
+  let flight: RegionEase | null = null;
   controls.addEventListener("start", () => {
     untouched = false;
+    // A hand on the controls stops that move too: the view is theirs from here.
+    flight = null;
   });
-  const unfit = fitToHost(host, renderer, camera, () => {
+
+  /**
+   * Takes the main camera to a region, at the size the main pane can hold it —
+   * the whole point of clicking a corner box. A visitor who asked for less
+   * motion is put there instead, which is the same frame without the travel.
+   */
+  const easeToRegion = (region: InsetRegion): void => {
+    const frame = insetFrame(region, camera.aspect);
+    const to = vector(frame.position);
+    const toTarget = vector(frame.target);
+    // The view is the visitor's from here, the way a drag or a scroll makes it:
+    // a resize re-frames the pane after this, never the country.
+    untouched = false;
+    if (input.reducedMotion) {
+      flight = null;
+      camera.position.copy(to);
+      controls.target.copy(toTarget);
+      // Which the controls report as a change, so the frame is drawn.
+      controls.update();
+      return;
+    }
+    flight = {
+      from: camera.position.clone(),
+      to,
+      fromTarget: controls.target.clone(),
+      toTarget,
+      startedAt: performance.now(),
+    };
+  };
+
+  // A click is a pointer that went down and came up in the same place. A browser
+  // reports one wherever a drag lets go, so an orbit that finished over the
+  // corner would otherwise fly the visitor to Alaska for turning the country.
+  let pressedAt: { x: number; y: number } | null = null;
+  const onPointerDown = (event: PointerEvent): void => {
+    pressedAt = panedPoint(event);
+  };
+  const onPointerMove = (event: PointerEvent): void => {
+    // The insets are the one thing on this canvas that answers a click.
+    canvas.style.cursor = insetAt(rects, panedPoint(event)) ? "pointer" : "";
+  };
+  const onClick = (event: MouseEvent): void => {
+    const at = panedPoint(event);
+    const down = pressedAt;
+    pressedAt = null;
+    if (down && Math.hypot(at.x - down.x, at.y - down.y) > CLICK_SLOP) {
+      return;
+    }
+    const hit = insetAt(rects, at);
+    if (hit) {
+      easeToRegion(hit.region);
+    }
+  };
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("click", onClick);
+
+  const unfit = fitToHost(host, renderer, camera, (size) => {
     // A fit is a drawing buffer nothing has been drawn into yet — a pane of a
     // new shape, or the same pane at the resolution of another display — so the
     // next frame is drawn whether or not the camera is re-framed.
     pending = true;
+    // The atlas is laid out against the pane it is drawn in, so the boxes stay
+    // in the corner of a phone turned on its side — and a click on one means
+    // the box it is in now rather than the one the page opened with.
+    pane = size;
+    rects = insetRects(pane);
+    for (const rect of rects) {
+      frameInset(insetCameras[rect.region.key], rect);
+    }
     // How far out the country can be held is the new pane's business, whoever
     // is driving: a visitor who has taken the controls still has to be able to
     // zoom out far enough to see it after turning the phone.
@@ -163,6 +255,17 @@ export function mountSkyline(
     if (untouched && elapsed < intro.durationMs) {
       camera.position.lerpVectors(from, to, easeOut(elapsed / intro.durationMs));
     }
+    // The move onto a clicked region carries the target with it: Alaska is not
+    // somewhere the orbit can look at from where the country is framed.
+    if (flight) {
+      const progress = (now - flight.startedAt) / REGION_EASE_MS;
+      const eased = easeOut(progress);
+      camera.position.lerpVectors(flight.from, flight.to, eased);
+      controls.target.lerpVectors(flight.fromTarget, flight.toTarget, eased);
+      if (progress >= 1) {
+        flight = null;
+      }
+    }
     // `update` carries the ease's step, a drag, and the damping still running
     // after one into the camera, and says so through the change event above.
     controls.update();
@@ -170,7 +273,7 @@ export function mountSkyline(
       return;
     }
     pending = false;
-    renderer.render(scene, camera);
+    drawViewports(renderer, scene, camera, pane, rects, insetCameras);
   });
 
   return () => {
@@ -178,6 +281,9 @@ export function mountSkyline(
     unfit();
     controls.dispose();
     canvas.removeEventListener("webglcontextrestored", redraw);
+    canvas.removeEventListener("pointerdown", onPointerDown);
+    canvas.removeEventListener("pointermove", onPointerMove);
+    canvas.removeEventListener("click", onClick);
     canvas.remove();
     disposeAll(scene);
     renderer.dispose();
@@ -195,6 +301,99 @@ export function mountSkyline(
 /** A camera-module point as three.js wants it. The two agree on world units. */
 function vector(point: ScenePoint): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.y, point.z);
+}
+
+/** How far a pointer may slip between going down and coming up to be a click. */
+const CLICK_SLOP = 4;
+
+/** Where a pointer event landed in the pane, which is the box the canvas fills. */
+function panedPoint(event: MouseEvent): { x: number; y: number } {
+  return { x: event.offsetX, y: event.offsetY };
+}
+
+/** The main camera's move onto a region, while it is running. */
+type RegionEase = {
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  fromTarget: THREE.Vector3;
+  toTarget: THREE.Vector3;
+  startedAt: number;
+};
+
+/**
+ * The scene, split by the layer each thing is drawn on. An inset camera sees
+ * one layer: standing off Alaska with all of them enabled, it would look at the
+ * region straight over the top of the contiguous states and draw them in front
+ * of it. Nothing is duplicated by the split — a mark is on the layer of the
+ * place it stands in, and the country's outline is split by state, so the main
+ * camera, which sees every layer, draws exactly what it drew before.
+ */
+function layered(input: SkylineInput, palette: Palette): THREE.Object3D[] {
+  const layers = [MAIN_LAYER, ...INSET_REGIONS.map((region) => region.layer)];
+
+  return layers.flatMap((layer) => {
+    const marks = input.marks.filter((mark) => layerAt(mark) === layer);
+    const outlines = input.outlines.filter((outline) => layerOfState(outline.state) === layer);
+    const drawn: THREE.Object3D[] = markMeshes(marks, palette.lamp);
+    if (outlines.length > 0) {
+      drawn.push(groundLines(outlines, palette.ground));
+    }
+    for (const object of drawn) {
+      object.layers.set(layer);
+    }
+    return drawn;
+  });
+}
+
+/** The camera one inset viewport is drawn through: its own region, and nothing else. */
+function insetCamera(region: InsetRegion): THREE.PerspectiveCamera {
+  const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 0.1, 1);
+  camera.layers.set(region.layer);
+  return camera;
+}
+
+/** Frames a region against the box it is drawn in, whatever shape the pane left it. */
+function frameInset(camera: THREE.PerspectiveCamera, rect: InsetRect): void {
+  const aspect = rect.width / rect.height;
+  const { position, target } = insetFrame(rect.region, aspect);
+  camera.aspect = aspect;
+  camera.position.copy(vector(position));
+  camera.lookAt(target.x, target.y, target.z);
+  // Nothing but this region is on the camera's layer, so the far plane has only
+  // to reach past the region itself.
+  camera.far = camera.position.distanceTo(vector(target)) + rect.region.bounds.radius;
+  camera.updateProjectionMatrix();
+}
+
+/**
+ * One frame: the country over the whole pane, and each inset in its own corner
+ * box. The scissor is what keeps a viewport to its box — a render clears before
+ * it draws, and an unscissored clear would wipe the country the inset sits on.
+ *
+ * The boxes are drawn last and so sit over the skyline, which is the corner of
+ * the pane an atlas prints them in.
+ */
+function drawViewports(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+  pane: { width: number; height: number },
+  rects: readonly InsetRect[],
+  insetCameras: Record<InsetKey, THREE.PerspectiveCamera>,
+): void {
+  renderer.setScissorTest(true);
+  renderer.setViewport(0, 0, pane.width, pane.height);
+  renderer.setScissor(0, 0, pane.width, pane.height);
+  renderer.render(scene, camera);
+
+  for (const rect of rects) {
+    // A box is measured from the pane's top-left corner and a viewport from the
+    // drawing buffer's bottom-left one.
+    const bottom = pane.height - rect.y - rect.height;
+    renderer.setViewport(rect.x, bottom, rect.width, rect.height);
+    renderer.setScissor(rect.x, bottom, rect.width, rect.height);
+    renderer.render(scene, insetCameras[rect.region.key]);
+  }
 }
 
 /**
@@ -254,7 +453,13 @@ function resolvePalette(host: HTMLElement): Palette {
 function lights(): THREE.Object3D[] {
   const key = new THREE.DirectionalLight(0xffffff, 1.6);
   key.position.set(-6, 12, 8);
-  return [new THREE.HemisphereLight(0xdfe6f2, 0x0b0c0d, 1.1), key];
+  const all = [new THREE.HemisphereLight(0xdfe6f2, 0x0b0c0d, 1.1), key];
+  // A light is gathered for a camera that shares a layer with it, so one left
+  // on the country's own layer would draw both insets black.
+  for (const light of all) {
+    light.layers.enableAll();
+  }
+  return all;
 }
 
 /**
@@ -451,7 +656,7 @@ function fitToHost(
   host: HTMLElement,
   renderer: THREE.WebGLRenderer,
   camera: THREE.PerspectiveCamera,
-  onFit: () => void,
+  onFit: (pane: { width: number; height: number }) => void,
 ): () => void {
   const fit = (): void => {
     // One measurement for both, so the drawing buffer and the frustum cannot be
@@ -467,7 +672,9 @@ function fitToHost(
     // further out must be able to see that far.
     camera.far = farPlane(camera.aspect);
     camera.updateProjectionMatrix();
-    onFit();
+    // The one measurement again: the viewports are laid out in the pane the
+    // drawing buffer was just sized to.
+    onFit({ width, height });
   };
 
   fit();
