@@ -1,5 +1,7 @@
 import { clip } from "./text.ts";
 
+/** The public home. Signed-out visitors land here; `/login` must be able to reach it. */
+export const LANDING_PATH = "/";
 export const LOGIN_PATH = "/login";
 export const CHAT_PATH = "/chat";
 /** Authenticated `POST` for the signed-in agent: SSE, not a document. */

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { GitBranchIcon, LogOutIcon, MapIcon, MessageSquareIcon, UserIcon } from "lucide-react";
+import { GitBranchIcon, MapIcon, MessageSquareIcon, UserIcon } from "lucide-react";
 
-import { signOut } from "@/app/auth-actions";
+import { LANDING_PATH } from "@/app/auth-gate";
 import {
   type HeaderLink,
   type HeaderSurface,
@@ -10,6 +10,7 @@ import {
   siteHeader,
   siteHeaderCopy,
 } from "@/app/site-header";
+import { SignOutControl } from "@/components/SignOutControl";
 import { Wordmark } from "@/components/Wordmark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,10 +34,11 @@ const LINK_ICONS = {
 } as const;
 
 /**
- * The header Landing, chat and `/map` share (issue #53): identity on the left,
- * chat, Map, GitHub and the profile control on the right. A surface with chrome
- * of its own hands it in — chat's recents control leads the bar, beside the
- * rail it opens, and the comparison window sits with the actions.
+ * The header Landing, login, chat and `/map` share (issue #53): identity on the
+ * left — a destination to `/` — chat, Map, GitHub and the profile control on
+ * the right. A surface with chrome of its own hands it in — chat's recents
+ * control leads the bar, beside the rail it opens, and the comparison window
+ * sits with the actions.
  */
 export function SiteHeader({
   signedIn,
@@ -61,7 +63,9 @@ export function SiteHeader({
       {/* Identity takes the room the actions do not: on a phone the product
           name is clipped rather than pushing a control off the bar. */}
       <div className="min-w-0 flex-1">
-        <Wordmark name={wordmark} />
+        <Link href={LANDING_PATH} className="flex min-w-0">
+          <Wordmark name={wordmark} />
+        </Link>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
@@ -107,8 +111,8 @@ function HeaderAction({ link }: { link: HeaderLink }) {
 
 /**
  * The profile control. Icon-only on both surfaces, because the name of what it
- * does is the whole of what it does: reach login, or end the session. The two
- * glyphs differ so a press is never a surprise.
+ * does is the whole of what it does: reach login, or ask before ending the
+ * session. The two glyphs differ so a press is never a surprise.
  */
 function Profile({ control }: { control: ProfileControl }) {
   if (control.kind === "signIn") {
@@ -126,14 +130,7 @@ function Profile({ control }: { control: ProfileControl }) {
     );
   }
 
-  return (
-    <form action={signOut}>
-      <Button type="submit" variant="ghost" size="icon-sm" className="text-muted-foreground">
-        <LogOutIcon aria-hidden="true" />
-        <span className="sr-only">{control.label}</span>
-      </Button>
-    </form>
-  );
+  return <SignOutControl label={control.label} />;
 }
 
 /**
