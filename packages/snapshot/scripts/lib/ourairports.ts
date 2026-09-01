@@ -1,9 +1,27 @@
 export type Place = {
+  /**
+   * The code the snapshot keys on: the FAA locid where OurAirports agrees it is
+   * also the IATA code, and the IATA code OurAirports publishes where it does
+   * not. BTS files on-time performance under this one, never under the locid.
+   */
+  iata: string;
   ident: string;
   name: string;
   municipality: string;
   state: string;
 } & Coordinates;
+
+/**
+ * OurAirports read two ways. The FAA workbook gives a *locid*, which for most
+ * airports is also the IATA code and for a few dozen primaries is not: Mesa
+ * Gateway is locid IWA and IATA AZA, Ceiba is RVR and NRR. So the code is tried
+ * as an IATA code first — that is what BTS and the analyst say — and as an FAA
+ * local code second.
+ */
+export type PlaceIndex = {
+  byIata: ReadonlyMap<string, Place>;
+  byLocalCode: ReadonlyMap<string, Place>;
+};
 
 /**
  * Where the airport is, in degrees, or nowhere. Both or neither: half a pair is
@@ -37,33 +55,47 @@ export function stateOf(isoCountry: string, isoRegion: string): string {
 }
 
 /**
- * The OurAirports place for an FAA/BTS code. OurAirports reassigns IATA codes
- * between nightly builds, so the FAA state has to agree: a silently wrong city
- * would answer place questions about the wrong airport.
+ * The OurAirports place for an FAA locid, and with it the code the snapshot
+ * keys on. OurAirports reassigns IATA codes between nightly builds, so the FAA
+ * state has to agree either way: a silently wrong city would answer place
+ * questions about the wrong airport. A locid whose IATA reading lands in
+ * another state is not refused outright, because that is exactly what a locid
+ * that is not an IATA code looks like — Boulder City is locid BVU, while BVU is
+ * the IATA code of a village strip in Alaska — so the local-code reading is
+ * tried before the join fails.
  */
-export function placeFor(
-  iata: string,
-  state: string,
-  places: ReadonlyMap<string, Place>,
-): Place {
-  const alias = OURAIRPORTS_IATA_ALIASES[iata];
-  const place = places.get(alias ?? iata);
-  if (!place) {
+export function placeFor(locid: string, state: string, places: PlaceIndex): Place {
+  const alias = OURAIRPORTS_IATA_ALIASES[locid];
+  const asIata = places.byIata.get(alias ?? locid);
+  if (asIata && statesAgree(locid, state, asIata.state)) {
+    // The FAA/BTS code stays the key even when OurAirports files the row under
+    // a renamed one.
+    return { ...asIata, iata: locid };
+  }
+  const asLocalCode = places.byLocalCode.get(locid);
+  if (asLocalCode && statesAgree(locid, state, asLocalCode.state)) {
+    if (!/^[A-Z]{3}$/.test(asLocalCode.iata)) {
+      throw new Error(
+        `${locid} joined OurAirports ${asLocalCode.ident} on its local code, which publishes no IATA code to key on`,
+      );
+    }
+    return asLocalCode;
+  }
+  if (asIata) {
     throw new Error(
-      `${iata} has no OurAirports row to join on IATA${alias ? ` (alias ${alias})` : ""}`,
+      `${locid} joined an OurAirports row in ${asIata.state}, but FAA files it in ${state}`,
     );
   }
-  const disagreement = OURAIRPORTS_STATE_DISAGREEMENTS[iata];
-  const agrees =
-    disagreement === undefined
-      ? place.state === state
-      : disagreement.faa === state && disagreement.ourAirports === place.state;
-  if (!agrees) {
-    throw new Error(
-      `${iata} joined an OurAirports row in ${place.state}, but FAA files it in ${state}`,
-    );
-  }
-  return place;
+  throw new Error(
+    `${locid} has no OurAirports row to join on IATA or local code${alias ? ` (alias ${alias})` : ""}`,
+  );
+}
+
+function statesAgree(locid: string, faaState: string, ourAirportsState: string): boolean {
+  const disagreement = OURAIRPORTS_STATE_DISAGREEMENTS[locid];
+  return disagreement === undefined
+    ? ourAirportsState === faaState
+    : disagreement.faa === faaState && disagreement.ourAirports === ourAirportsState;
 }
 
 /**

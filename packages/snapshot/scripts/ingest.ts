@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { censusDivisionOf } from "../src/census-divisions.ts";
 import {
   airportSnapshotSchema,
+  peerGroupSchema,
   type AirportSnapshot,
   type SnapshotAirport,
 } from "../src/schema.ts";
@@ -11,7 +12,13 @@ import { SLOT_LIMITS, SLOT_LIMIT_VERIFIED_ON, slotLimitOf } from "../src/slot-li
 import { download } from "./lib/cache.ts";
 import { forEachCsvRow } from "./lib/csv.ts";
 import { readFaaUniverse, type FaaUniverseRow } from "./lib/faa-workbook.ts";
-import { coordinatesOf, placeFor, stateOf, type Place } from "./lib/ourairports.ts";
+import {
+  coordinatesOf,
+  placeFor,
+  stateOf,
+  type Place,
+  type PlaceIndex,
+} from "./lib/ourairports.ts";
 import { readWorksheetRows } from "./lib/xlsx.ts";
 import { readZipEntry } from "./lib/zip.ts";
 
@@ -19,7 +26,6 @@ import { readZipEntry } from "./lib/zip.ts";
 // CY2025 release was still preliminary on 2026-08-31, so the window stops at
 // 2024 and every airport is measured on the same pair.
 const COMPARISON_WINDOW = { firstYear: 2023, secondYear: 2024 } as const;
-const UNIVERSE_SIZE = 100;
 const LONG_HAUL_MILES = 2000;
 
 const FAA_ENPLANEMENTS_PAGE =
@@ -53,16 +59,28 @@ async function readUniverse(): Promise<FaaUniverseRow[]> {
     `${FAA_ENPLANEMENTS_PAGE}/arp-cy${year}-commercial-service-enplanements.xlsx`,
     `faa-acais-cy${year}.xlsx`,
   );
-  return readFaaUniverse(readWorksheetRows(workbook), COMPARISON_WINDOW, UNIVERSE_SIZE);
+  const universe = readFaaUniverse(readWorksheetRows(workbook), COMPARISON_WINDOW);
+  // The universe is the FAA's primary line, so every hub size it publishes has
+  // to be in it. A release read as three peer groups is a release read wrong.
+  for (const peerGroup of peerGroupSchema.options) {
+    if (!universe.some((row) => row.peerGroup === peerGroup)) {
+      throw new Error(`the FAA workbook read back no ${peerGroup} airports`);
+    }
+  }
+  return universe;
 }
 
 // OurAirports files territories under their own ISO country code, so a US
 // snapshot has to accept them alongside "US" or it loses San Juan and Guam.
 const US_COUNTRY_CODES = new Set(["US", "PR", "VI", "GU", "AS", "MP"]);
 
-async function readPlaces(): Promise<Map<string, Place>> {
+async function readPlaces(): Promise<PlaceIndex> {
   const csv = await download(`${OURAIRPORTS_PAGE}airports.csv`, "ourairports-airports.csv");
-  const places = new Map<string, Place>();
+  const byIata = new Map<string, Place>();
+  const byLocalCode = new Map<string, Place>();
+  // A local code two US rows both claim resolves nothing, so it is dropped
+  // rather than won by whichever row came later in the file.
+  const contestedLocalCodes = new Set<string>();
   forEachCsvRow(
     csv,
     [
@@ -72,23 +90,37 @@ async function readPlaces(): Promise<Map<string, Place>> {
       "iso_country",
       "iso_region",
       "iata_code",
+      "local_code",
       "latitude_deg",
       "longitude_deg",
     ],
-    ([ident, name, municipality, country, region, iata, latitude, longitude]) => {
-      if (!US_COUNTRY_CODES.has(country) || iata.length !== 3) {
+    ([ident, name, municipality, country, region, iata, localCode, latitude, longitude]) => {
+      if (!US_COUNTRY_CODES.has(country)) {
         return;
       }
-      places.set(iata, {
+      const place: Place = {
+        iata,
         ident,
         name,
         municipality,
         state: stateOf(country, region),
         ...coordinatesOf(ident, latitude, longitude),
-      });
+      };
+      if (iata.length === 3) {
+        byIata.set(iata, place);
+      }
+      if (localCode !== "") {
+        if (byLocalCode.has(localCode)) {
+          contestedLocalCodes.add(localCode);
+        }
+        byLocalCode.set(localCode, place);
+      }
     },
   );
-  return places;
+  for (const localCode of contestedLocalCodes) {
+    byLocalCode.delete(localCode);
+  }
+  return { byIata, byLocalCode };
 }
 
 async function readRunwayCounts(): Promise<Map<string, number>> {
@@ -232,7 +264,7 @@ function buildAirport(
     (firstYearTotals?.longHaulDepartures ?? 0) + (secondYearTotals?.longHaulDepartures ?? 0);
 
   return {
-    iata: row.iata,
+    iata: place.iata,
     name: place.name,
     municipality: place.municipality,
     state: row.state,
@@ -241,7 +273,7 @@ function buildAirport(
     longitude: place.longitude,
     peerGroup: row.peerGroup,
     runwayCount,
-    slotLimit: slotLimitOf(row.iata),
+    slotLimit: slotLimitOf(place.iata),
     enplanements: row.enplanements,
     flights: departures,
     inputs: {
@@ -256,30 +288,32 @@ function buildAirport(
 
 async function ingest(): Promise<AirportSnapshot> {
   const universe = await readUniverse();
-  const iataCodes = new Set(universe.map((row) => row.iata));
+  const places = await readPlaces();
+  // The workbook gives a locid; the place says what the snapshot and BTS key on.
+  const joined = universe.map((row) => ({ row, place: placeFor(row.locid, row.state, places) }));
+
+  const iataCodes = new Set(joined.map(({ place }) => place.iata));
   for (const iata of Object.keys(SLOT_LIMITS)) {
     if (!iataCodes.has(iata)) {
       throw new Error(`slot-limited ${iata} is missing from the enplanement universe`);
     }
   }
 
-  const places = await readPlaces();
   const runwayCounts = await readRunwayCounts();
   const firstYearFlights = await readFlightTotals(COMPARISON_WINDOW.firstYear, iataCodes);
   const secondYearFlights = await readFlightTotals(COMPARISON_WINDOW.secondYear, iataCodes);
 
-  const airports = [...universe]
-    .sort((left, right) => right.enplanements.secondYear - left.enplanements.secondYear)
-    .map((row) => {
-      const place = placeFor(row.iata, row.state, places);
-      return buildAirport(
+  const airports = [...joined]
+    .sort((left, right) => right.row.enplanements.secondYear - left.row.enplanements.secondYear)
+    .map(({ row, place }) =>
+      buildAirport(
         row,
         place,
         runwayCounts.get(place.ident) ?? null,
-        firstYearFlights.get(row.iata),
-        secondYearFlights.get(row.iata),
-      );
-    });
+        firstYearFlights.get(place.iata),
+        secondYearFlights.get(place.iata),
+      ),
+    );
 
   return airportSnapshotSchema.parse({
     schemaVersion: 1,
@@ -327,6 +361,7 @@ async function ingest(): Promise<AirportSnapshot> {
       "Long-haul share counts BTS domestic reporting-carrier departures over 2,000 miles. International long-haul is out of scope because T-100 Segment has no stable bulk download.",
       "Departure counts and delay minutes cover BTS reporting carriers only, so unmet flight demand omits carriers under the 1% revenue reporting threshold.",
       "Territories have no US Census division, so their region is null and they never appear in a division ranking.",
+      "Most nonhub primaries are served only by carriers below the BTS 1% revenue reporting threshold, so they carry no delay or departure figure at all and the composite is withheld rather than assembled from two inputs.",
       `FAA CY${COMPARISON_WINDOW.secondYear + 1} enplanements were still preliminary at ingest, so the comparison window is the latest two final calendar years.`,
     ],
     airports,
