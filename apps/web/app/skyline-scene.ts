@@ -41,7 +41,7 @@ const RING_OUTER_RADIUS = COLUMN_RADIUS * 1.5;
 const RING_LIFT = 0.008;
 
 /** If a custom property does not resolve, the canvas greys rather than guesses. */
-const FALLBACK_HUE = "#8a8f98";
+export const FALLBACK_HUE = "#8a8f98";
 
 export type SkylineInput = {
   marks: readonly MapMark[];
@@ -161,10 +161,27 @@ export type LampColours = Readonly<Record<CandidateLamp, THREE.Color>>;
  */
 type Palette = { ground: THREE.Color; lamp: LampColours };
 
+/**
+ * The colour one custom property names. three.js reads hex, comma-separated
+ * `rgb()`/`hsl()` and the colour names, and leaves a Color untouched when it
+ * cannot read a style at all — so a token written in a space CSS has gained
+ * since would make a *fresh* Color white: every column brighter than any lamp
+ * word the legend names, with only a console warning to say why. Seeding the
+ * fallback grey first is what keeps that promise: an unreadable token, and a
+ * property that did not resolve at all, both grey rather than guess.
+ *
+ * Exported so the tokens the stylesheet declares can be checked against what
+ * the canvas can actually read, without a browser to compute them in.
+ */
+export function hue(value: string): THREE.Color {
+  const style = value.trim();
+  const grey = new THREE.Color(FALLBACK_HUE);
+  return style.length === 0 ? grey : grey.setStyle(style);
+}
+
 function resolvePalette(host: HTMLElement): Palette {
   const styles = getComputedStyle(host);
-  const colourOf = (variable: string): THREE.Color =>
-    new THREE.Color(styles.getPropertyValue(variable).trim() || FALLBACK_HUE);
+  const colourOf = (variable: string): THREE.Color => hue(styles.getPropertyValue(variable));
 
   return {
     ground: colourOf("--muted-foreground"),

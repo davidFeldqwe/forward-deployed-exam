@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import * as THREE from "three";
 
-import type { CandidateLamp } from "@repo/scoring";
+import { CANDIDATE_LAMPS, type CandidateLamp } from "@repo/scoring";
 
+import { lampVariable } from "./lamp-hue.ts";
 import { COLUMN_RADIUS, type MapMark, columnHeight } from "./map-view.ts";
-import { type LampColours, groundLines, markMeshes, mountSkyline } from "./skyline-scene.ts";
+import {
+  FALLBACK_HUE,
+  type LampColours,
+  groundLines,
+  hue,
+  markMeshes,
+  mountSkyline,
+} from "./skyline-scene.ts";
 import { groundOutlines } from "./us-ground.ts";
 
 /**
@@ -54,9 +63,9 @@ const SKYLINE: readonly MapMark[] = [
 
 /** The one mesh drawing a lamp word, found by the hue only that word lights. */
 function meshFor(meshes: readonly THREE.InstancedMesh[], lamp: CandidateLamp): THREE.InstancedMesh {
-  const hue = COLOURS[lamp].getHexString();
+  const lit = COLOURS[lamp].getHexString();
   const found = meshes.filter(
-    (mesh) => (mesh.material as THREE.MeshLambertMaterial).color.getHexString() === hue,
+    (mesh) => (mesh.material as THREE.MeshLambertMaterial).color.getHexString() === lit,
   );
   assert.equal(found.length, 1, `one mesh for ${lamp}`);
   return found[0];
@@ -179,4 +188,47 @@ test("no WebGL context is a null mount, which is the empty state's signal", () =
   const host = {} as HTMLElement;
 
   assert.equal(mountSkyline(host, { marks: SKYLINE, outlines: [], reducedMotion: true }), null);
+});
+
+/**
+ * Whether three.js can read a colour at all. It leaves a Color untouched when
+ * it cannot parse the style it is handed, so two Colors seeded apart agree only
+ * on a value it actually read.
+ */
+function readable(value: string): boolean {
+  return new THREE.Color(0x000000)
+    .setStyle(value)
+    .equals(new THREE.Color(0xffffff).setStyle(value));
+}
+
+test("a hue the canvas cannot read greys, rather than whitening the column", () => {
+  // three.js speaks hex, comma-separated `rgb()` and `hsl()`, and the colour
+  // names — not the spaces CSS has gained since, and not the space-separated
+  // `rgb()` this stylesheet already writes its borders in. A value it cannot
+  // read leaves a fresh Color white, which on the canvas is a column brighter
+  // than every lamp word the legend names.
+  for (const value of ["oklch(0.72 0.15 150)", "rgb(76 183 130)", "color(srgb 0.3 0.7 0.5)"]) {
+    assert.equal(readable(value), false, `${value} is a syntax the canvas cannot read`);
+    assert.equal(hue(value).getHexString(), new THREE.Color(FALLBACK_HUE).getHexString(), value);
+  }
+
+  // A property that did not resolve at all arrives empty and greys the same way.
+  assert.equal(hue("").getHexString(), new THREE.Color(FALLBACK_HUE).getHexString());
+  // What it can read is read: the token's own hue, whitespace and all.
+  assert.equal(hue("  #4cb782  ").getHexString(), "4cb782");
+});
+
+test("every hue the canvas asks the stylesheet for is one it can read", () => {
+  const globals = readFileSync(new URL("globals.css", import.meta.url), "utf8");
+  // The ground takes the muted foreground; the five lamp words take their own.
+  const wanted = new Set([...CANDIDATE_LAMPS.map(lampVariable), "--muted-foreground"]);
+
+  for (const variable of wanted) {
+    const declared = new RegExp(`\\n\\s*${variable}:\\s*([^;]+);`).exec(globals)?.[1];
+    assert.ok(declared, `${variable} is declared`);
+    // A token the canvas cannot read is not a caught mistake: it is the whole
+    // skyline drawn in the fallback grey, with the lamp encoding gone and only
+    // a console warning to say so.
+    assert.ok(readable(declared.trim()), `${variable}: ${declared.trim()}`);
+  }
 });
