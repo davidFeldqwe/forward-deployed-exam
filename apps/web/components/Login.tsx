@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { type LoginState, submitLogin } from "@/app/auth-actions";
+import { type LoginMode, loginFieldsToRender } from "@/app/login-fields";
 import { loginCopy } from "@/app/login-copy";
 import { siteHeaderCopy } from "@/app/site-header";
 import { Wordmark } from "@/components/Wordmark";
@@ -16,26 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-type LoginMode = "signIn" | "signUp";
-
 const emptyLoginState: LoginState = { email: "", errors: {} };
-
-/**
- * The fields as this mode and this attempt need them: signup asks the browser
- * for a new password, and a refused attempt hands back the typed email — React
- * resets the form, so the password is always retyped.
- */
-function fieldsToRender(mode: LoginMode, state: LoginState) {
-  return loginCopy.fields.map((field) => ({
-    ...field,
-    autoComplete:
-      field.name === "password" && mode === "signUp"
-        ? "new-password"
-        : field.autoComplete,
-    defaultValue: field.name === "email" ? state.email : "",
-    error: state.errors[field.name],
-  }));
-}
 
 export function Login({
   next,
@@ -45,6 +27,7 @@ export function Login({
   carriedPrompt: string | null;
 }) {
   const [mode, setMode] = useState<LoginMode>("signIn");
+  const [email, setEmail] = useState("");
   const [state, action, pending] = useActionState(submitLogin, emptyLoginState);
   const copy = loginCopy[mode];
   const otherMode: LoginMode = mode === "signIn" ? "signUp" : "signIn";
@@ -84,8 +67,17 @@ export function Login({
                 <input type="hidden" name="mode" value={mode} />
                 <input type="hidden" name="next" value={next} />
 
-                {fieldsToRender(mode, state).map((field) => {
+                {loginFieldsToRender(mode, state, email).map((field) => {
                   const errorId = `${field.name}-error`;
+                  const described = {
+                    id: field.name,
+                    name: field.name,
+                    type: field.type,
+                    required: true as const,
+                    autoComplete: field.autoComplete,
+                    "aria-invalid": field.error ? true : undefined,
+                    "aria-describedby": field.error ? errorId : undefined,
+                  };
                   return (
                     <div key={field.name} className="flex flex-col gap-1.5">
                       <label
@@ -94,16 +86,15 @@ export function Login({
                       >
                         {field.label}
                       </label>
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        type={field.type}
-                        required
-                        defaultValue={field.defaultValue}
-                        autoComplete={field.autoComplete}
-                        aria-invalid={field.error ? true : undefined}
-                        aria-describedby={field.error ? errorId : undefined}
-                      />
+                      {"value" in field ? (
+                        <Input
+                          {...described}
+                          value={field.value}
+                          onChange={(event) => setEmail(event.target.value)}
+                        />
+                      ) : (
+                        <Input {...described} defaultValue={field.defaultValue} />
+                      )}
                       {field.error ? (
                         <p id={errorId} className="m-0 text-xs leading-snug text-body" role="alert">
                           {field.error}
