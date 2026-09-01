@@ -75,3 +75,32 @@ test("the pending answer is the one block that reads the form status", () => {
   );
   assert.doesNotMatch(source("app/thread-answer.ts"), /useFormStatus|react-dom/);
 });
+
+// Criterion 5's other half: "the in-flight question is a user turn, not part of
+// the Thread answer". That it is not *in* the answer is pinned on the list —
+// there is no field a question could arrive in. This is the half that says
+// where it is instead: above the answer, in the turn chrome a landed question is
+// set in, so Send does not change the shape of what is already on screen.
+test("the question in flight is a user turn above the pending answer, not inside it", () => {
+  const pending = source("components/answers/PendingAnswer.tsx");
+  const asked = pending.indexOf('<RoleLabel role="user" />');
+  const answering = pending.indexOf('<RoleLabel role="assistant" />');
+  const list = pending.indexOf("<ThreadAnswer");
+
+  assert.ok(asked > 0, "the question is drawn as a user turn");
+  assert.ok(asked < answering, "and before the assistant's");
+  assert.ok(answering < list, "which is what the pending list is drawn under");
+  // The words under the user label are the question the composer holds.
+  assert.match(pending.slice(asked, answering), /<Prose text=\{asked\}/);
+  // Both sides of the same chrome: a question in flight is set like the same
+  // question once it has landed in the transcript.
+  for (const file of ["components/answers/PendingAnswer.tsx", "components/Transcript.tsx"]) {
+    assert.match(source(file), /import \{ Prose, RoleLabel \} from "@\/components\/Turn"/, file);
+  }
+  // And the question reaches no block: all the tag switch is handed is the
+  // constant list.
+  assert.deepEqual(
+    [...pending.matchAll(/<ThreadAnswer([^/>]*)\/>/g)].map(([, props]) => props.trim()),
+    ["parts={PENDING_THREAD_ANSWER}"],
+  );
+});
