@@ -118,7 +118,9 @@ test("the shared header leads with the drawer control and keeps the window", () 
   // `\b` after `ThreadRail`: the rail itself, not the header control for it.
   assert.match(chat, /<ThreadRail\b/);
   assert.match(chat, /leading=\{<ThreadRailToggle/);
-  assert.match(chat, /chatCopy\.comparisonWindow\b/);
+  // The window is the shared bar's now, handed to its `status` slot; the
+  // header's own test pins the strings.
+  assert.match(chat, /status=\{<ComparisonWindow/);
 });
 
 test("the drawer control names the list it opens, and points at that same list", () => {

@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { CANDIDATE_LAMPS } from "@repo/scoring";
 
-import { LAMP_LEGEND_NOTE, lampPill } from "./lamp-hue.ts";
+import { LAMP_LEGEND_NOTE, lampPill, lampVariable } from "./lamp-hue.ts";
 
 const HUE_CLASS = /(?:text|bg|border)-lamp-/;
 
@@ -55,12 +55,17 @@ test("the ranking table takes its hue from `lampPill`, so a bar cannot pick one 
 
 test("the legend names every lamp word, in ranking order, with the rows' own pills", () => {
   const legend = source("components/answers/LampLegend.tsx");
+  const pill = source("components/LampPill.tsx");
 
   // Mapping the lamp list rather than a hand-written copy is what keeps the key
   // complete and in the same order the rows rank in.
   assert.match(legend, /CANDIDATE_LAMPS\.map/);
-  assert.match(legend, /lampPill\(lamp\)/);
-  assert.doesNotMatch(legend, HUE_CLASS);
+  // One chip for this key and the `/map` key alike, and its hue is `lampPill`'s:
+  // no key writes a hue class of its own.
+  assert.match(pill, /lampPill\(lamp\)/);
+  for (const file of [legend, pill, source("components/Skyline.tsx")]) {
+    assert.doesNotMatch(file, HUE_CLASS);
+  }
 });
 
 const repo = new URL("../../", web);
@@ -102,10 +107,32 @@ test("the PRD assigns the five hues and keeps the percentile bars grey", () => {
   assert.match(prd, /percentile bars grey/);
 });
 
-test("PRD Out of Scope no longer forbids in-thread lamp hue, and still forbids 3D map", () => {
+test("PRD Out of Scope forbids neither in-thread lamp hue nor the map that #68 added", () => {
   const outOfScope = section(prd, "## Out of Scope");
 
-  assert.match(outOfScope, /3D map/);
   assert.match(outOfScope, /profit/i);
   assert.doesNotMatch(outOfScope, /lamp|hue/i);
+  // #68 amends the "3D map route" lock; what stays out is a basemap token and
+  // a second renderer beside the canvas.
+  assert.doesNotMatch(outOfScope, /3D map route/);
+  assert.match(outOfScope, /Mapbox/);
+  assert.match(outOfScope, /SVG twin/i);
+});
+
+test("the canvas lights the same custom properties the pills do, and greys the rings", () => {
+  // The skyline reads a colour, not a class, so the two surfaces agree by
+  // sharing the custom property rather than by matching hex strings.
+  assert.equal(lampVariable("Strong candidate"), "--lamp-strong");
+  assert.equal(lampVariable("Mixed vector"), "--lamp-mixed");
+  assert.equal(lampVariable("Weak candidate"), "--lamp-weak");
+  for (const lamp of ["Partial inputs", "No data"] as const) {
+    assert.equal(lampVariable(lamp), "--muted-foreground");
+  }
+
+  // Each lamp word's pill and its column come off the same token.
+  for (const lamp of CANDIDATE_LAMPS) {
+    assert.match(lampPill(lamp), new RegExp(lampVariable(lamp).replace("--", "")));
+  }
+  // That the stylesheet declares each of those properties, in a syntax the
+  // canvas can read, is `skyline-scene.test.ts`: one file reads `globals.css`.
 });

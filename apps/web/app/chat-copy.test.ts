@@ -18,18 +18,13 @@ function visibleText(value: unknown): string {
   return "";
 }
 
-test("chrome names the comparison window, and shortens to its years", () => {
-  assert.match(chatCopy.comparisonWindow, /Comparison window/);
-  assert.match(chatCopy.comparisonWindow, /2023/);
-  assert.match(chatCopy.comparisonWindow, /2024/);
-  // A phone-width bar drops the phrase, never the years.
-  assert.ok(chatCopy.comparisonWindow.includes(chatCopy.comparisonWindowYears));
-  assert.match(chatCopy.comparisonWindowYears, /^2023.2024$/);
-});
-
-test("the wordmark is the shared header's, not a second copy of the name", () => {
+test("the wordmark and the window are the shared header's, not second copies", () => {
   assert.equal("wordmark" in chatCopy, false);
+  assert.equal("comparisonWindow" in chatCopy, false);
+  assert.equal("comparisonWindowYears" in chatCopy, false);
   assert.equal(siteHeaderCopy.wordmark, "Airport Investment Intelligence Agent");
+  // `site-header.test.ts` holds the phrase-and-years pair itself.
+  assert.match(siteHeaderCopy.comparisonWindow, /Comparison window/);
 });
 
 test("empty-state chips are the same prompts as the Landing suggested questions", () => {

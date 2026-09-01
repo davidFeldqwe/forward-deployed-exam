@@ -10,10 +10,9 @@ import type { ThreadMessage } from "@/app/thread-messages";
 import type { ThreadSummary } from "@/app/thread-store";
 import { PromptChips } from "@/components/PromptChips";
 import { PendingAnswer } from "@/components/answers/PendingAnswer";
-import { SiteHeader } from "@/components/SiteHeader";
+import { ComparisonWindow, SiteHeader } from "@/components/SiteHeader";
 import { ThreadRail, ThreadRailToggle } from "@/components/ThreadRail";
 import { Transcript } from "@/components/Transcript";
-import { Badge } from "@/components/ui/badge";
 import {
   InputGroup,
   InputGroupAddon,
@@ -66,6 +65,7 @@ export function Chat({
     <div className="flex h-svh flex-col bg-background">
       <SiteHeader
         signedIn
+        current="chat"
         leading={<ThreadRailToggle open={railOpen} onToggle={() => setRailOpen((wasOpen) => !wasOpen)} />}
         status={<ComparisonWindow />}
       />
@@ -130,20 +130,6 @@ export function Chat({
         </form>
       </div>
     </div>
-  );
-}
-
-/**
- * The two years every airport in an answer is compared over, in the header
- * beside the shared actions. The phrase says what the years are; a phone-width
- * bar keeps the years and drops the phrase rather than the whole pill.
- */
-function ComparisonWindow() {
-  return (
-    <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
-      <span className="max-md:hidden">{chatCopy.comparisonWindow}</span>
-      <span className="md:hidden">{chatCopy.comparisonWindowYears}</span>
-    </Badge>
   );
 }
 

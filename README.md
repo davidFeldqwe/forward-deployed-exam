@@ -22,6 +22,13 @@ pnpm dev
 suggested-question cards go through `/login`, which is email + password with
 open signup, and then into a new Thread.
 
+`/map` is not gated. It is the capacity-pressure skyline: every scored airport
+in the snapshot as a column whose height is its **composite score**, at its own
+coordinates, over committed US-states geometry. There is no basemap token and no
+tile request, and the numbers are `scoreUniverse` over the same committed
+snapshot chat answers from. A browser with no WebGL gets a short empty state
+rather than a second map.
+
 No LLM key is needed to start. Without one the app still stores your question
 and says so in the transcript; the screen itself — snapshot, scoring, answer
 objects — needs no key at all.
@@ -54,9 +61,10 @@ deployment lands its own URL and deploy key join this table.
 
 Scoring reads `packages/snapshot/data/us-airports-snapshot.json` — the top 100 US
 airports by FAA ACAIS enplanements, Zod-validated at load, keyed by IATA. No FAA
-or BTS request is made when you clone the repo, when you run the tests, or when
-the agent answers a question, so demo night does not depend on a BTS outage. The
-snapshot's `asOf` and comparison window are its vintage; see `DESIGN.md`.
+or BTS request is made when you clone the repo, when you run the tests, when
+`/map` draws, or when the agent answers a question, so demo night does not depend
+on a BTS outage. The snapshot's `asOf` and comparison window are its vintage; see
+`DESIGN.md`.
 
 Rebuilding it is a deliberate manual step, not part of any run:
 

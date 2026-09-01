@@ -1,11 +1,19 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { GitBranchIcon, LogOutIcon, MessageSquareIcon, UserIcon } from "lucide-react";
+import { GitBranchIcon, LogOutIcon, MapIcon, MessageSquareIcon, UserIcon } from "lucide-react";
 
 import { signOut } from "@/app/auth-actions";
-import { type HeaderLink, type ProfileControl, siteHeader } from "@/app/site-header";
+import {
+  type HeaderLink,
+  type HeaderSurface,
+  type ProfileControl,
+  siteHeader,
+  siteHeaderCopy,
+} from "@/app/site-header";
 import { Wordmark } from "@/components/Wordmark";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * Site chrome: pinned to the top of the viewport, edge to edge, with the bar's
@@ -20,27 +28,31 @@ const barClass =
 /** The glyph for each action, so the pure module holds no components. */
 const LINK_ICONS = {
   chat: MessageSquareIcon,
+  map: MapIcon,
   github: GitBranchIcon,
 } as const;
 
 /**
- * The header Landing and chat share (issue #53): identity on the left, chat,
- * GitHub and the profile control on the right. A surface with chrome of its own
- * hands it in — chat's recents drawer control leads the bar, beside the rail it
- * opens, and the comparison window sits with the actions.
+ * The header Landing, chat and `/map` share (issue #53): identity on the left,
+ * chat, Map, GitHub and the profile control on the right. A surface with chrome
+ * of its own hands it in — chat's recents drawer control leads the bar, beside
+ * the rail it opens, and the comparison window sits with the actions.
  */
 export function SiteHeader({
   signedIn,
+  current,
   leading,
   status,
 }: {
   signedIn: boolean;
+  /** The surface drawing the bar, so its own action reads as where we are. */
+  current?: HeaderSurface;
   /** A control at the leading edge: chat's recents drawer button. */
   leading?: ReactNode;
   /** What this surface says about itself, ahead of the actions: the window. */
   status?: ReactNode;
 }) {
-  const { wordmark, links, profile } = siteHeader(signedIn);
+  const { wordmark, links, profile } = siteHeader(signedIn, current);
 
   return (
     <header className={barClass}>
@@ -65,7 +77,9 @@ export function SiteHeader({
 
 /**
  * One action: a glyph, and a label a phone reads but does not draw. Grey until
- * hovered — indigo in this product is send, focus and prose links.
+ * hovered — indigo in this product is send, focus and prose links. The surface
+ * the visitor is already on takes the foreground and says so with
+ * `aria-current`, so "which surface is this" is not left to the palette.
  */
 function HeaderAction({ link }: { link: HeaderLink }) {
   const Icon = LINK_ICONS[link.key];
@@ -75,7 +89,8 @@ function HeaderAction({ link }: { link: HeaderLink }) {
       variant="ghost"
       size="sm"
       nativeButton={false}
-      className="px-2 text-muted-foreground md:px-3"
+      aria-current={link.current ? "page" : undefined}
+      className={cn("px-2 md:px-3", link.current ? "text-foreground" : "text-muted-foreground")}
       render={
         link.external ? (
           <a href={link.href} target="_blank" rel="noreferrer" />
@@ -118,5 +133,20 @@ function Profile({ control }: { control: ProfileControl }) {
         <span className="sr-only">{control.label}</span>
       </Button>
     </form>
+  );
+}
+
+/**
+ * The two years every number on the surface below was computed over. Both chat
+ * and the map hand it to the bar's `status` slot, so the window is named once
+ * and read the same way on either. Below `md` the phrase gives way to the years
+ * it is about, which is what has to survive a phone-width bar.
+ */
+export function ComparisonWindow() {
+  return (
+    <Badge variant="outline" className="font-mono text-[11.5px] font-normal">
+      <span className="max-md:hidden">{siteHeaderCopy.comparisonWindow}</span>
+      <span className="md:hidden">{siteHeaderCopy.comparisonWindowYears}</span>
+    </Badge>
   );
 }

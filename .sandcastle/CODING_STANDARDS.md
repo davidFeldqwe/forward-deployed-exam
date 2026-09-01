@@ -33,7 +33,7 @@ These standards summarize the conventions already present in this repo. Review c
 
 - Respect the monorepo boundaries:
   - `packages/scoring` — airport scoring types, formulas, `scoreUniverse` / `queryAirports` / `candidateLamp`. No LLM, no fetch, no Convex. Scoring formulas live only here.
-  - `apps/web` — Next.js App Router: Landing (`/`), login (`/login`), chat. Depends on `@repo/scoring`; do not re-embed scoring rules in the app.
+  - `apps/web` — Next.js App Router: Landing (`/`), login (`/login`), chat, and the public map (`/map`). Depends on `@repo/scoring`; do not re-embed scoring rules in the app. The map is a view of `scoreUniverse`: heights and lamps come from scored rows, never from the canvas.
   - `packages/eslint-config` and `packages/typescript-config` — shared tooling only
   - `prototype/` — throwaway pixels and locked answer-shape fixtures; do not treat HTML as a second scoring path
   - `research/` — source notes; not runtime code
@@ -53,7 +53,7 @@ These standards summarize the conventions already present in this repo. Review c
 - Prefer pure functions for filtering, formatting, parsing, percentile math, and lamp decisions. Keep React components focused on rendering and interaction wiring.
 - Keep shared logic in `packages/scoring` only when it is genuinely reused across app/package boundaries. Do not create shared abstractions for one caller.
 - In `apps/web`, keep route handlers and pages thin: delegate ranking and methodology to `@repo/scoring` rather than re-embedding domain rules.
-- Client UI is the locked zip chrome: signed-out Landing, gated chat, one shared sticky full-bleed site header (identity left; chat, GitHub and the profile control right; no overflow at phone width), a dense left thread rail for recents beside the transcript column, no 3D map, no Methodology popover as a page. The rail is chrome over `listThreads`: no search, folders, Settled, unread counts, or timestamps. Preserve accessibility attributes, button semantics, and keyboard/screen-reader affordances when editing UI.
+- Client UI is the locked zip chrome: signed-out Landing, gated chat, one shared sticky full-bleed site header (identity left; chat, Map, GitHub and the profile control right, with the current surface marked; no overflow at phone width), a dense left thread rail for recents beside the transcript column, the public `/map` skyline as the one 3D surface, no Methodology popover as a page. The rail is chrome over `listThreads`: no search, folders, Settled, unread counts, or timestamps. Preserve accessibility attributes, button semantics, and keyboard/screen-reader affordances when editing UI.
 - Off-thesis questions (cost, ROI, land, politics, leases) are refused. Unknown place phrases are refused; do not geocode a guess.
 - Do not introduce new infrastructure, dependencies, or cross-package patterns unless they solve a real boundary problem and fit the existing architecture. Do not split into Python + TypeScript. Do not use LangGraph.
 

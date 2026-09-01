@@ -1,8 +1,8 @@
-/** Chat content. The header it sits under is `app/site-header.ts`. */
+/**
+ * Chat content. The header it sits under is `app/site-header.ts`, and so is the
+ * comparison window it shows there: the map names the same two years.
+ */
 export const chatCopy = {
-  comparisonWindow: "Comparison window 2023–2024",
-  /** The same window on a phone-width bar, where the phrase does not fit. */
-  comparisonWindowYears: "2023–2024",
   composerPlaceholder: "Ask about an airport…",
   sendLabel: "Send",
   sendingLabel: "Sending…",

@@ -31,6 +31,27 @@ const LAMP_PILL: Readonly<Record<LampTone, string>> = {
 };
 
 /**
+ * The custom property one lamp word lights on the `/map` skyline. A canvas
+ * material takes a colour rather than a class, so the two surfaces are held
+ * together by the token rather than by a second copy of the hex: a column and
+ * the ranking row for the same IATA read `--lamp-strong` off one stylesheet.
+ *
+ * The coverage states take the muted foreground — the grey their pill's text
+ * already is — because a ring is not a hue, and missing is never red.
+ */
+const LAMP_VARIABLE: Readonly<Record<LampTone, string>> = {
+  strong: "--lamp-strong",
+  mixed: "--lamp-mixed",
+  weak: "--lamp-weak",
+  none: "--muted-foreground",
+};
+
+/** The custom property the canvas resolves for one lamp word. */
+export function lampVariable(lamp: CandidateLamp): string {
+  return LAMP_VARIABLE[LAMP_TONES[lamp]];
+}
+
+/**
  * The pill classes one lamp word draws. Both the ranking rows and the legend
  * that names all five words come through here, so a row and its key cannot
  * disagree about what green means.
