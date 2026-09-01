@@ -245,18 +245,23 @@ const TAG_BLOCKS = {
 // second file may reach past it to a block: a `<Caveats>` written straight into
 // the transcript would be a block in an order the order tests never see.
 test("only the tag switch draws a Thread answer's blocks", () => {
-  const components = readdirSync(new URL("../components/", import.meta.url), {
-    encoding: "utf8",
-    recursive: true,
-  })
-    .filter((file) => file.endsWith(".tsx"))
-    .map((file) => `components/${file}`);
-  // The walk sees the two files this is a claim about.
-  assert.ok(components.includes(THE_TAG_SWITCH));
-  assert.ok(components.includes(THE_TRANSCRIPT));
+  // Every file that draws markup at all: the routes as well as the components,
+  // since a page is as able to reach past the list as the transcript is.
+  const drawing = ["app", "components"].flatMap((directory) =>
+    readdirSync(new URL(`../${directory}/`, import.meta.url), {
+      encoding: "utf8",
+      recursive: true,
+    })
+      .filter((file) => file.endsWith(".tsx"))
+      .map((file) => `${directory}/${file}`),
+  );
+  // The walk sees the two files this is a claim about, and the routes.
+  assert.ok(drawing.includes(THE_TAG_SWITCH));
+  assert.ok(drawing.includes(THE_TRANSCRIPT));
+  assert.ok(drawing.includes("app/chat/page.tsx"));
 
   for (const [tag, block] of Object.entries(TAG_BLOCKS)) {
-    const drawnBy = components.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
+    const drawnBy = drawing.filter((file) => new RegExp(`<${block}[\\s/>]`).test(source(file)));
     assert.deepEqual(drawnBy, [THE_TAG_SWITCH], `${tag} is drawn by ${block}`);
   }
 
