@@ -1,7 +1,8 @@
 # @repo/snapshot
 
-The committed capacity-pressure snapshot: the top 100 US airports by FAA ACAIS
-enplanements, keyed by **IATA**. A fresh clone reads
+The committed capacity-pressure snapshot: every US primary commercial airport in
+the FAA ACAIS enplanement workbook — hub size large, medium, small or nonhub —
+keyed by **IATA**. A fresh clone reads
 `data/us-airports-snapshot.json` and needs no live FAA or BTS download.
 
 ```ts
@@ -38,7 +39,7 @@ nulls rather than a point at 0, 0, and the schema refuses one half of a pair.
 
 | Source | Gives |
 | --- | --- |
-| FAA ACAIS calendar-year enplanements | universe, peer group, both window years of enplanements |
+| FAA ACAIS calendar-year enplanements | universe (every primary: hub L, M, S, N), peer group, both window years of enplanements |
 | BTS Reporting Carrier On-Time Performance (24 monthly files) | departures, arrival delay minutes, weather delay, long-haul departures |
 | OurAirports `airports.csv` + `runways.csv` | name, municipality, latitude, longitude, open runway count |
 | FAA slot administration | Level 2 ORD, LAX, EWR, SFO; Level 3 JFK, LGA, DCA — hand-coded in `src/slot-limits.ts`, re-read at each ingest |
@@ -58,8 +59,14 @@ This is a deliberate manual step, not CI: the committed file is the contract.
 
 A rebuild refuses to write a snapshot it cannot stand behind. The FAA columns
 are found by header label — including both comparison-window years, so a
-different release cannot be read as this one — every slot-limited code must be
-in the universe, and an OurAirports place has to sit in the state FAA files the
-airport in, so a reassigned IATA code fails loudly instead of attaching the
-wrong city. `scripts/lib` is covered by `tests/faa-workbook.test.ts` and
+different release cannot be read as this one — the universe has to read back as
+all four hub sizes, every slot-limited code must be in it, and an OurAirports
+place has to sit in the state FAA files the airport in, so a reassigned IATA
+code fails loudly instead of attaching the wrong city.
+
+The workbook's `Locid` column is an FAA location identifier, which for most
+airports is also the IATA code and for a few dozen primaries is not: Mesa
+Gateway is locid IWA and IATA AZA, Ceiba is RVR and NRR. The place is looked up
+as an IATA code first — the code BTS publishes and an analyst says — and as an
+FAA local code second; the row is keyed on whichever one that join lands on. `scripts/lib` is covered by `tests/faa-workbook.test.ts` and
 `tests/place-join.test.ts`, which run offline.

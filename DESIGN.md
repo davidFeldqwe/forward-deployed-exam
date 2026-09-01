@@ -64,7 +64,7 @@ Two consequences the answer objects state rather than hide:
   medium-hub rank and Los Angeles's 89th is a large-hub rank; they are not
   comparable, and neither are the composites built from them.
 - A place question **filters** the national ranking; it never re-percentiles.
-  Asking about New England ranks four airports against the whole country, not
+  Asking about New England ranks the primaries there against the whole country, not
   against each other, so the answer does not invent a regional leader.
 
 Missing is not zero. A component with no input keeps `raw: null` and
@@ -171,9 +171,12 @@ rows. No session and no API key.
 
 ## Snapshot vintage
 
-`packages/snapshot/data/us-airports-snapshot.json` is the committed universe: the
-top 100 US airports by FAA ACAIS enplanements, Zod-validated on load, ingested
-2026-08-31.
+`packages/snapshot/data/us-airports-snapshot.json` is the committed universe:
+the 393 US primary commercial airports FAA ACAIS files under a hub size — 31
+large, 32 medium, 77 small, 253 nonhub — Zod-validated on load, ingested
+2026-09-01. The cut is the FAA's own primary line, not a top-N excerpt, so the count
+moves with the release; nonprimary commercial service (2,500–10,000 enplanements)
+is out.
 
 **Comparison window: 2023–2024** — the latest two calendar years with *final*
 FAA enplanements at ingest. CY2025 was still preliminary, so it is out. Every
@@ -203,6 +206,7 @@ read with the ranking rather than in a footer:
 - Departure counts and delay minutes cover BTS reporting carriers only, so unmet flight demand omits carriers under the 1% revenue reporting threshold.
 - Territories have no US Census division, so their region is null and they never appear in a division ranking.
 - FAA CY2025 enplanements were still preliminary at ingest, so the comparison window is the latest two final calendar years.
+- Most nonhub primaries are served only by carriers below the BTS 1% revenue reporting threshold, so they carry no delay or departure figure at all and the composite is withheld rather than assembled from two inputs.
 
 Two more that are true of the screen rather than the sources:
 

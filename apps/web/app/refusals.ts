@@ -78,8 +78,8 @@ export function unknownPlaceRefusal(
 
 /**
  * The refusal for a requested code the screen does not cover, or null when every
- * code resolved. Outside the universe is not "no such airport": ITH is a real
- * airport, it is simply not in the top ~100 this snapshot screens.
+ * code resolved. Outside the universe is not "no such airport": IAN is a real
+ * airport, it is simply not a primary this snapshot screens.
  */
 export function unknownIataRefusal(codes: readonly string[]): string | null {
   if (codes.length === 0) {
@@ -87,7 +87,7 @@ export function unknownIataRefusal(codes: readonly string[]): string | null {
   }
   return (
     `${codes.join(", ")} ${codes.length === 1 ? "is" : "are"} outside the screened universe: ` +
-    "this snapshot covers the ~100 largest US airports by enplanements, so there is no row to " +
+    "this snapshot covers every US primary commercial airport by ACAIS enplanements, so there is no row to " +
     "rank and no number to quote."
   );
 }

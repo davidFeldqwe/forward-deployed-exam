@@ -72,12 +72,13 @@ export const MIN_DISTANCE = 3;
 export const MAX_DISTANCE = 46;
 
 /**
- * How far the drawn world reaches past the orbit's target, in world units: the
- * Aleutians, the furthest thing on the ground plane. The camera's far plane is
- * this beyond wherever the orbit may stand, so the country is never clipped by
- * it. A test pins it to the committed geometry.
+ * How far the drawn world reaches past the orbit's target, in world units.
+ * Pacific primaries (Guam, the Marianas, American Samoa) sit at true
+ * coordinates well past the Aleutians; the camera's far plane is this beyond
+ * wherever the orbit may stand, so those columns are never clipped by it. A
+ * test pins it to the committed snapshot.
  */
-export const WORLD_REACH = 25;
+export const WORLD_REACH = 65;
 
 /** The first-load ease, in milliseconds: a demo moment, not a fly-through. */
 const INTRO_MS = 850;

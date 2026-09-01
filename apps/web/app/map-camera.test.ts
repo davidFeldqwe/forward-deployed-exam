@@ -36,12 +36,14 @@ const web = new URL("../", import.meta.url);
 const ASPECTS = [2.4, 1.78, 1.33, 1, 0.75, 0.62, 0.5, 0.4, 0.33];
 
 /**
- * Alaska, Hawaii and Puerto Rico. The opening frame is the contiguous states,
- * so those three are outside it by design: Alaska and Hawaii are held in the
- * atlas insets (`app/map-insets.ts`), and all three are reachable by orbiting
- * out to them.
+ * Alaska, Hawaii, Puerto Rico, and the other primaries that sit outside the
+ * contiguous states. The opening frame is CONUS, so those are outside it by
+ * design: Alaska and Hawaii are held in the atlas insets (`app/map-insets.ts`),
+ * and all of them are reachable by orbiting out. Guam, the Marianas, American
+ * Samoa and the Virgin Islands have no inset (story 32) and stay at true
+ * coordinates off this frame.
  */
-const OFF_FRAME = new Set(["AK", "HI", "PR"]);
+const OFF_FRAME = new Set(["AK", "AS", "GU", "HI", "MP", "PR", "VI"]);
 
 /** Whether a state is inside the opening frame at all. */
 function inFrame(state: string): boolean {

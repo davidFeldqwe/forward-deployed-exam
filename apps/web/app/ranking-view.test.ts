@@ -50,8 +50,8 @@ const hya: ScoredAirport = {
   gaps: ["No free source publishes gate capacity.", "Long-haul share is not available for HYA."],
 };
 
-// The fourth hub size, off the fixture rather than the committed snapshot: the
-// snapshot is still the top ~100 by ACAIS and carries no nonhub row yet.
+// The fourth hub size, off a fixture row: the committed snapshot carries
+// nonhub primaries too, but this file's cases do not need one of those.
 const bgr: ScoredAirport = {
   ...hya,
   iata: "BGR",

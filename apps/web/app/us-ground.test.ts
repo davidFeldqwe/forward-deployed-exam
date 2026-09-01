@@ -19,10 +19,15 @@ test("the ground plane is committed geometry: fifty states, DC and Puerto Rico",
 
 test("every state an airport in the screen sits in has an outline under it", () => {
   const drawn = new Set(US_STATES.map((state) => state.state));
+  const uncovered = new Set<string>();
 
   for (const row of scoreUniverse(loadSnapshot())) {
-    assert.equal(drawn.has(row.state), true, row.state);
+    if (!drawn.has(row.state)) uncovered.add(row.state);
   }
+  // #73: Pacific and Caribbean primaries stay at true coordinates with no extra
+  // inset. The committed outlines are the fifty states, DC and Puerto Rico, so
+  // these four have no ring under them rather than a fake one at 0,0.
+  assert.deepEqual([...uncovered].toSorted(), ["AS", "GU", "MP", "VI"]);
 });
 
 test("each outline is a closed ring of real degrees, not a stray point", () => {

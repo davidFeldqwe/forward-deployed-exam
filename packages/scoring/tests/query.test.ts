@@ -221,7 +221,7 @@ test("an off-list sortBy is refused by name, not a TypeError from the sort", () 
 
 // A compare is the case where a filter can half-succeed: "LAX vs ITH" returns
 // one row, and without this the caller cannot tell that from "both airports came
-// back". ITH is a real airport, just not in the top-100 screen, so the honest
+// back". ITH is a real airport, just not in this fixture's universe, so the honest
 // answer names it as outside the universe rather than refusing the whole query.
 test("a requested code outside the universe is named, not silently dropped", () => {
   const result = queryAirports(scored, { iata: ["LAX", " ith "] });

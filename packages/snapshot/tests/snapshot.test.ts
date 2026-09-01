@@ -7,20 +7,42 @@ import {
   SLOT_LIMITS,
   airportSnapshotSchema,
   loadSnapshot,
+  peerGroupSchema,
+  type PeerGroup,
 } from "../src/index.ts";
 
 const snapshot = loadSnapshot();
 const byIata = new Map(snapshot.airports.map((airport) => [airport.iata, airport]));
 
-test("the committed snapshot validates and covers roughly the top 100 US airports", () => {
-  assert.ok(snapshot.airports.length >= 95, "at least 95 airports");
-  assert.ok(snapshot.airports.length <= 105, "at most 105 airports");
+// #73: the universe is the FAA's primary line, so the count moves with the
+// release rather than sitting at a magic number. What is pinned is its scale —
+// hundreds, not a top-N excerpt — and that all four hub sizes are really in it.
+test("the committed snapshot validates and covers every US primary commercial airport", () => {
+  assert.ok(snapshot.airports.length >= 300, `primary-scale universe, got ${snapshot.airports.length}`);
+  assert.ok(snapshot.airports.length <= 600, `primaries only, got ${snapshot.airports.length}`);
   assert.equal(snapshot.joinKey, "iata");
   for (const airport of snapshot.airports) {
     assert.match(airport.iata, /^[A-Z]{3}$/);
     assert.ok(airport.name.length > 0, `${airport.iata} has a name`);
     assert.ok(airport.municipality.length > 0, `${airport.iata} has a municipality`);
   }
+});
+
+test("all four FAA hub sizes are peer groups the committed universe carries", () => {
+  const sizes = new Map<PeerGroup, number>();
+  for (const airport of snapshot.airports) {
+    sizes.set(airport.peerGroup, (sizes.get(airport.peerGroup) ?? 0) + 1);
+  }
+  assert.deepEqual([...sizes.keys()].toSorted(), [...peerGroupSchema.options].toSorted());
+  for (const [peerGroup, count] of sizes) {
+    assert.ok(count > 1, `${peerGroup} has peers to be ranked against, not one row`);
+  }
+  // Nonhub is the fourth size and by far the largest group: most primaries are
+  // one, which is why the top-100 cut was three peer groups wide.
+  assert.ok(
+    (sizes.get("nonhub") ?? 0) > snapshot.airports.length / 2,
+    "most primary airports are nonhub",
+  );
 });
 
 test("airports are ordered by enplanements in the second window year", () => {
@@ -128,10 +150,18 @@ test("every airport carries the OurAirports coordinate pair the map is drawn fro
       typeof longitude === "number" && Math.abs(longitude) <= 180,
       `${iata} longitude ${longitude} is degrees`,
     );
-    // Every airport in today's universe is west of Greenwich, San Juan included.
-    // A Pacific territory entering the top 100 would fail this line, which is the
-    // point: someone then checks the sign rather than shipping a mirrored map.
-    assert.ok(longitude < 0, `${iata} is in the western hemisphere`);
+  }
+
+  // Everything is west of Greenwich except the Marianas, which really do sit on
+  // the other side of the date line. Naming them is the point: a sign lost in a
+  // reformat would put a state in Kazakhstan, and it would fail here rather than
+  // ship as a mirrored map.
+  const eastOfGreenwich = snapshot.airports
+    .filter((airport) => (airport.longitude ?? 0) > 0)
+    .map((airport) => airport.iata);
+  assert.deepEqual(eastOfGreenwich.toSorted(), ["GUM", "ROP", "SPN", "TIQ"]);
+  for (const iata of eastOfGreenwich) {
+    assert.ok(["GU", "MP"].includes(byIata.get(iata)?.state ?? ""), `${iata} is a Mariana`);
   }
 
   // Pinned against OurAirports: Logan is on Boston harbour, and the sign is the

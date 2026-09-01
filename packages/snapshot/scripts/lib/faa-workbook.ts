@@ -1,7 +1,8 @@
 import { peerGroupSchema, type PeerGroup } from "../../src/schema.ts";
 
 export type FaaUniverseRow = {
-  iata: string;
+  /** The FAA location identifier, which is not always the IATA code. */
+  locid: string;
   peerGroup: PeerGroup;
   state: string;
   enplanements: { firstYear: number; secondYear: number };
@@ -21,6 +22,15 @@ export const FAA_HUB_LETTERS: Readonly<Record<PeerGroup, string>> = {
   small: "S",
   nonhub: "N",
 };
+
+/**
+ * What ACAIS writes in the hub column for a commercial-service airport that is
+ * not a primary — under 10,000 annual enplanements. Those rows are in the same
+ * ranked list as the primaries and are not part of this universe, so they are
+ * skipped rather than thrown: a hub letter nobody publishes is a changed
+ * workbook, a nonprimary row is just a nonprimary row.
+ */
+const FAA_NONPRIMARY_HUB = "None";
 
 // Read the other way round, because the workbook gives a letter and the universe
 // stores a peer group. A letter no hub size claims has no entry, which is the
@@ -91,15 +101,15 @@ function cell(row: Row, column: string): string {
 }
 
 /**
- * The ranked universe from the FAA ACAIS commercial-service enplanement
- * workbook: `size` rows keyed by IATA, each carrying both comparison-window
- * years. Pure over the worksheet so the header contract is testable without a
- * download.
+ * The primary-commercial universe from the FAA ACAIS enplanement workbook:
+ * every three-letter locid the FAA files under one of its four hub sizes, each
+ * row carrying both comparison-window years. That line is the FAA's own, not a
+ * top-N cut, so the count moves with the release. Pure over the worksheet so
+ * the header contract is testable without a download.
  */
 export function readFaaUniverse(
   rows: readonly Row[],
   window: { firstYear: number; secondYear: number },
-  size: number,
 ): FaaUniverseRow[] {
   const headerIndex = rows.findIndex((row) => resolveColumns(row, window) !== null);
   const columns = headerIndex < 0 ? null : resolveColumns(rows[headerIndex] as Row, window);
@@ -114,17 +124,20 @@ export function readFaaUniverse(
     const rank = Number(cell(row, columns.rank));
     const locid = cell(row, columns.locid).toUpperCase();
     // Subtotal rows carry a count but no rank, and a four-character FAA location
-    // identifier is not an IATA code, so neither joins into the universe.
-    if (!Number.isInteger(rank) || rank < 1 || rank > size || !/^[A-Z]{3}$/.test(locid)) {
+    // identifier joins to nothing the snapshot keys on, so neither is a row here.
+    if (!Number.isInteger(rank) || rank < 1 || !/^[A-Z]{3}$/.test(locid)) {
       continue;
     }
     const hub = cell(row, columns.hubSize);
+    if (hub === FAA_NONPRIMARY_HUB) {
+      continue;
+    }
     const peerGroup = PEER_GROUP_BY_FAA_HUB.get(hub);
     if (!peerGroup) {
       throw new Error(`FAA hub size ${hub || "(blank)"} at rank ${rank} is not a peer group`);
     }
     universe.push({
-      iata: locid,
+      locid,
       peerGroup,
       state: cell(row, columns.state).toUpperCase(),
       enplanements: {
@@ -133,8 +146,8 @@ export function readFaaUniverse(
       },
     });
   }
-  if (universe.length !== size) {
-    throw new Error(`expected ${size} ranked airports, read ${universe.length}`);
+  if (universe.length === 0) {
+    throw new Error("the FAA workbook carries no ranked primary airports");
   }
   return universe;
 }

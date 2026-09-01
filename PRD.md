@@ -10,7 +10,7 @@ The exam (and the analyst) grades clarity of thesis, a visible code/LLM boundary
 
 ## Solution
 
-A signed-in chat agent over a committed snapshot of the ~100 largest US airports.
+A signed-in chat agent over a committed snapshot of every US primary commercial airport.
 
 - Signed-out people see a dark **Landing** (screenshot layout, zip palette). Chat is gated.
 - Convex Auth (email + password, open signup). Google or GitHub only if time remains.
@@ -69,7 +69,7 @@ A signed-in chat agent over a committed snapshot of the ~100 largest US airports
 
 - TypeScript only. Next.js App Router. Vercel for the live URL.
 - Convex: **Auth + threads only**. Email + password, open signup. Social providers are stretch.
-- Committed JSON snapshot of the top ~100 US airports by ACAIS enplanements. Optional rebuild script. Fresh clone runs offline from the committed file.
+- Committed JSON snapshot of every FAA primary commercial airport by ACAIS enplanements — hub size large, medium, small or **nonhub**. Optional rebuild script. Fresh clone runs offline from the committed file.
 - Scoring is a pure module: no LLM, no fetch, no Convex.
 - Agent: Vercel AI SDK `streamText` in a route handler. Cap tool steps (eight is enough). Auth order: `ANTHROPIC_API_KEY`, then `OPENAI_API_KEY` (`OPENAI_MODEL` default `gpt-4o`, fallback `gpt-4o-mini`).
 - LLM vendor SDK imported in exactly one module so scoring purity stays grep-verifiable.
@@ -98,7 +98,7 @@ Join key: **IATA**. Never BTS `CityMarketID`, BTS numeric AirportID, or OurAirpo
 
 Ingest sources (see `research/aviation-data-sources.md`):
 
-- FAA ACAIS enplanements → universe (top ~100) and hub-size peer group
+- FAA ACAIS enplanements → universe (every primary: hub L, M, S or N) and hub-size **peer group**, N being **nonhub**
 - BTS T-100 Segment → passengers, flights, distance for long-haul share and unmet flight demand
 - BTS On-Time Performance → delay (arrival delay minutes, weather delay removed)
 - OurAirports airports + runways → name, municipality, state (`iso_region` minus `US-`), runway count
@@ -235,14 +235,14 @@ There is no prior test suite in this repo; scoring tests are the first.
 
 - Voice input, cloud TTS, PDF export, heat-map-as-a-page, public guest chat (browser `speechSynthesis` on the last assistant prose is reopened by [exam edges](https://github.com/davidFeldqwe/forward-deployed-exam/issues/24); it adds no vendor and no key)
 - Live aviation HTTP at query time (document the vintage instead)
-- Universe beyond the top ~100
+- Universe beyond the FAA primary line: nonprimary commercial service (2,500–10,000 enplanements)
 - Airports, scores, or ingest output stored in Convex
 - Weight sliders, ROI / profit / construction cost / land / politics / airline leases as scored inputs
 - Gate/terminal capacity as a real field (proxy only)
 - Metro grouping; BTS CityMarketID as identity
 - On `/map`: Mapbox / Leaflet / any basemap token, an SVG twin of the canvas, a sidecar ranking table, a dossier route, filter chips, a year-A/B height toggle, or `?region=` coupling from a **Thread**
 - Methodology popover as a page, Rankings or dossier routes (recents as a persistent left column is reopened by [T3 density](https://github.com/davidFeldqwe/forward-deployed-exam/issues/32); it is chrome over the same `listThreads` data)
-- LangGraph, split Python/TS stack, Postgres/DuckDB for 100 rows
+- LangGraph, split Python/TS stack, Postgres/DuckDB for a few hundred rows
 - Social login as a blocker (stretch only)
 - Building is not done by this document; this document is the handoff
 

@@ -39,7 +39,7 @@ These standards summarize the conventions already present in this repo. Review c
   - `research/` — source notes; not runtime code
 - Keep domain rules aligned with `CONTEXT.md` and `PRD.md`. In particular:
   - Join key is **IATA**. Never BTS `CityMarketID`, BTS numeric AirportID, or OurAirports `ident`
-  - Scoring is a committed snapshot of the ~100 largest US airports. Fresh clone runs offline from that file. No live aviation HTTP at query time
+  - Scoring is a committed snapshot of every US primary commercial airport. Fresh clone runs offline from that file. No live aviation HTTP at query time
   - Score vector is four components: congestion, unmet flight demand, delay, growth. Long-haul share and slot limit are lookups / why-labels, not vector slots
   - Percentile within FAA hub-size **peer group**, national. Region questions filter, then sort; they do not re-percentile
   - Fixed weights: congestion 35, unmet flight demand 35, delay 20, growth 10. No weight slider

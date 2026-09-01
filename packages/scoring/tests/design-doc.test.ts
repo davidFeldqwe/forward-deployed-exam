@@ -95,10 +95,17 @@ test("the stated vintage is the committed snapshot's own", () => {
   assert.ok(design.includes(`${firstYear}`), `DESIGN.md names ${firstYear}`);
   assert.ok(design.includes(`${secondYear}`), `DESIGN.md names ${secondYear}`);
   assert.ok(design.includes(snapshot.asOf.slice(0, 10)), "DESIGN.md names the ingest date");
+  // #73: the universe is the FAA's primary line, so the writeup states the
+  // count it actually reached and how that count splits across the four hub
+  // sizes. A re-ingest that moves either has to move this paragraph with it.
   assert.ok(
-    design.includes(`top ${snapshot.airports.length} US airports`),
-    "DESIGN.md names the size of the universe",
+    prose.includes(`${snapshot.airports.length} US primary commercial airports`),
+    `DESIGN.md names the size of the universe as ${snapshot.airports.length}`,
   );
+  for (const peerGroup of peerGroupSchema.options) {
+    const size = snapshot.airports.filter((airport) => airport.peerGroup === peerGroup).length;
+    assert.ok(prose.includes(`${size} ${peerGroup}`), `DESIGN.md states ${size} ${peerGroup}`);
+  }
 });
 
 // Issue #70: a hub size the module ranks in and the writeup's parenthetical

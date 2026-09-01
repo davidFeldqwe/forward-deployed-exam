@@ -19,9 +19,12 @@ function call(args: Record<string, string | string[]>): ToolCall {
   };
 }
 
-// The New England answer this thread's follow-ups are carried from: PVD, BDL,
-// PWM, BOS, in that ranked order.
+// The New England answer this thread's follow-ups are carried from. Rank is
+// position in that resolved set, which is longer than the ten rows drawn.
 const newEngland = call({ region: "New England" });
+const newEnglandCodes = (newEngland.result as { resolvedIata: string[] }).resolvedIata;
+const second = newEnglandCodes[1];
+assert.ok(second, "New England has a second resolved airport");
 
 function thread(question: string, followUp: ToolCall): ThreadMessage[] {
   return [
@@ -33,22 +36,22 @@ function thread(question: string, followUp: ToolCall): ThreadMessage[] {
 }
 
 test("“the second one” is resolved against the ranking earlier in this thread", () => {
-  const messages = thread("Tell me more about the second one.", call({ iata: "BDL" }));
+  const messages = thread("Tell me more about the second one.", call({ iata: second }));
   const carried = carriedContext(messages, 3);
+  const followUp = (messages[3]?.toolCalls[0]?.result as { rows: { name: string }[] }).rows[0];
 
   assert.equal(carried?.phrase, "the second one");
   assert.equal(carried?.from, "New England");
-  assert.deepEqual(carried?.airports, [
-    { iata: "BDL", name: "Bradley International Airport", rank: 2 },
-  ]);
+  assert.deepEqual(carried?.airports, [{ iata: second, name: followUp?.name, rank: 2 }]);
   // The block says how the reference was resolved, not that it was guessed.
   assert.match(carried?.summary ?? "", /row 2/);
   assert.match(carried?.summary ?? "", /New England/);
 });
 
 test("a pronoun carries the whole earlier set when the follow-up keeps it", () => {
+  const first = newEnglandCodes[0];
   const carried = carriedContext(
-    thread("How much delay do they have?", call({ iata: ["PVD", "BDL"] })),
+    thread("How much delay do they have?", call({ iata: [first, second] })),
     3,
   );
 
@@ -56,8 +59,8 @@ test("a pronoun carries the whole earlier set when the follow-up keeps it", () =
   assert.deepEqual(
     carried?.airports.map(({ iata, rank }) => ({ iata, rank })),
     [
-      { iata: "PVD", rank: 1 },
-      { iata: "BDL", rank: 2 },
+      { iata: first, rank: 1 },
+      { iata: second, rank: 2 },
     ],
   );
 });
