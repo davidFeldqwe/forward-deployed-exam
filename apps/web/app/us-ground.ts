@@ -44,12 +44,14 @@ export type PlacedOutline = {
 
 export const US_STATES: readonly StateOutline[] = geometrySchema.parse(geometry).states;
 
-/** Every state outline, projected once into the frame the columns stand in. */
-export function groundOutlines(): PlacedOutline[] {
-  return US_STATES.map(({ state, rings }) => ({
-    state,
-    rings: rings.map((ring) =>
-      ring.map(([longitude, latitude]) => groundPoint({ latitude, longitude })),
-    ),
-  }));
-}
+/**
+ * Every state outline in the frame the columns stand in. The geometry is
+ * committed and the frame is fixed, so the projection is done once here rather
+ * than again on every mount.
+ */
+export const GROUND_OUTLINES: readonly PlacedOutline[] = US_STATES.map(({ state, rings }) => ({
+  state,
+  rings: rings.map((ring) =>
+    ring.map(([longitude, latitude]) => groundPoint({ latitude, longitude })),
+  ),
+}));

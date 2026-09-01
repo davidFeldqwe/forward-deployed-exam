@@ -24,7 +24,7 @@ import {
   type ScenePoint,
 } from "./map-camera.ts";
 import { mapMarks } from "./map-view.ts";
-import { groundOutlines } from "./us-ground.ts";
+import { GROUND_OUTLINES } from "./us-ground.ts";
 
 const web = new URL("../", import.meta.url);
 
@@ -49,7 +49,7 @@ const OFF_FRAME = new Set(["AK", "HI", "PR"]);
  */
 function contiguousPoints(): THREE.Vector3[] {
   const points: THREE.Vector3[] = [];
-  for (const outline of groundOutlines()) {
+  for (const outline of GROUND_OUTLINES) {
     if (OFF_FRAME.has(outline.state)) continue;
     for (const ring of outline.rings) {
       for (const point of ring) points.push(new THREE.Vector3(point.x, 0, point.z));
@@ -127,7 +127,7 @@ test("the frame's half-width is the committed country's own east–west reach", 
   // edges. A constant that drifted from the geometry would frame a country the
   // ground plane no longer draws.
   const reach = Math.max(
-    ...groundOutlines()
+    ...GROUND_OUTLINES
       .filter((outline) => !OFF_FRAME.has(outline.state))
       .flatMap((outline) => outline.rings.flatMap((ring) => ring.map((point) => Math.abs(point.x)))),
   );
@@ -234,7 +234,7 @@ test("the camera can see the whole world from the furthest the orbit may stand",
   // limit plus this would clip the country out of the frame it opened in.
   const target = new THREE.Vector3(CONUS_VIEW.target.x, CONUS_VIEW.target.y, CONUS_VIEW.target.z);
   const reach = Math.max(
-    ...groundOutlines().flatMap((outline) =>
+    ...GROUND_OUTLINES.flatMap((outline) =>
       outline.rings.flatMap((ring) =>
         ring.map((point) => new THREE.Vector3(point.x, 0, point.z).distanceTo(target)),
       ),

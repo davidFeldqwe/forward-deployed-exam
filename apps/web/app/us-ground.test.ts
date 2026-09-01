@@ -5,7 +5,7 @@ import { scoreUniverse } from "@repo/scoring";
 import { loadSnapshot } from "@repo/snapshot";
 
 import { groundPoint } from "./map-view.ts";
-import { US_STATES, groundOutlines } from "./us-ground.ts";
+import { GROUND_OUTLINES, US_STATES } from "./us-ground.ts";
 
 test("the ground plane is committed geometry: fifty states, DC and Puerto Rico", () => {
   assert.equal(US_STATES.length, 52);
@@ -43,11 +43,9 @@ test("each outline is a closed ring of real degrees, not a stray point", () => {
 });
 
 test("the outline is placed in the columns' own frame, so a column stands on its state", () => {
-  const outlines = groundOutlines();
-
-  assert.equal(outlines.length, US_STATES.length);
+  assert.equal(GROUND_OUTLINES.length, US_STATES.length);
   const alabama = US_STATES.find((state) => state.state === "AL");
-  const drawn = outlines.find((outline) => outline.state === "AL");
+  const drawn = GROUND_OUTLINES.find((outline) => outline.state === "AL");
   assert.ok(alabama && drawn);
 
   const [longitude, latitude] = alabama.rings[0][0];

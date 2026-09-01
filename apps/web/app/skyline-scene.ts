@@ -362,6 +362,11 @@ function fitToHost(
 /** Every buffer and material this scene made, handed back to the GPU. */
 function disposeAll(scene: THREE.Scene): void {
   scene.traverse((object) => {
+    // A mark mesh also holds a buffer of its own — one matrix per instance —
+    // which nothing but the mesh's own dispose hands back.
+    if (object instanceof THREE.InstancedMesh) {
+      object.dispose();
+    }
     if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
       object.geometry.dispose();
       const materials = Array.isArray(object.material) ? object.material : [object.material];

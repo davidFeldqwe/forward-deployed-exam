@@ -16,7 +16,7 @@ import {
   markMeshes,
   mountSkyline,
 } from "./skyline-scene.ts";
-import { groundOutlines } from "./us-ground.ts";
+import { GROUND_OUTLINES } from "./us-ground.ts";
 
 /**
  * The canvas itself (issue #69 / #68). three.js builds a scene without asking
@@ -165,12 +165,11 @@ test("a mesh's shape is the group's own, not one guessed from its lamp word", ()
 });
 
 test("the country is the committed outline, whole and flat on the ground", () => {
-  const outlines = groundOutlines();
-  const segments = groundLines(outlines, new THREE.Color("#8a8f98"));
+  const segments = groundLines(GROUND_OUTLINES, new THREE.Color("#8a8f98"));
   const position = segments.geometry.getAttribute("position");
 
   // Two vertices per adjacent pair of points: no state and no ring dropped.
-  const expected = outlines.reduce(
+  const expected = GROUND_OUTLINES.reduce(
     (total, outline) =>
       total + outline.rings.reduce((ring, points) => ring + 2 * (points.length - 1), 0),
     0,

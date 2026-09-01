@@ -150,10 +150,9 @@ export function farPlane(aspect: number): number {
  * further off.
  */
 export function openingPosition(aspect: number): ScenePoint {
-  const distance = openingDistance(aspect);
-  return distance === BASE_DISTANCE
-    ? CONUS_VIEW.position
-    : atDistance(CONUS_VIEW.position, distance);
+  // A pane already wide enough for the country is left at `CONUS_VIEW` itself:
+  // moving that point to the distance it already stands at leaves it there.
+  return atDistance(CONUS_VIEW.position, openingDistance(aspect));
 }
 
 export type IntroEase = {

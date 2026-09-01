@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { mapCopy } from "@/app/map-copy";
 import type { MapMark } from "@/app/map-view";
 import { mountSkyline } from "@/app/skyline-scene";
-import { groundOutlines } from "@/app/us-ground";
+import { GROUND_OUTLINES } from "@/app/us-ground";
 
 /**
  * The WebGL half of `/map` (issue #69). It owns exactly two things: handing the
@@ -27,7 +27,7 @@ export function SkylineCanvas({ marks }: { marks: readonly MapMark[] }) {
     }
     const teardown = mountSkyline(element, {
       marks,
-      outlines: groundOutlines(),
+      outlines: GROUND_OUTLINES,
       reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     });
     if (!teardown) {
