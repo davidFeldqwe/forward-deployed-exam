@@ -17,6 +17,7 @@ import {
 } from "./thread-answer.ts";
 import {
   assistantMessage,
+  rankingRows,
   userMessage,
   type ThreadMessage,
   type ToolCall,
@@ -70,13 +71,19 @@ const methodology: ToolCall = {
 
 const newEngland = query({ region: "New England" });
 
-/** A query the screen ran and matched nothing with: a resolved set, no rows. */
-const matchedNothing: ToolCall = {
-  tool: "queryAirports",
-  args: { region: "New England" },
-  result: { rows: [], matched: 0, resolvedIata: [], sortBy: "composite", limit: 10 },
-  durationMs: 4,
-};
+/**
+ * A query the screen ran and matched nothing with: a resolved set, no rows. The
+ * region is a parameter because a turn of several calls is read by which call
+ * each block came from, and a phrase repeated twice cannot say.
+ */
+function matchedNothing(region: string): ToolCall {
+  return {
+    tool: "queryAirports",
+    args: { region },
+    result: { rows: [], matched: 0, resolvedIata: [], sortBy: "composite", limit: 10 },
+    durationMs: 4,
+  };
+}
 
 function tags(parts: readonly ThreadAnswerPart[]): ThreadAnswerTag[] {
   return parts.map((part) => part.tag);
@@ -149,6 +156,52 @@ test("two queryAirports calls group all sets, then prose, then all tables, then 
   assert.ok(lines.length > 0);
 });
 
+/** The parts of one tag, in the order the answer draws them. */
+function partsOf<T extends ThreadAnswerTag>(
+  parts: readonly ThreadAnswerPart[],
+  tag: T,
+): Extract<ThreadAnswerPart, { tag: T }>[] {
+  return parts.filter((part): part is Extract<ThreadAnswerPart, { tag: T }> => part.tag === tag);
+}
+
+// Grouping says where each tag sits; it does not say what is inside a group. A
+// turn of several calls is read by pairing what it shows back to the call it
+// came from — the first set with the first table — so within a group the calls
+// keep the order they were made in. Every assertion above is on the tag
+// sequence, which a group drawn backwards leaves identical.
+test("within a group the blocks read in call order, each carrying its own call", () => {
+  const pacific = query({ region: "Pacific" });
+  // The middle call matched nothing, so the tables are not one per set: they
+  // are the sets that came back with rows, in the same order.
+  const calls = [newEngland, matchedNothing("Mountain"), pacific];
+  const messages = [
+    userMessage("Compare New England, the Mountain division and the Pacific."),
+    assistantMessage("Two of the three came back.", calls),
+  ];
+  const parts = threadAnswer(messages, 1);
+
+  // The inspectable rows are the calls themselves, in the order the turn made
+  // them: a row is what shows which query produced what.
+  assert.deepEqual(
+    partsOf(parts, "tool").map((part) => part.call),
+    calls,
+  );
+
+  // One resolved set per query, named by the phrase its filters resolved.
+  assert.deepEqual(
+    partsOf(parts, "resolved").map((part) => part.resolved.phrase),
+    ["New England", "Mountain", "Pacific"],
+  );
+
+  // And the tables under the prose in that same order, each holding the rows
+  // of the call it belongs to — so the second table is the second set that had
+  // any, not whichever one the loop reached first.
+  assert.deepEqual(
+    partsOf(parts, "ranking").map((part) => part.rows.map((row) => row.iata)),
+    [newEngland, pacific].map((call) => (rankingRows(call) ?? []).map((row) => row.iata)),
+  );
+});
+
 test("a methodology-only turn is tool and prose, and nothing it has no rows for", () => {
   const messages = [
     userMessage("How is the composite weighted?"),
@@ -161,7 +214,7 @@ test("a methodology-only turn is tool and prose, and nothing it has no rows for"
 test("an empty tag is omitted: no rows is no table and no caveats", () => {
   const messages = [
     userMessage("Anything in Nunavut?"),
-    assistantMessage("Nothing matched.", [matchedNothing]),
+    assistantMessage("Nothing matched.", [matchedNothing("New England")]),
   ];
 
   // The resolved set still speaks — it is what says nothing matched.
@@ -180,10 +233,16 @@ test("the prose heading is drawn only where a table sits under it", () => {
   assert.equal(heading(assistantMessage("Congestion is 35.", [methodology])), null);
   // A query that matched nothing draws no table, so the boundary the label
   // marks has nothing on the other side of it: no label either.
-  assert.equal(heading(assistantMessage("Nothing matched.", [matchedNothing])), null);
+  assert.equal(
+    heading(assistantMessage("Nothing matched.", [matchedNothing("New England")])),
+    null,
+  );
   // One call of two matched rows: there is a table under the prose, so the
   // label is drawn.
-  assert.equal(heading(assistantMessage("PVD leads.", [matchedNothing, newEngland])), PROSE_HEADING);
+  assert.equal(
+    heading(assistantMessage("PVD leads.", [matchedNothing("New England"), newEngland])),
+    PROSE_HEADING,
+  );
 });
 
 test("only an assistant turn has a Thread answer", () => {
@@ -221,9 +280,9 @@ test("the pending Thread answer is one pending row and nothing else", () => {
 test("every Thread answer reads down the locked tag order", () => {
   const turns: ThreadAnswerPart[][] = [
     ...followUpThread.map((_, at) => threadAnswer(followUpThread, at)),
-    answerTurn(assistantMessage("Two sets.", [newEngland, matchedNothing])),
+    answerTurn(assistantMessage("Two sets.", [newEngland, matchedNothing("New England")])),
     answerTurn(assistantMessage("Congestion is 35.", [methodology])),
-    answerTurn(assistantMessage("Nothing matched.", [matchedNothing])),
+    answerTurn(assistantMessage("Nothing matched.", [matchedNothing("New England")])),
     answerTurn(assistantMessage("Ask about an airport.")),
     [...PENDING_THREAD_ANSWER],
   ];
