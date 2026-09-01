@@ -3,8 +3,8 @@ import { test } from "node:test";
 
 import { queryAirports } from "@repo/scoring";
 
-import { checkNewEnglandRanking } from "./citation-check.ts";
 import { runAgentTool, toolPayloadJson } from "./agent-tools.ts";
+import { checkNewEnglandRanking } from "./citation-check.ts";
 import { assistantMessage } from "./thread-messages.ts";
 
 const ranking = runAgentTool("queryAirports", { region: "New England" });

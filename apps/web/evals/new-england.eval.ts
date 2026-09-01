@@ -5,8 +5,8 @@
  */
 import { answerQuestion } from "../app/agent.ts";
 import { streamAgentModel } from "../app/agent-model.ts";
-import { checkNewEnglandRanking } from "../app/citation-check.ts";
 import { chatCopy } from "../app/chat-copy.ts";
+import { checkNewEnglandRanking, type CitationVerdict } from "../app/citation-check.ts";
 import { userMessage, type ThreadMessage } from "../app/thread-messages.ts";
 
 export const NEW_ENGLAND_CANDIDATES_QUESTION = chatCopy.chips[0];
@@ -14,7 +14,7 @@ export const NEW_ENGLAND_CANDIDATES_QUESTION = chatCopy.chips[0];
 export type NewEnglandEvalResult = {
   question: string;
   answer: ThreadMessage;
-  verdict: ReturnType<typeof checkNewEnglandRanking>;
+  verdict: CitationVerdict;
 };
 
 export async function runNewEnglandEval(): Promise<NewEnglandEvalResult> {

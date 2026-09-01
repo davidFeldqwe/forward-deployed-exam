@@ -15,7 +15,7 @@ const webRoot = join(here, "..");
 const traceDir = join(webRoot, ".evalite");
 
 void main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
   process.stderr.write(`${message}\n`);
   process.exitCode = 1;
 });
@@ -60,15 +60,17 @@ function loadEnvFile(path: string): void {
     const eq = line.indexOf("=");
     if (eq < 1) continue;
     const name = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
+    const value = unquote(line.slice(eq + 1).trim());
     if (process.env[name] === undefined) {
       process.env[name] = value;
     }
   }
+}
+
+function unquote(value: string): string {
+  const quote = value[0];
+  if ((quote === '"' || quote === "'") && value.endsWith(quote)) {
+    return value.slice(1, -1);
+  }
+  return value;
 }

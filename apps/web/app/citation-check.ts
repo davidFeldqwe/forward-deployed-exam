@@ -4,11 +4,15 @@
  * figure comes from `rows`. Ordinary tests pin this on fixtures; the local
  * Evalite loop grades a live `answerQuestion` with the same checker.
  */
-import { COMPONENTS, type QueryResult, type ScoredAirport } from "@repo/scoring";
+import { COMPONENTS, type ScoredAirport } from "@repo/scoring";
 
 import { rankingRows, type ThreadMessage, type ToolCall } from "./thread-messages.ts";
 
 const NEW_ENGLAND = "new england";
+
+/** Signed integer or decimal as the agent writes it in prose. */
+const NUMBER = String.raw`-?\d+(?:\.\d+)?`;
+const COMPOSITE = String.raw`composite(?:\s+score)?\s*(?:of|at|is|:)?\s*(${NUMBER})`;
 
 /** Three-letter tokens the agent writes that are not airport codes. */
 const NOT_IATA = new Set([
@@ -70,6 +74,13 @@ const NOT_IATA = new Set([
 
 export type CitationVerdict = { ok: boolean; reason: string };
 
+/** The ranking fields the checker reads; the rest of a query payload is unused. */
+type RankingCitation = {
+  rows: readonly ScoredAirport[];
+  matched: number;
+  resolvedIata: readonly string[];
+};
+
 /**
  * Grade a New England candidates answer: `queryAirports` with that region and
  * `matched > 0`, `describeMethodology` optional, prose bound to that payload.
@@ -99,7 +110,7 @@ export function checkNewEnglandRanking(answer: ThreadMessage): CitationVerdict {
  * may be named; a composite attached to it is invented unless that number is
  * that airport's own page row — which it does not have.
  */
-export function checkCitations(prose: string, payload: QueryResult): CitationVerdict {
+export function checkCitations(prose: string, payload: RankingCitation): CitationVerdict {
   const resolved = new Set(payload.resolvedIata);
   const onPage = new Map(payload.rows.map((row) => [row.iata, row]));
   const allowed = allowedFigures(payload.rows);
@@ -111,22 +122,9 @@ export function checkCitations(prose: string, payload: QueryResult): CitationVer
   }
 
   for (const figure of citedFigures(prose)) {
-    if (figure.iata !== null && resolved.has(figure.iata) && !onPage.has(figure.iata)) {
-      return fail(
-        `${figure.iata} is in the resolved set but not on the page, so a ${figure.kind} attached to it is invented`,
-      );
-    }
-    if (figure.iata !== null && onPage.has(figure.iata)) {
-      const row = onPage.get(figure.iata);
-      if (row && !rowAllows(row, figure)) {
-        return fail(
-          `${figure.kind} ${figure.value} is not a ${figure.iata} figure from this page`,
-        );
-      }
-      continue;
-    }
-    if (!allowed.has(normalizeFigure(figure.value))) {
-      return fail(`${figure.kind} ${figure.value} does not appear on this turn's rows`);
+    const problem = figureProblem(figure, resolved, onPage, allowed);
+    if (problem !== null) {
+      return fail(problem);
     }
   }
 
@@ -142,7 +140,7 @@ function lastQueryCall(calls: readonly ToolCall[]): ToolCall | null {
   return queries[queries.length - 1] ?? null;
 }
 
-function queryPayload(call: ToolCall): QueryResult | null {
+function queryPayload(call: ToolCall): RankingCitation | null {
   const rows = rankingRows(call);
   if (!rows || !isRecord(call.result)) {
     return null;
@@ -154,16 +152,7 @@ function queryPayload(call: ToolCall): QueryResult | null {
   if (!resolvedIata.every((code): code is string => typeof code === "string")) {
     return null;
   }
-  return {
-    rows,
-    matched,
-    resolvedIata,
-    sortBy: null,
-    metric: null,
-    limit: rows.length,
-    unknownIata: [],
-    unknownPlace: [],
-  };
+  return { rows, matched, resolvedIata };
 }
 
 function citedIata(prose: string): string[] {
@@ -192,28 +181,26 @@ function citedFigures(prose: string): CitedFigure[] {
     }
   };
 
-  for (const match of prose.matchAll(
-    /\b([A-Z]{3})\b[^.]{0,80}?\bcomposite(?:\s+score)?\s*(?:of|at|is|:)?\s*(-?\d+(?:\.\d+)?)/gi,
-  )) {
+  for (const match of prose.matchAll(new RegExp(String.raw`\b([A-Z]{3})\b[^.]{0,80}?\b${COMPOSITE}`, "gi"))) {
     push("composite", match[2] ?? "", match[1] ?? null);
   }
-  for (const match of prose.matchAll(/\bcomposite(?:\s+score)?\s*(?:of|at|is|:)?\s*(-?\d+(?:\.\d+)?)/gi)) {
+  for (const match of prose.matchAll(new RegExp(String.raw`\b${COMPOSITE}`, "gi"))) {
     const value = match[1] ?? "";
     if (!figures.some((figure) => figure.kind === "composite" && figure.value === Number(value))) {
       push("composite", value, null);
     }
   }
-  for (const match of prose.matchAll(/(-?\d+(?:\.\d+)?)\s*(?:st|nd|rd|th)?\s*(?:percentile|pctl)\b/gi)) {
-    push("percentile", match[1] ?? "", null);
-  }
-  for (const match of prose.matchAll(/(-?\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?)\b/gi)) {
-    push("delay", match[1] ?? "", null);
-  }
-  for (const match of prose.matchAll(/\bgrowth\b[^%]{0,40}?(-?\d+(?:\.\d+)?)\s*%/gi)) {
-    push("growth", match[1] ?? "", null);
-  }
-  for (const match of prose.matchAll(/(-?\d+(?:\.\d+)?)\s*%[^.]{0,20}\bgrowth\b/gi)) {
-    push("growth", match[1] ?? "", null);
+
+  const scans: Array<{ kind: CitedFigure["kind"]; pattern: string }> = [
+    { kind: "percentile", pattern: String.raw`(${NUMBER})\s*(?:st|nd|rd|th)?\s*(?:percentile|pctl)\b` },
+    { kind: "delay", pattern: String.raw`(${NUMBER})\s*(?:min(?:ute)?s?)\b` },
+    { kind: "growth", pattern: String.raw`\bgrowth\b[^%]{0,40}?(${NUMBER})\s*%` },
+    { kind: "growth", pattern: String.raw`(${NUMBER})\s*%[^.]{0,20}\bgrowth\b` },
+  ];
+  for (const { kind, pattern } of scans) {
+    for (const match of prose.matchAll(new RegExp(pattern, "gi"))) {
+      push(kind, match[1] ?? "", null);
+    }
   }
   return figures;
 }
@@ -224,14 +211,31 @@ function iataIfCode(value: string | null): string | null {
   return NOT_IATA.has(code) ? null : code;
 }
 
-function allowedFigures(rows: readonly ScoredAirport[]): Set<string> {
-  const allowed = new Set<string>();
-  for (const row of rows) {
-    for (const value of rowFigures(row)) {
-      allowed.add(normalizeFigure(value));
-    }
+function figureProblem(
+  figure: CitedFigure,
+  resolved: ReadonlySet<string>,
+  onPage: ReadonlyMap<string, ScoredAirport>,
+  allowed: ReadonlySet<string>,
+): string | null {
+  const code = figure.iata;
+  if (code !== null && resolved.has(code) && !onPage.has(code)) {
+    return `${code} is in the resolved set but not on the page, so a ${figure.kind} attached to it is invented`;
   }
-  return allowed;
+  if (code !== null && onPage.has(code)) {
+    const row = onPage.get(code);
+    if (row && !rowAllows(row, figure)) {
+      return `${figure.kind} ${figure.value} is not a ${code} figure from this page`;
+    }
+    return null;
+  }
+  if (!allowed.has(normalizeFigure(figure.value))) {
+    return `${figure.kind} ${figure.value} does not appear on this turn's rows`;
+  }
+  return null;
+}
+
+function allowedFigures(rows: readonly ScoredAirport[]): Set<string> {
+  return new Set(rows.flatMap((row) => rowFigures(row).map(normalizeFigure)));
 }
 
 function rowFigures(row: ScoredAirport): number[] {
@@ -251,21 +255,19 @@ function rowFigures(row: ScoredAirport): number[] {
 }
 
 function rowAllows(row: ScoredAirport, figure: CitedFigure): boolean {
-  const values = rowFigures(row).map(normalizeFigure);
-  if (values.includes(normalizeFigure(figure.value))) {
+  const needle = normalizeFigure(figure.value);
+  if (rowFigures(row).some((value) => normalizeFigure(value) === needle)) {
     return true;
   }
-  if (figure.kind === "growth") {
-    const share = row.longHaulShare;
-    if (share !== null && normalizeFigure(share * 100) === normalizeFigure(figure.value)) {
-      return true;
-    }
-    const growth = row.scoreVector.growth.raw;
-    if (growth !== null && normalizeFigure(growth * 100) === normalizeFigure(figure.value)) {
-      return true;
-    }
+  if (figure.kind !== "growth") {
+    return false;
   }
-  return false;
+  // Prose often writes the stored 0–1 share or growth raw as a percent.
+  return asPercent(row.longHaulShare) === needle || asPercent(row.scoreVector.growth.raw) === needle;
+}
+
+function asPercent(share: number | null): string | null {
+  return share === null ? null : normalizeFigure(share * 100);
 }
 
 function normalizeFigure(value: number): string {
