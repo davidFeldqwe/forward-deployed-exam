@@ -4,7 +4,7 @@ import { useFormStatus } from "react-dom";
 
 import { PENDING_THREAD_ANSWER } from "@/app/thread-answer";
 import { ThreadAnswer } from "@/components/answers/ThreadAnswer";
-import { Prose, RoleLabel } from "@/components/Turn";
+import { AssistantTurn, UserTurn } from "@/components/Turn";
 
 /**
  * The question on its way, and the Thread answer under it (PRD story 35). It is
@@ -21,16 +21,10 @@ export function PendingAnswer({ question }: { question: string }) {
 
   return (
     <div className="flex flex-col gap-6 pt-6">
-      {asked.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          <RoleLabel role="user" />
-          <Prose text={asked} />
-        </div>
-      ) : null}
-      <div className="flex flex-col gap-3">
-        <RoleLabel role="assistant" />
+      {asked.length > 0 ? <UserTurn text={asked} /> : null}
+      <AssistantTurn>
         <ThreadAnswer parts={PENDING_THREAD_ANSWER} />
-      </div>
+      </AssistantTurn>
     </div>
   );
 }
