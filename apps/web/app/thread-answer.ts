@@ -9,10 +9,10 @@
  * that explains them. Empty tags are omitted, so a methodology-only turn is a
  * tool row and prose.
  *
- * The order lives here rather than in `Transcript.tsx` because it is a claim
- * about the answer shape, and a claim asserted by reading JSX is a claim tested
- * by grep. The transcript draws tags; this list decides which ones and in what
- * order.
+ * The order lives here rather than in the JSX because it is a claim about the
+ * answer shape, and a claim asserted by reading JSX is a claim tested by grep.
+ * `ThreadAnswer.tsx` says what each tag looks like; this list decides which
+ * tags a turn has and in what order.
  */
 import { carriedContext, type CarriedContext } from "./carried-context.ts";
 import { pendingAnswer } from "./pending-answer.ts";
@@ -26,7 +26,7 @@ import {
 import { spokenProse } from "./read-aloud.ts";
 import type { ThreadMessage, ToolCall } from "./thread-messages.ts";
 
-/** One block of an answer: the tag the transcript draws, and what it draws from. */
+/** One block of an answer: the tag `ThreadAnswer.tsx` draws, and what it draws from. */
 export type ThreadAnswerPart =
   | { tag: "tool"; call: ToolCall }
   | { tag: "carried"; carried: CarriedContext }
@@ -60,6 +60,10 @@ export type PendingRowPart = Extract<ThreadAnswerPart, { tag: "pending" }>;
  * read down, and what the order test walks. `satisfies` keeps it from naming a
  * tag no part carries; a tag it forgets to name has nowhere to be drawn, which
  * is what that test reports.
+ *
+ * `pending` is the one tag with no neighbours to be ordered against — a
+ * question in flight is drawn as that row alone — so its place here only has to
+ * be somewhere the order test can find it.
  */
 export const THREAD_ANSWER_TAGS = [
   "tool",
